@@ -6,6 +6,12 @@ type ModuleNode = {
   kind: 'composite' | 'leaf';
 };
 
+type Connection = {
+  fromModuleId: string;
+  toModuleId: string;
+  signal: string;
+};
+
 type PackageSectionStatus = 'empty' | 'partial' | 'complete';
 
 type ModulePackage = {
@@ -16,19 +22,33 @@ type ModulePackage = {
 };
 
 type DesignState = {
-  modules: ModuleNode[];
+  moduleList: ModuleNode[];
   selectedModuleId: string;
-  packagesByModuleId: Record<string, ModulePackage>;
+  connections: Connection[];
+  packageContentByModuleId: Record<string, ModulePackage>;
+  packageStatusByModuleId: Record<string, Record<'identity' | 'purpose' | 'interfaces', PackageSectionStatus>>;
 };
 
+function statusForPackage(modulePackage: ModulePackage): Record<'identity' | 'purpose' | 'interfaces', PackageSectionStatus> {
+  return {
+    identity: sectionStatus([modulePackage.identityName]),
+    purpose: sectionStatus([modulePackage.purposeSummary]),
+    interfaces: sectionStatus([modulePackage.interfaceInput, modulePackage.interfaceOutput])
+  };
+}
+
 const seedState: DesignState = {
-  modules: [
+  moduleList: [
     { id: 'root', name: 'top_controller', kind: 'composite' },
     { id: 'child_a', name: 'input_fifo', kind: 'leaf' },
     { id: 'child_b', name: 'scheduler', kind: 'leaf' }
   ],
   selectedModuleId: 'root',
-  packagesByModuleId: {
+  connections: [
+    { fromModuleId: 'child_a', toModuleId: 'root', signal: 'fifo_out' },
+    { fromModuleId: 'root', toModuleId: 'child_b', signal: 'dispatch_cmd' }
+  ],
+  packageContentByModuleId: {
     root: {
       identityName: 'top_controller',
       purposeSummary: 'Coordinates data flow and control decisions.',
@@ -46,6 +66,23 @@ const seedState: DesignState = {
       purposeSummary: '',
       interfaceInput: '',
       interfaceOutput: ''
+    }
+  },
+  packageStatusByModuleId: {
+    root: {
+      identity: 'complete',
+      purpose: 'complete',
+      interfaces: 'complete'
+    },
+    child_a: {
+      identity: 'complete',
+      purpose: 'empty',
+      interfaces: 'complete'
+    },
+    child_b: {
+      identity: 'complete',
+      purpose: 'empty',
+      interfaces: 'empty'
     }
   }
 };
@@ -67,45 +104,64 @@ function sectionStatus(values: string[]): PackageSectionStatus {
 export function App(): JSX.Element {
   const [state, setState] = useState<DesignState>(seedState);
 
-  const selectedPackage = state.packagesByModuleId[state.selectedModuleId];
+  const currentPackageContent = state.packageContentByModuleId[state.selectedModuleId];
+  const currentPackageStatus = state.packageStatusByModuleId[state.selectedModuleId];
+  const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === state.selectedModuleId);
 
-  const statuses = useMemo(
-    () => ({
-      identity: sectionStatus([selectedPackage.identityName]),
-      purpose: sectionStatus([selectedPackage.purposeSummary]),
-      interfaces: sectionStatus([selectedPackage.interfaceInput, selectedPackage.interfaceOutput])
-    }),
-    [selectedPackage]
+  const moduleConnections = useMemo(
+    () =>
+      state.connections.filter(
+        (connection) => connection.fromModuleId === state.selectedModuleId || connection.toModuleId === state.selectedModuleId
+      ),
+    [state.connections, state.selectedModuleId]
   );
+
+  const selectModule = (moduleId: string) => {
+    setState((current) => ({ ...current, selectedModuleId: moduleId }));
+  };
 
   const updatePackage = (field: keyof ModulePackage, value: string) => {
     setState((current) => ({
       ...current,
-      packagesByModuleId: {
-        ...current.packagesByModuleId,
+      packageContentByModuleId: {
+        ...current.packageContentByModuleId,
         [current.selectedModuleId]: {
-          ...current.packagesByModuleId[current.selectedModuleId],
+          ...current.packageContentByModuleId[current.selectedModuleId],
           [field]: value
         }
       },
-      modules:
+      packageStatusByModuleId: {
+        ...current.packageStatusByModuleId,
+        [current.selectedModuleId]: statusForPackage({
+          ...current.packageContentByModuleId[current.selectedModuleId],
+          [field]: value
+        })
+      },
+      moduleList:
         field === 'identityName'
-          ? current.modules.map((moduleNode) =>
+          ? current.moduleList.map((moduleNode) =>
               moduleNode.id === current.selectedModuleId ? { ...moduleNode, name: value || 'unnamed_module' } : moduleNode
             )
-          : current.modules
+          : current.moduleList
     }));
   };
 
   const applyMockSuggestion = () => {
     setState((current) => ({
       ...current,
-      packagesByModuleId: {
-        ...current.packagesByModuleId,
+      packageContentByModuleId: {
+        ...current.packageContentByModuleId,
         [current.selectedModuleId]: {
-          ...current.packagesByModuleId[current.selectedModuleId],
+          ...current.packageContentByModuleId[current.selectedModuleId],
           purposeSummary: 'AI suggestion: clarify module behavior and key constraints in one sentence.'
         }
+      },
+      packageStatusByModuleId: {
+        ...current.packageStatusByModuleId,
+        [current.selectedModuleId]: statusForPackage({
+          ...current.packageContentByModuleId[current.selectedModuleId],
+          purposeSummary: 'AI suggestion: clarify module behavior and key constraints in one sentence.'
+        })
       }
     }));
   };
@@ -128,12 +184,12 @@ export function App(): JSX.Element {
           <h2>Diagram Workspace</h2>
           <p className="muted">Simple module list as a stand-in for diagram canvas.</p>
           <ul className="module-list">
-            {state.modules.map((moduleNode) => (
+            {state.moduleList.map((moduleNode) => (
               <li key={moduleNode.id}>
                 <button
                   type="button"
                   className={moduleNode.id === state.selectedModuleId ? 'module-button selected' : 'module-button'}
-                  onClick={() => setState((current) => ({ ...current, selectedModuleId: moduleNode.id }))}
+                  onClick={() => selectModule(moduleNode.id)}
                 >
                   <span>{moduleNode.name}</span>
                   <small>{moduleNode.kind}</small>
@@ -145,18 +201,35 @@ export function App(): JSX.Element {
 
         <section className="panel right-panel">
           <h2>Module Package</h2>
-          <p className="muted">Selected module: {state.selectedModuleId}</p>
+          <p className="muted">
+            Selected module: {selectedModule?.name} ({state.selectedModuleId})
+          </p>
 
           <div className="status-row">
-            <StatusBadge label="Identity" status={statuses.identity} />
-            <StatusBadge label="Purpose" status={statuses.purpose} />
-            <StatusBadge label="Interfaces" status={statuses.interfaces} />
+            <StatusBadge label="Identity" status={currentPackageStatus.identity} />
+            <StatusBadge label="Purpose" status={currentPackageStatus.purpose} />
+            <StatusBadge label="Interfaces" status={currentPackageStatus.interfaces} />
+          </div>
+
+          <div className="connection-list">
+            <strong>Connections</strong>
+            {moduleConnections.length === 0 ? (
+              <p className="muted">No connections for this module.</p>
+            ) : (
+              <ul>
+                {moduleConnections.map((connection, index) => (
+                  <li key={`${connection.fromModuleId}-${connection.toModuleId}-${connection.signal}-${index}`}>
+                    {connection.fromModuleId} → {connection.toModuleId} ({connection.signal})
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <label>
             Identity / Name
             <input
-              value={selectedPackage.identityName}
+              value={currentPackageContent.identityName}
               onChange={(event) => updatePackage('identityName', event.target.value)}
               placeholder="module name"
             />
@@ -165,7 +238,7 @@ export function App(): JSX.Element {
           <label>
             Purpose
             <textarea
-              value={selectedPackage.purposeSummary}
+              value={currentPackageContent.purposeSummary}
               onChange={(event) => updatePackage('purposeSummary', event.target.value)}
               rows={3}
               placeholder="what does this module do?"
@@ -175,7 +248,7 @@ export function App(): JSX.Element {
           <label>
             Interface input
             <input
-              value={selectedPackage.interfaceInput}
+              value={currentPackageContent.interfaceInput}
               onChange={(event) => updatePackage('interfaceInput', event.target.value)}
               placeholder="input interface"
             />
@@ -184,7 +257,7 @@ export function App(): JSX.Element {
           <label>
             Interface output
             <input
-              value={selectedPackage.interfaceOutput}
+              value={currentPackageContent.interfaceOutput}
               onChange={(event) => updatePackage('interfaceOutput', event.target.value)}
               placeholder="output interface"
             />
