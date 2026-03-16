@@ -8,7 +8,8 @@ export type PackageStatus =
   | 'partially_defined'
   | 'under_review'
   | 'approved'
-  | 'leaf_ready';
+  | 'leaf_ready'
+  | 'handed_off';
 
 export type DecompositionStatus =
   | 'composite'

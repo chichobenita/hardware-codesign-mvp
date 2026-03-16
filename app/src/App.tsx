@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { deriveGenerationPayloadMinimalV1, type GenerationPayloadMinimal, type ModulePackage } from '../../shared/src';
+import { getTransitionActionLabel, getTransitionReadiness } from './packageLifecycle';
 
 type ModuleNode = {
   id: string;
@@ -278,6 +279,7 @@ export function App(): JSX.Element {
   const currentSectionStatuses = useMemo(() => sectionStatuses(currentPackageContent), [currentPackageContent]);
   const moduleConnections = state.connections.filter((connection) => connection.fromModuleId === state.selectedModuleId || connection.toModuleId === state.selectedModuleId);
   const generatedPayload: GenerationPayloadMinimal = useMemo(() => deriveGenerationPayloadMinimalV1(currentPackageContent), [currentPackageContent]);
+  const transitionReadiness = useMemo(() => getTransitionReadiness(currentPackageContent), [currentPackageContent]);
 
   const updateCurrentPackage = (updater: (current: ModulePackage) => ModulePackage) => {
     setState((current) => {
@@ -305,8 +307,18 @@ export function App(): JSX.Element {
   const applyMockSuggestion = () => {
     updateCurrentPackage((current) => ({
       ...current,
-      packageStatus: 'under_review',
       purpose: { ...current.purpose, summary: 'AI suggestion: clarify module behavior and key constraints in one sentence.' }
+    }));
+  };
+
+  const moveToNextPackageState = () => {
+    if (!transitionReadiness || !transitionReadiness.canTransition) {
+      return;
+    }
+
+    updateCurrentPackage((current) => ({
+      ...current,
+      packageStatus: transitionReadiness.to
     }));
   };
 
@@ -458,6 +470,33 @@ export function App(): JSX.Element {
         <section className="panel right-panel">
           <h2>Module Package</h2>
           <p className="muted">Selected module: {selectedModule?.name} ({state.selectedModuleId})</p>
+
+          <section className="lifecycle-card">
+            <h3>Package lifecycle</h3>
+            <p className="muted">Current state: <strong>{currentPackageContent.packageStatus}</strong></p>
+            {transitionReadiness ? (
+              <>
+                <p className="muted">Next transition: {transitionReadiness.title}</p>
+                {transitionReadiness.canTransition ? (
+                  <p className="ready-message">Ready to transition.</p>
+                ) : (
+                  <div className="missing-list">
+                    <strong>Missing before transition:</strong>
+                    <ul>
+                      {transitionReadiness.missingRequirements.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <button type="button" onClick={moveToNextPackageState} disabled={!transitionReadiness.canTransition}>
+                  {getTransitionActionLabel(transitionReadiness.to)}
+                </button>
+              </>
+            ) : (
+              <p className="ready-message">No further transitions in MVP flow.</p>
+            )}
+          </section>
 
           <ModulePackageSection title="Identity" status={currentSectionStatuses.identity}>
             <label>
