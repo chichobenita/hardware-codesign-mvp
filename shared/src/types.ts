@@ -69,6 +69,7 @@ export interface ModulePackage {
     behaviorSummary?: string;
     operationalDescription?: string;
     behaviorRules?: string[];
+    clockResetNotes?: string;
   };
   constraints?: {
     timingConstraints?: string[];
