@@ -31,6 +31,57 @@ type DesignState = {
   packageContentByModuleId: Record<string, ModulePackage>;
 };
 
+function dependencyEntry(kind: 'upstream' | 'downstream', moduleName: string, signal: string): string {
+  const cleanSignal = signal.trim();
+  return cleanSignal.length > 0 ? `${kind}:${moduleName}:${cleanSignal}` : `${kind}:${moduleName}`;
+}
+
+function withConnectionDependencies(current: DesignState, connection: Connection): DesignState {
+  const sourcePackage = current.packageContentByModuleId[connection.fromModuleId];
+  const targetPackage = current.packageContentByModuleId[connection.toModuleId];
+
+  if (!sourcePackage || !targetPackage) {
+    return current;
+  }
+
+  const sourceName = sourcePackage.identity?.name ?? connection.fromModuleId;
+  const targetName = targetPackage.identity?.name ?? connection.toModuleId;
+
+  const sourceDependencies = sourcePackage.dependencies?.relevantDependencies ?? [];
+  const targetDependencies = targetPackage.dependencies?.relevantDependencies ?? [];
+  const downstreamItem = dependencyEntry('downstream', targetName, connection.signal);
+  const upstreamItem = dependencyEntry('upstream', sourceName, connection.signal);
+
+  return {
+    ...current,
+    packageContentByModuleId: {
+      ...current.packageContentByModuleId,
+      [connection.fromModuleId]: {
+        ...sourcePackage,
+        lastUpdatedAt: new Date().toISOString(),
+        lastUpdatedBy: 'mock_user',
+        dependencies: {
+          ...sourcePackage.dependencies,
+          relevantDependencies: sourceDependencies.includes(downstreamItem)
+            ? sourceDependencies
+            : [...sourceDependencies, downstreamItem]
+        }
+      },
+      [connection.toModuleId]: {
+        ...targetPackage,
+        lastUpdatedAt: new Date().toISOString(),
+        lastUpdatedBy: 'mock_user',
+        dependencies: {
+          ...targetPackage.dependencies,
+          relevantDependencies: targetDependencies.includes(upstreamItem)
+            ? targetDependencies
+            : [...targetDependencies, upstreamItem]
+        }
+      }
+    }
+  };
+}
+
 function parseList(value: string): string[] {
   return value
     .split(',')
@@ -215,6 +266,7 @@ export function App(): JSX.Element {
   const [state, setState] = useState<DesignState>(seedState);
   const [newModuleName, setNewModuleName] = useState('');
   const [newModuleKind, setNewModuleKind] = useState<ModuleNode['kind']>('leaf');
+  const [renameDraft, setRenameDraft] = useState('');
   const [connectionDraft, setConnectionDraft] = useState<Connection>({
     fromModuleId: seedState.moduleList[0].id,
     toModuleId: seedState.moduleList[1].id,
@@ -285,14 +337,56 @@ export function App(): JSX.Element {
       packageContentByModuleId: { ...current.packageContentByModuleId, [nextId]: newPackage }
     }));
 
+    setRenameDraft(cleanName);
     setConnectionDraft((current) => ({ ...current, toModuleId: nextId }));
   };
 
-  const addConnection = () => {
-    if (!connectionDraft.fromModuleId || !connectionDraft.toModuleId || !connectionDraft.signal.trim()) {
+  const renameSelectedModule = () => {
+    const cleanName = renameDraft.trim();
+    if (!cleanName) {
       return;
     }
-    setState((current) => ({ ...current, connections: [...current.connections, { ...connectionDraft, signal: connectionDraft.signal.trim() }] }));
+
+    setState((current) => {
+      const selectedPackage = current.packageContentByModuleId[current.selectedModuleId];
+      if (!selectedPackage) {
+        return current;
+      }
+
+      return {
+        ...current,
+        moduleList: current.moduleList.map((moduleNode) =>
+          moduleNode.id === current.selectedModuleId ? { ...moduleNode, name: cleanName } : moduleNode
+        ),
+        packageContentByModuleId: {
+          ...current.packageContentByModuleId,
+          [current.selectedModuleId]: {
+            ...selectedPackage,
+            lastUpdatedAt: new Date().toISOString(),
+            lastUpdatedBy: 'mock_user',
+            identity: {
+              ...selectedPackage.identity,
+              name: cleanName
+            }
+          }
+        }
+      };
+    });
+  };
+
+  const addConnection = () => {
+    const nextConnection = { ...connectionDraft, signal: connectionDraft.signal.trim() };
+    if (!nextConnection.fromModuleId || !nextConnection.toModuleId || !nextConnection.signal) {
+      return;
+    }
+
+    setState((current) => {
+      const withConnection = {
+        ...current,
+        connections: [...current.connections, nextConnection]
+      };
+      return withConnectionDependencies(withConnection, nextConnection);
+    });
   };
 
   return (
@@ -331,6 +425,17 @@ export function App(): JSX.Element {
               </li>
             ))}
           </ul>
+          <div className="connection-builder">
+            <strong>Rename selected block</strong>
+            <div className="inline-form">
+              <input
+                value={renameDraft}
+                onChange={(event) => setRenameDraft(event.target.value)}
+                placeholder={selectedModule?.name ?? 'module name'}
+              />
+              <button type="button" onClick={renameSelectedModule}>Rename block</button>
+            </div>
+          </div>
           <div className="connection-builder">
             <strong>Connect blocks</strong>
             <div className="inline-form">
