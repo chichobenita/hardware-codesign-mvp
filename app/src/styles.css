@@ -173,3 +173,33 @@ button {
   background: #f9fafb;
   overflow-x: auto;
 }
+
+
+.right-panel {
+  max-height: calc(100vh - 92px);
+  overflow-y: auto;
+}
+
+.module-package-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.section-header-row h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.status-needs_review {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
