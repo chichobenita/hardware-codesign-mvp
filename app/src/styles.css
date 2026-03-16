@@ -203,3 +203,31 @@ button {
   background: #fee2e2;
   border-color: #fca5a5;
 }
+
+.lifecycle-card {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #f9fafb;
+}
+
+.missing-list {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.missing-list ul {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.ready-message {
+  color: #065f46;
+  font-size: 13px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
