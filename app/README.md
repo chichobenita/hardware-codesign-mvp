@@ -18,3 +18,7 @@ Open the local URL printed by Vite (typically `http://localhost:5173`).
 cd app
 npm run build
 ```
+
+## Main workspace note
+
+The right panel now uses an 8-section Module Package editor (Identity, Hierarchy, Interfaces, Purpose, Behavior, Constraints, Dependencies and Interactions, Decomposition Status) with local completeness states per section (`empty`, `partial`, `complete`, `needs_review`).

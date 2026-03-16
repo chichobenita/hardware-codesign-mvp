@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { deriveGenerationPayloadMinimalV1, type GenerationPayloadMinimal, type ModulePackage } from '../../shared/src';
 
 type ModuleNode = {
@@ -13,34 +13,23 @@ type Connection = {
   signal: string;
 };
 
-type PackageSectionStatus = 'empty' | 'partial' | 'complete';
+type PackageSectionStatus = 'empty' | 'partial' | 'complete' | 'needs_review';
+type SectionKey =
+  | 'identity'
+  | 'hierarchy'
+  | 'interfaces'
+  | 'purpose'
+  | 'behavior'
+  | 'constraints'
+  | 'dependenciesAndInteractions'
+  | 'decompositionStatus';
 
 type DesignState = {
   moduleList: ModuleNode[];
   selectedModuleId: string;
   connections: Connection[];
   packageContentByModuleId: Record<string, ModulePackage>;
-  packageStatusByModuleId: Record<string, Record<'identity' | 'purpose' | 'interfaces', PackageSectionStatus>>;
 };
-
-function sectionStatus(values: string[]): PackageSectionStatus {
-  const filled = values.filter((value) => value.trim().length > 0).length;
-  if (filled === 0) {
-    return 'empty';
-  }
-  if (filled === values.length) {
-    return 'complete';
-  }
-  return 'partial';
-}
-
-function statusForPackage(modulePackage: ModulePackage): Record<'identity' | 'purpose' | 'interfaces', PackageSectionStatus> {
-  return {
-    identity: sectionStatus([modulePackage.identity?.name ?? '']),
-    purpose: sectionStatus([modulePackage.purpose?.summary ?? '']),
-    interfaces: sectionStatus((modulePackage.interfaces?.ports ?? []).map((port) => port.name))
-  };
-}
 
 function parseList(value: string): string[] {
   return value
@@ -53,11 +42,77 @@ function stringifyList(values: string[]): string {
   return values.join(', ');
 }
 
-function portsForDirection(modulePackage: ModulePackage, direction: 'input' | 'output'): string[] {
+function listStatus(values: string[]): Exclude<PackageSectionStatus, 'needs_review'> {
+  if (values.length === 0) {
+    return 'empty';
+  }
+
+  const filled = values.filter((value) => value.trim().length > 0).length;
+  if (filled === 0) {
+    return 'empty';
+  }
+  if (filled === values.length) {
+    return 'complete';
+  }
+  return 'partial';
+}
+
+function markNeedsReview(baseStatus: Exclude<PackageSectionStatus, 'needs_review'>, shouldMarkReview: boolean): PackageSectionStatus {
+  if (!shouldMarkReview || baseStatus === 'empty') {
+    return baseStatus;
+  }
+  return 'needs_review';
+}
+
+function sectionStatuses(modulePackage: ModulePackage): Record<SectionKey, PackageSectionStatus> {
+  const reviewMode = modulePackage.packageStatus === 'under_review';
+
+  const interfaceValues = (modulePackage.interfaces?.ports ?? []).flatMap((port) => [port.name ?? '', port.direction ?? '', port.width ?? '']);
+  const behaviorValues = [
+    modulePackage.behavior?.behaviorSummary ?? '',
+    modulePackage.behavior?.operationalDescription ?? '',
+    modulePackage.behavior?.clockResetNotes ?? '',
+    ...(modulePackage.behavior?.behaviorRules ?? [])
+  ];
+  const constraintValues = [
+    ...(modulePackage.constraints?.timingConstraints ?? []),
+    ...(modulePackage.constraints?.latencyConstraints ?? []),
+    ...(modulePackage.constraints?.throughputConstraints ?? []),
+    ...(modulePackage.constraints?.basicConstraints ?? [])
+  ];
+
+  return {
+    identity: markNeedsReview(listStatus([modulePackage.identity?.name ?? '', modulePackage.identity?.description ?? '']), reviewMode),
+    hierarchy: markNeedsReview(
+      listStatus([
+        modulePackage.hierarchy?.parentModuleId ?? '',
+        ...(modulePackage.hierarchy?.childModuleIds ?? []),
+        ...(modulePackage.hierarchy?.hierarchyPath ?? [])
+      ]),
+      reviewMode
+    ),
+    interfaces: markNeedsReview(listStatus(interfaceValues), reviewMode),
+    purpose: markNeedsReview(listStatus([modulePackage.purpose?.summary ?? '']), reviewMode),
+    behavior: markNeedsReview(listStatus(behaviorValues), reviewMode),
+    constraints: markNeedsReview(listStatus(constraintValues), reviewMode),
+    dependenciesAndInteractions: markNeedsReview(listStatus(modulePackage.dependencies?.relevantDependencies ?? []), reviewMode),
+    decompositionStatus: markNeedsReview(
+      listStatus([
+        modulePackage.decompositionStatus?.decompositionStatus ?? '',
+        modulePackage.decompositionStatus?.decompositionRationale ?? '',
+        modulePackage.decompositionStatus?.stopReason ?? '',
+        modulePackage.decompositionStatus?.furtherDecompositionNotes ?? ''
+      ]),
+      reviewMode
+    )
+  };
+}
+
+function portsForDirection(modulePackage: ModulePackage, direction: 'input' | 'output' | 'inout'): string[] {
   return (modulePackage.interfaces?.ports ?? []).filter((port) => port.direction === direction).map((port) => port.name);
 }
 
-function replaceDirectionPorts(modulePackage: ModulePackage, direction: 'input' | 'output', names: string[]): ModulePackage {
+function replaceDirectionPorts(modulePackage: ModulePackage, direction: 'input' | 'output' | 'inout', names: string[]): ModulePackage {
   const existingPorts = modulePackage.interfaces?.ports ?? [];
   const untouched = existingPorts.filter((port) => port.direction !== direction);
   const nextDirectionPorts = names.map((name, index) => ({
@@ -98,9 +153,11 @@ const seedState: DesignState = {
       packageStatus: 'draft',
       lastUpdatedAt: new Date().toISOString(),
       lastUpdatedBy: 'mock_user',
-      identity: { name: 'top_controller' },
+      identity: { name: 'top_controller', description: 'Top-level orchestrator for subsystem coordination.' },
+      hierarchy: { parentModuleId: '', childModuleIds: ['child_a', 'child_b'], hierarchyPath: ['top_controller'] },
       interfaces: { ports: [{ id: 'cfg_bus', name: 'cfg_bus', direction: 'input', width: '32' }, { id: 'data_out', name: 'data_out', direction: 'output', width: '32' }] },
-      purpose: { summary: 'Coordinates data flow and control decisions.' }
+      purpose: { summary: 'Coordinates data flow and control decisions.' },
+      decompositionStatus: { decompositionStatus: 'under_decomposition', decompositionRationale: 'Still splitting control and data scheduling.', furtherDecompositionNotes: 'Need one more refinement pass.' }
     },
     child_a: {
       packageId: 'pkg_child_a',
@@ -131,7 +188,8 @@ const seedState: DesignState = {
       packageStatus: 'partially_defined',
       lastUpdatedAt: new Date().toISOString(),
       lastUpdatedBy: 'mock_user',
-      identity: { name: 'uart_rx' },
+      identity: { name: 'uart_rx', description: 'UART receiver converting serial stream to bytes.' },
+      hierarchy: { parentModuleId: 'root', childModuleIds: [], hierarchyPath: ['top_controller', 'uart_rx'] },
       interfaces: {
         ports: [
           { id: 'clk', name: 'clk', direction: 'input', width: '1', description: 'System clock' },
@@ -144,46 +202,47 @@ const seedState: DesignState = {
       constraints: { basicConstraints: ['115200 baud nominal', '8-N-1 format'] },
       dependencies: { relevantDependencies: ['system clock', 'upstream UART TX timing assumptions'] },
       behavior: {
+        behaviorSummary: 'Detect start bit, sample 8 data bits, emit output byte.',
         behaviorRules: ['Sample start bit midpoint before data bits', 'Assert data_o only after a full valid frame'],
         clockResetNotes: 'Synchronous to clk. rst_n clears RX state machine and output valid flags.'
-      }
+      },
+      decompositionStatus: { decompositionStatus: 'approved_leaf', decompositionRationale: 'Simple block with clear fixed behavior.', stopRecommendedBy: 'system' }
     }
-  },
-  packageStatusByModuleId: {
-    root: { identity: 'complete', purpose: 'complete', interfaces: 'complete' },
-    child_a: { identity: 'complete', purpose: 'empty', interfaces: 'complete' },
-    child_b: { identity: 'complete', purpose: 'empty', interfaces: 'empty' },
-    example_uart_rx: { identity: 'complete', purpose: 'complete', interfaces: 'complete' }
   }
 };
 
 export function App(): JSX.Element {
   const [state, setState] = useState<DesignState>(seedState);
-  const [newModuleName, setNewModuleName] = useState('new_module');
+  const [newModuleName, setNewModuleName] = useState('');
   const [newModuleKind, setNewModuleKind] = useState<ModuleNode['kind']>('leaf');
-  const [connectionDraft, setConnectionDraft] = useState<Connection>({ fromModuleId: 'root', toModuleId: 'child_a', signal: 'signal_name' });
+  const [connectionDraft, setConnectionDraft] = useState<Connection>({
+    fromModuleId: seedState.moduleList[0].id,
+    toModuleId: seedState.moduleList[1].id,
+    signal: ''
+  });
 
+  const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === state.selectedModuleId) ?? state.moduleList[0];
   const currentPackageContent = state.packageContentByModuleId[state.selectedModuleId];
-  const currentPackageStatus = state.packageStatusByModuleId[state.selectedModuleId];
-  const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === state.selectedModuleId);
+  const currentSectionStatuses = useMemo(() => sectionStatuses(currentPackageContent), [currentPackageContent]);
+  const moduleConnections = state.connections.filter((connection) => connection.fromModuleId === state.selectedModuleId || connection.toModuleId === state.selectedModuleId);
+  const generatedPayload: GenerationPayloadMinimal = useMemo(() => deriveGenerationPayloadMinimalV1(currentPackageContent), [currentPackageContent]);
 
-  const generatedPayload = useMemo<GenerationPayloadMinimal>(
-    () => deriveGenerationPayloadMinimalV1(currentPackageContent),
-    [currentPackageContent]
-  );
-
-  const moduleConnections = useMemo(
-    () => state.connections.filter((connection) => connection.fromModuleId === state.selectedModuleId || connection.toModuleId === state.selectedModuleId),
-    [state.connections, state.selectedModuleId]
-  );
-
-  const updateCurrentPackage = (transform: (current: ModulePackage) => ModulePackage) => {
+  const updateCurrentPackage = (updater: (current: ModulePackage) => ModulePackage) => {
     setState((current) => {
-      const nextPackage = transform(current.packageContentByModuleId[current.selectedModuleId]);
+      const currentPackage = current.packageContentByModuleId[current.selectedModuleId];
+      const nextPackage = {
+        ...updater(currentPackage),
+        moduleId: current.selectedModuleId,
+        lastUpdatedAt: new Date().toISOString(),
+        lastUpdatedBy: 'mock_user'
+      };
+
       return {
         ...current,
-        packageContentByModuleId: { ...current.packageContentByModuleId, [current.selectedModuleId]: nextPackage },
-        packageStatusByModuleId: { ...current.packageStatusByModuleId, [current.selectedModuleId]: statusForPackage(nextPackage) },
+        packageContentByModuleId: {
+          ...current.packageContentByModuleId,
+          [current.selectedModuleId]: nextPackage
+        },
         moduleList: current.moduleList.map((moduleNode) =>
           moduleNode.id === current.selectedModuleId ? { ...moduleNode, name: nextPackage.identity?.name || 'unnamed_module' } : moduleNode
         )
@@ -194,6 +253,7 @@ export function App(): JSX.Element {
   const applyMockSuggestion = () => {
     updateCurrentPackage((current) => ({
       ...current,
+      packageStatus: 'under_review',
       purpose: { ...current.purpose, summary: 'AI suggestion: clarify module behavior and key constraints in one sentence.' }
     }));
   };
@@ -209,19 +269,20 @@ export function App(): JSX.Element {
       lastUpdatedAt: new Date().toISOString(),
       lastUpdatedBy: 'mock_user',
       identity: { name: cleanName },
+      hierarchy: { parentModuleId: '', childModuleIds: [], hierarchyPath: [cleanName] },
       interfaces: { ports: [] },
       purpose: { summary: '' },
       constraints: { basicConstraints: [] },
       dependencies: { relevantDependencies: [] },
-      behavior: { behaviorRules: [], clockResetNotes: '' }
+      behavior: { behaviorRules: [], clockResetNotes: '' },
+      decompositionStatus: { decompositionStatus: 'under_decomposition', decompositionRationale: '' }
     };
 
     setState((current) => ({
       ...current,
       moduleList: [...current.moduleList, { id: nextId, name: cleanName, kind: newModuleKind }],
       selectedModuleId: nextId,
-      packageContentByModuleId: { ...current.packageContentByModuleId, [nextId]: newPackage },
-      packageStatusByModuleId: { ...current.packageStatusByModuleId, [nextId]: statusForPackage(newPackage) }
+      packageContentByModuleId: { ...current.packageContentByModuleId, [nextId]: newPackage }
     }));
 
     setConnectionDraft((current) => ({ ...current, toModuleId: nextId }));
@@ -292,39 +353,127 @@ export function App(): JSX.Element {
         <section className="panel right-panel">
           <h2>Module Package</h2>
           <p className="muted">Selected module: {selectedModule?.name} ({state.selectedModuleId})</p>
-          <div className="status-row">
-            <StatusBadge label="Identity" status={currentPackageStatus.identity} />
-            <StatusBadge label="Purpose" status={currentPackageStatus.purpose} />
-            <StatusBadge label="Interfaces" status={currentPackageStatus.interfaces} />
-          </div>
 
-          <div className="connection-list">
-            <strong>Connections</strong>
-            {moduleConnections.length === 0 ? <p className="muted">No connections for this module.</p> : (
-              <ul>
-                {moduleConnections.map((connection, index) => (
-                  <li key={`${connection.fromModuleId}-${connection.toModuleId}-${connection.signal}-${index}`}>{connection.fromModuleId} → {connection.toModuleId} ({connection.signal})</li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <ModulePackageSection title="Identity" status={currentSectionStatuses.identity}>
+            <label>
+              Name
+              <input value={currentPackageContent.identity?.name ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, identity: { ...current.identity, name: event.target.value } }))} placeholder="module name" />
+            </label>
+            <label>
+              Description
+              <textarea value={currentPackageContent.identity?.description ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, identity: { ...current.identity, description: event.target.value } }))} rows={2} placeholder="short identity description" />
+            </label>
+          </ModulePackageSection>
 
-          <label>
-            Identity / Name
-            <input value={currentPackageContent.identity?.name ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, identity: { ...current.identity, name: event.target.value } }))} placeholder="module name" />
-          </label>
-          <label>
-            Purpose
-            <textarea value={currentPackageContent.purpose?.summary ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, purpose: { ...current.purpose, summary: event.target.value } }))} rows={3} placeholder="what does this module do?" />
-          </label>
-          <label>
-            Input ports (comma-separated)
-            <input value={stringifyList(portsForDirection(currentPackageContent, 'input'))} onChange={(event) => updateCurrentPackage((current) => replaceDirectionPorts(current, 'input', parseList(event.target.value)))} placeholder="in_a, in_b" />
-          </label>
-          <label>
-            Output ports (comma-separated)
-            <input value={stringifyList(portsForDirection(currentPackageContent, 'output'))} onChange={(event) => updateCurrentPackage((current) => replaceDirectionPorts(current, 'output', parseList(event.target.value)))} placeholder="out_a, out_b" />
-          </label>
+          <ModulePackageSection title="Hierarchy" status={currentSectionStatuses.hierarchy}>
+            <label>
+              Parent module id
+              <input value={currentPackageContent.hierarchy?.parentModuleId ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, hierarchy: { ...current.hierarchy, parentModuleId: event.target.value } }))} placeholder="root" />
+            </label>
+            <label>
+              Child module ids (comma-separated)
+              <input value={stringifyList(currentPackageContent.hierarchy?.childModuleIds ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, hierarchy: { ...current.hierarchy, childModuleIds: parseList(event.target.value) } }))} placeholder="child_a, child_b" />
+            </label>
+            <label>
+              Hierarchy path (comma-separated)
+              <input value={stringifyList(currentPackageContent.hierarchy?.hierarchyPath ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, hierarchy: { ...current.hierarchy, hierarchyPath: parseList(event.target.value) } }))} placeholder="top_controller, module_name" />
+            </label>
+          </ModulePackageSection>
+
+          <ModulePackageSection title="Interfaces" status={currentSectionStatuses.interfaces}>
+            <label>
+              Input ports (comma-separated)
+              <input value={stringifyList(portsForDirection(currentPackageContent, 'input'))} onChange={(event) => updateCurrentPackage((current) => replaceDirectionPorts(current, 'input', parseList(event.target.value)))} placeholder="in_a, in_b" />
+            </label>
+            <label>
+              Output ports (comma-separated)
+              <input value={stringifyList(portsForDirection(currentPackageContent, 'output'))} onChange={(event) => updateCurrentPackage((current) => replaceDirectionPorts(current, 'output', parseList(event.target.value)))} placeholder="out_a, out_b" />
+            </label>
+            <label>
+              Inout ports (comma-separated)
+              <input value={stringifyList(portsForDirection(currentPackageContent, 'inout'))} onChange={(event) => updateCurrentPackage((current) => replaceDirectionPorts(current, 'inout', parseList(event.target.value)))} placeholder="io_bus" />
+            </label>
+          </ModulePackageSection>
+
+          <ModulePackageSection title="Purpose" status={currentSectionStatuses.purpose}>
+            <label>
+              Purpose summary
+              <textarea value={currentPackageContent.purpose?.summary ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, purpose: { ...current.purpose, summary: event.target.value } }))} rows={3} placeholder="what does this module do?" />
+            </label>
+          </ModulePackageSection>
+
+          <ModulePackageSection title="Behavior" status={currentSectionStatuses.behavior}>
+            <label>
+              Behavior summary
+              <textarea value={currentPackageContent.behavior?.behaviorSummary ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, behavior: { ...current.behavior, behaviorSummary: event.target.value } }))} rows={2} placeholder="high-level behavior" />
+            </label>
+            <label>
+              Behavior rules (comma-separated)
+              <input value={stringifyList(currentPackageContent.behavior?.behaviorRules ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, behavior: { ...current.behavior, behaviorRules: parseList(event.target.value) } }))} placeholder="rule_a, rule_b" />
+            </label>
+            <label>
+              Clock / reset notes
+              <textarea value={currentPackageContent.behavior?.clockResetNotes ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, behavior: { ...current.behavior, clockResetNotes: event.target.value } }))} rows={2} placeholder="clock and reset behavior" />
+            </label>
+          </ModulePackageSection>
+
+          <ModulePackageSection title="Constraints" status={currentSectionStatuses.constraints}>
+            <label>
+              Basic constraints (comma-separated)
+              <input value={stringifyList(currentPackageContent.constraints?.basicConstraints ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, constraints: { ...current.constraints, basicConstraints: parseList(event.target.value) } }))} placeholder="constraint_a, constraint_b" />
+            </label>
+            <label>
+              Timing constraints (comma-separated)
+              <input value={stringifyList(currentPackageContent.constraints?.timingConstraints ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, constraints: { ...current.constraints, timingConstraints: parseList(event.target.value) } }))} placeholder="setup < 2ns" />
+            </label>
+          </ModulePackageSection>
+
+          <ModulePackageSection title="Dependencies and Interactions" status={currentSectionStatuses.dependenciesAndInteractions}>
+            <label>
+              Relevant dependencies (comma-separated)
+              <input value={stringifyList(currentPackageContent.dependencies?.relevantDependencies ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, dependencies: { ...current.dependencies, relevantDependencies: parseList(event.target.value) } }))} placeholder="system clock, upstream block" />
+            </label>
+            <div className="connection-list">
+              <strong>Current interactions from connections</strong>
+              {moduleConnections.length === 0 ? <p className="muted">No connections for this module.</p> : (
+                <ul>
+                  {moduleConnections.map((connection, index) => (
+                    <li key={`${connection.fromModuleId}-${connection.toModuleId}-${connection.signal}-${index}`}>{connection.fromModuleId} → {connection.toModuleId} ({connection.signal})</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </ModulePackageSection>
+
+          <ModulePackageSection title="Decomposition Status" status={currentSectionStatuses.decompositionStatus}>
+            <label>
+              Decomposition status
+              <select
+                value={currentPackageContent.decompositionStatus?.decompositionStatus ?? 'under_decomposition'}
+                onChange={(event) =>
+                  updateCurrentPackage((current) => ({
+                    ...current,
+                    decompositionStatus: {
+                      decompositionStatus: event.target.value as NonNullable<ModulePackage['decompositionStatus']>['decompositionStatus'],
+                      decompositionRationale: current.decompositionStatus?.decompositionRationale ?? '',
+                      stopReason: current.decompositionStatus?.stopReason,
+                      stopRecommendedBy: current.decompositionStatus?.stopRecommendedBy,
+                      furtherDecompositionNotes: current.decompositionStatus?.furtherDecompositionNotes
+                    }
+                  }))
+                }
+              >
+                <option value="composite">composite</option>
+                <option value="under_decomposition">under_decomposition</option>
+                <option value="candidate_leaf">candidate_leaf</option>
+                <option value="approved_leaf">approved_leaf</option>
+              </select>
+            </label>
+            <label>
+              Rationale
+              <textarea value={currentPackageContent.decompositionStatus?.decompositionRationale ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, decompositionStatus: { decompositionStatus: current.decompositionStatus?.decompositionStatus ?? 'under_decomposition', decompositionRationale: event.target.value, stopReason: current.decompositionStatus?.stopReason, stopRecommendedBy: current.decompositionStatus?.stopRecommendedBy, furtherDecompositionNotes: current.decompositionStatus?.furtherDecompositionNotes } }))} rows={2} placeholder="why this decomposition state?" />
+            </label>
+          </ModulePackageSection>
 
           <div className="payload-preview">
             <strong>GenerationPayloadMinimal v1 (derived)</strong>
@@ -336,6 +485,24 @@ export function App(): JSX.Element {
   );
 }
 
+type ModulePackageSectionProps = {
+  title: string;
+  status: PackageSectionStatus;
+  children: ReactNode;
+};
+
+function ModulePackageSection({ title, status, children }: ModulePackageSectionProps): JSX.Element {
+  return (
+    <section className="module-package-section">
+      <div className="section-header-row">
+        <h3>{title}</h3>
+        <StatusBadge label="status" status={status} />
+      </div>
+      <div>{children}</div>
+    </section>
+  );
+}
+
 type StatusBadgeProps = {
   label: string;
   status: PackageSectionStatus;
@@ -344,3 +511,6 @@ type StatusBadgeProps = {
 function StatusBadge({ label, status }: StatusBadgeProps): JSX.Element {
   return <span className={`status-badge status-${status}`}>{label}: {status}</span>;
 }
+
+
+export default App;
