@@ -19,6 +19,15 @@ cd app
 npm run build
 ```
 
+## Tests
+
+```bash
+cd app
+npm run test
+```
+
+This runs the Vitest suite (jsdom + React Testing Library) for smoke tests and core payload/lifecycle logic.
+
 ## Main workspace note
 
 The right panel now uses an 8-section Module Package editor (Identity, Hierarchy, Interfaces, Purpose, Behavior, Constraints, Dependencies and Interactions, Decomposition Status) with local completeness states per section (`empty`, `partial`, `complete`, `needs_review`).
