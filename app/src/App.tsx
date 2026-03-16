@@ -17,8 +17,8 @@ type PackageSectionStatus = 'empty' | 'partial' | 'complete';
 type ModulePackage = {
   identityName: string;
   purposeSummary: string;
-  interfaceInput: string;
-  interfaceOutput: string;
+  inputPorts: string[];
+  outputPorts: string[];
 };
 
 type DesignState = {
@@ -33,7 +33,7 @@ function statusForPackage(modulePackage: ModulePackage): Record<'identity' | 'pu
   return {
     identity: sectionStatus([modulePackage.identityName]),
     purpose: sectionStatus([modulePackage.purposeSummary]),
-    interfaces: sectionStatus([modulePackage.interfaceInput, modulePackage.interfaceOutput])
+    interfaces: sectionStatus([...modulePackage.inputPorts, ...modulePackage.outputPorts])
   };
 }
 
@@ -52,20 +52,20 @@ const seedState: DesignState = {
     root: {
       identityName: 'top_controller',
       purposeSummary: 'Coordinates data flow and control decisions.',
-      interfaceInput: 'cfg_bus',
-      interfaceOutput: 'data_out'
+      inputPorts: ['cfg_bus'],
+      outputPorts: ['data_out']
     },
     child_a: {
       identityName: 'input_fifo',
       purposeSummary: '',
-      interfaceInput: 'data_in',
-      interfaceOutput: 'fifo_out'
+      inputPorts: ['data_in'],
+      outputPorts: ['fifo_out']
     },
     child_b: {
       identityName: 'scheduler',
       purposeSummary: '',
-      interfaceInput: '',
-      interfaceOutput: ''
+      inputPorts: [],
+      outputPorts: []
     }
   },
   packageStatusByModuleId: {
@@ -101,8 +101,26 @@ function sectionStatus(values: string[]): PackageSectionStatus {
   return 'partial';
 }
 
+function parsePortList(value: string): string[] {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function stringifyPortList(values: string[]): string {
+  return values.join(', ');
+}
+
 export function App(): JSX.Element {
   const [state, setState] = useState<DesignState>(seedState);
+  const [newModuleName, setNewModuleName] = useState('new_module');
+  const [newModuleKind, setNewModuleKind] = useState<ModuleNode['kind']>('leaf');
+  const [connectionDraft, setConnectionDraft] = useState<Connection>({
+    fromModuleId: 'root',
+    toModuleId: 'child_a',
+    signal: 'signal_name'
+  });
 
   const currentPackageContent = state.packageContentByModuleId[state.selectedModuleId];
   const currentPackageStatus = state.packageStatusByModuleId[state.selectedModuleId];
@@ -120,49 +138,90 @@ export function App(): JSX.Element {
     setState((current) => ({ ...current, selectedModuleId: moduleId }));
   };
 
-  const updatePackage = (field: keyof ModulePackage, value: string) => {
-    setState((current) => ({
-      ...current,
-      packageContentByModuleId: {
-        ...current.packageContentByModuleId,
-        [current.selectedModuleId]: {
-          ...current.packageContentByModuleId[current.selectedModuleId],
-          [field]: value
-        }
-      },
-      packageStatusByModuleId: {
-        ...current.packageStatusByModuleId,
-        [current.selectedModuleId]: statusForPackage({
-          ...current.packageContentByModuleId[current.selectedModuleId],
-          [field]: value
-        })
-      },
-      moduleList:
-        field === 'identityName'
-          ? current.moduleList.map((moduleNode) =>
-              moduleNode.id === current.selectedModuleId ? { ...moduleNode, name: value || 'unnamed_module' } : moduleNode
-            )
-          : current.moduleList
-    }));
+  const updatePackage = (field: keyof ModulePackage, value: string | string[]) => {
+    setState((current) => {
+      const nextPackage = {
+        ...current.packageContentByModuleId[current.selectedModuleId],
+        [field]: value
+      } as ModulePackage;
+
+      return {
+        ...current,
+        packageContentByModuleId: {
+          ...current.packageContentByModuleId,
+          [current.selectedModuleId]: nextPackage
+        },
+        packageStatusByModuleId: {
+          ...current.packageStatusByModuleId,
+          [current.selectedModuleId]: statusForPackage(nextPackage)
+        },
+        moduleList:
+          field === 'identityName'
+            ? current.moduleList.map((moduleNode) =>
+                moduleNode.id === current.selectedModuleId ? { ...moduleNode, name: String(value) || 'unnamed_module' } : moduleNode
+              )
+            : current.moduleList
+      };
+    });
   };
 
   const applyMockSuggestion = () => {
+    setState((current) => {
+      const nextPackage = {
+        ...current.packageContentByModuleId[current.selectedModuleId],
+        purposeSummary: 'AI suggestion: clarify module behavior and key constraints in one sentence.'
+      };
+
+      return {
+        ...current,
+        packageContentByModuleId: {
+          ...current.packageContentByModuleId,
+          [current.selectedModuleId]: nextPackage
+        },
+        packageStatusByModuleId: {
+          ...current.packageStatusByModuleId,
+          [current.selectedModuleId]: statusForPackage(nextPackage)
+        }
+      };
+    });
+  };
+
+  const createModule = () => {
+    const cleanName = newModuleName.trim() || 'unnamed_module';
+    const nextId = `${cleanName.replace(/\s+/g, '_')}_${Date.now().toString(36)}`;
+
+    const newPackage: ModulePackage = {
+      identityName: cleanName,
+      purposeSummary: '',
+      inputPorts: [],
+      outputPorts: []
+    };
+
     setState((current) => ({
       ...current,
+      moduleList: [...current.moduleList, { id: nextId, name: cleanName, kind: newModuleKind }],
+      selectedModuleId: nextId,
       packageContentByModuleId: {
         ...current.packageContentByModuleId,
-        [current.selectedModuleId]: {
-          ...current.packageContentByModuleId[current.selectedModuleId],
-          purposeSummary: 'AI suggestion: clarify module behavior and key constraints in one sentence.'
-        }
+        [nextId]: newPackage
       },
       packageStatusByModuleId: {
         ...current.packageStatusByModuleId,
-        [current.selectedModuleId]: statusForPackage({
-          ...current.packageContentByModuleId[current.selectedModuleId],
-          purposeSummary: 'AI suggestion: clarify module behavior and key constraints in one sentence.'
-        })
+        [nextId]: statusForPackage(newPackage)
       }
+    }));
+
+    setConnectionDraft((current) => ({ ...current, toModuleId: nextId }));
+  };
+
+  const addConnection = () => {
+    if (!connectionDraft.fromModuleId || !connectionDraft.toModuleId || !connectionDraft.signal.trim()) {
+      return;
+    }
+
+    setState((current) => ({
+      ...current,
+      connections: [...current.connections, { ...connectionDraft, signal: connectionDraft.signal.trim() }]
     }));
   };
 
@@ -182,7 +241,23 @@ export function App(): JSX.Element {
 
         <section className="panel center-panel">
           <h2>Diagram Workspace</h2>
-          <p className="muted">Simple module list as a stand-in for diagram canvas.</p>
+          <p className="muted">Basic interactions: create, select, and connect blocks.</p>
+
+          <div className="inline-form">
+            <input value={newModuleName} onChange={(event) => setNewModuleName(event.target.value)} placeholder="new block name" />
+            <select
+              value={newModuleKind}
+              onChange={(event) => setNewModuleKind(event.target.value as ModuleNode['kind'])}
+              aria-label="Block kind"
+            >
+              <option value="leaf">leaf</option>
+              <option value="composite">composite</option>
+            </select>
+            <button type="button" onClick={createModule}>
+              Create block
+            </button>
+          </div>
+
           <ul className="module-list">
             {state.moduleList.map((moduleNode) => (
               <li key={moduleNode.id}>
@@ -197,6 +272,42 @@ export function App(): JSX.Element {
               </li>
             ))}
           </ul>
+
+          <div className="connection-builder">
+            <strong>Connect blocks</strong>
+            <div className="inline-form">
+              <select
+                value={connectionDraft.fromModuleId}
+                onChange={(event) => setConnectionDraft((current) => ({ ...current, fromModuleId: event.target.value }))}
+                aria-label="Connection source"
+              >
+                {state.moduleList.map((moduleNode) => (
+                  <option key={`from-${moduleNode.id}`} value={moduleNode.id}>
+                    {moduleNode.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={connectionDraft.toModuleId}
+                onChange={(event) => setConnectionDraft((current) => ({ ...current, toModuleId: event.target.value }))}
+                aria-label="Connection target"
+              >
+                {state.moduleList.map((moduleNode) => (
+                  <option key={`to-${moduleNode.id}`} value={moduleNode.id}>
+                    {moduleNode.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={connectionDraft.signal}
+                onChange={(event) => setConnectionDraft((current) => ({ ...current, signal: event.target.value }))}
+                placeholder="signal"
+              />
+              <button type="button" onClick={addConnection}>
+                Connect
+              </button>
+            </div>
+          </div>
         </section>
 
         <section className="panel right-panel">
@@ -246,20 +357,20 @@ export function App(): JSX.Element {
           </label>
 
           <label>
-            Interface input
+            Input ports (comma-separated)
             <input
-              value={currentPackageContent.interfaceInput}
-              onChange={(event) => updatePackage('interfaceInput', event.target.value)}
-              placeholder="input interface"
+              value={stringifyPortList(currentPackageContent.inputPorts)}
+              onChange={(event) => updatePackage('inputPorts', parsePortList(event.target.value))}
+              placeholder="in_a, in_b"
             />
           </label>
 
           <label>
-            Interface output
+            Output ports (comma-separated)
             <input
-              value={currentPackageContent.interfaceOutput}
-              onChange={(event) => updatePackage('interfaceOutput', event.target.value)}
-              placeholder="output interface"
+              value={stringifyPortList(currentPackageContent.outputPorts)}
+              onChange={(event) => updatePackage('outputPorts', parsePortList(event.target.value))}
+              placeholder="out_a, out_b"
             />
           </label>
         </section>
