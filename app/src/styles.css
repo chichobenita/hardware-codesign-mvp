@@ -158,3 +158,18 @@ button {
   gap: 8px;
   margin-bottom: 10px;
 }
+
+.payload-preview {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 12px;
+}
+
+.payload-preview pre {
+  margin: 8px 0 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f9fafb;
+  overflow-x: auto;
+}
