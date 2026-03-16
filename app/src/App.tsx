@@ -1,65 +1,20 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { deriveGenerationPayloadMinimalV1, type GenerationPayloadMinimal, type ModulePackage } from '../../shared/src';
-import { getTransitionActionLabel, getTransitionReadiness } from './packageLifecycle';
+import { getTransitionReadiness } from './packageLifecycle';
+import { AISuggestionsPanel } from './components/AISuggestionsPanel';
+import { DiagramWorkspace } from './components/DiagramWorkspace';
+import { ModulePackagePanel } from './components/ModulePackagePanel';
 
-type ModuleNode = {
-  id: string;
-  name: string;
-  kind: 'composite' | 'leaf';
-};
-
-type Connection = {
-  fromModuleId: string;
-  toModuleId: string;
-  signal: string;
-};
-
-type PackageSectionStatus = 'empty' | 'partial' | 'complete' | 'needs_review';
-type SectionKey =
-  | 'identity'
-  | 'hierarchy'
-  | 'interfaces'
-  | 'purpose'
-  | 'behavior'
-  | 'constraints'
-  | 'dependenciesAndInteractions'
-  | 'decompositionStatus';
-
-type DesignState = {
-  moduleList: ModuleNode[];
-  selectedModuleId: string;
-  connections: Connection[];
-  packageContentByModuleId: Record<string, ModulePackage>;
-  handedOffAtByModuleId: Record<string, string>;
-};
-
-type PersistedDesignState = {
-  moduleList: ModuleNode[];
-  selectedModuleId: string;
-  connections: Connection[];
-  packageContentByModuleId: Record<string, ModulePackage>;
-  handedOffAtByModuleId: Record<string, string>;
-};
-
-type WorkspaceMode = 'design' | 'review' | 'handoff';
-
-type SuggestionType = 'purpose_proposal' | 'behavior_summary' | 'ports_suggestion' | 'decomposition_suggestion';
-type SuggestionStatus = 'pending' | 'accepted' | 'rejected';
-type PortDraft = NonNullable<NonNullable<ModulePackage['interfaces']>['ports']>[number];
-
-type SuggestionCard = {
-  id: string;
-  type: SuggestionType;
-  title: string;
-  description: string;
-  status: SuggestionStatus;
-  draft: {
-    summaryText?: string;
-    ports?: PortDraft[];
-    decompositionStatus?: NonNullable<ModulePackage['decompositionStatus']>['decompositionStatus'];
-    decompositionRationale?: string;
-  };
-};
+import type {
+  Connection,
+  DesignState,
+  ModuleNode,
+  PackageSectionStatus,
+  PersistedDesignState,
+  SectionKey,
+  SuggestionCard,
+  WorkspaceMode
+} from './types';
 
 function dependencyEntry(kind: 'upstream' | 'downstream', moduleName: string, signal: string): string {
   const cleanSignal = signal.trim();
@@ -168,17 +123,6 @@ function createMockSuggestions(moduleNode: ModuleNode, modulePackage: ModulePack
   ];
 }
 
-function parseList(value: string): string[] {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-}
-
-function stringifyList(values: string[]): string {
-  return values.join(', ');
-}
-
 function listStatus(values: string[]): Exclude<PackageSectionStatus, 'needs_review'> {
   if (values.length === 0) {
     return 'empty';
@@ -242,30 +186,6 @@ function sectionStatuses(modulePackage: ModulePackage): Record<SectionKey, Packa
       ]),
       reviewMode
     )
-  };
-}
-
-function portsForDirection(modulePackage: ModulePackage, direction: 'input' | 'output' | 'inout'): string[] {
-  return (modulePackage.interfaces?.ports ?? []).filter((port) => port.direction === direction).map((port) => port.name);
-}
-
-function replaceDirectionPorts(modulePackage: ModulePackage, direction: 'input' | 'output' | 'inout', names: string[]): ModulePackage {
-  const existingPorts = modulePackage.interfaces?.ports ?? [];
-  const untouched = existingPorts.filter((port) => port.direction !== direction);
-  const nextDirectionPorts = names.map((name, index) => ({
-    id: `${direction}_${index}`,
-    name,
-    direction,
-    width: '1',
-    description: ''
-  }));
-
-  return {
-    ...modulePackage,
-    interfaces: {
-      ...modulePackage.interfaces,
-      ports: [...untouched, ...nextDirectionPorts]
-    }
   };
 }
 
@@ -732,445 +652,54 @@ export function App(): JSX.Element {
     <div className="app-shell">
       <header className="app-header">Hardware Co-Design MVP — Main Workspace</header>
       <main className="workspace-grid">
-        <section className="panel left-panel">
-          <h2>AI Collaboration</h2>
-          <p className="muted">Mock suggestions for selected module: <strong>{selectedModule?.name}</strong></p>
-          <p className="suggestions-note">Suggestions are not committed until you click <strong>Accept</strong>.</p>
-          <button type="button" onClick={regenerateSuggestionsForSelectedModule}>Regenerate mock suggestions</button>
-          <div className="suggestions-list">
-            {selectedSuggestions.map((suggestion) => (
-              <article key={suggestion.id} className="suggestion-card">
-                <div className="suggestion-header-row">
-                  <h3>{suggestion.title}</h3>
-                  <span className={`suggestion-status suggestion-${suggestion.status}`}>{suggestion.status}</span>
-                </div>
-                <p className="muted">{suggestion.description}</p>
+        <AISuggestionsPanel
+          selectedModule={selectedModule}
+          regenerateSuggestionsForSelectedModule={regenerateSuggestionsForSelectedModule}
+          selectedSuggestions={selectedSuggestions}
+          updateSuggestion={updateSuggestion}
+          acceptSuggestion={acceptSuggestion}
+          rejectSuggestion={rejectSuggestion}
+        />
 
-                {(suggestion.type === 'purpose_proposal' || suggestion.type === 'behavior_summary') && (
-                  <label>
-                    Suggested text (editable before accept)
-                    <textarea
-                      value={suggestion.draft.summaryText ?? ''}
-                      onChange={(event) =>
-                        updateSuggestion(suggestion.id, (current) => ({
-                          ...current,
-                          draft: { ...current.draft, summaryText: event.target.value },
-                          status: current.status === 'accepted' ? 'pending' : current.status
-                        }))
-                      }
-                      rows={3}
-                    />
-                  </label>
-                )}
+        <DiagramWorkspace
+          state={state}
+          newModuleName={newModuleName}
+          setNewModuleName={(value) => setNewModuleName(value)}
+          newModuleKind={newModuleKind}
+          setNewModuleKind={setNewModuleKind}
+          createModule={createModule}
+          setState={setState}
+          renameDraft={renameDraft}
+          setRenameDraft={(value) => setRenameDraft(value)}
+          selectedModule={selectedModule}
+          renameSelectedModule={renameSelectedModule}
+          connectionDraft={connectionDraft}
+          setConnectionDraft={setConnectionDraft}
+          addConnection={addConnection}
+        />
 
-                {suggestion.type === 'ports_suggestion' && (
-                  <div className="ports-suggestion-grid">
-                    {(suggestion.draft.ports ?? []).map((port, index) => (
-                      <div key={port.id} className="port-edit-row">
-                        <input
-                          aria-label={`Port ${index + 1} name`}
-                          value={port.name}
-                          onChange={(event) =>
-                            updateSuggestion(suggestion.id, (current) => ({
-                              ...current,
-                              draft: {
-                                ...current.draft,
-                                ports: (current.draft.ports ?? []).map((item, itemIndex) =>
-                                  itemIndex === index ? { ...item, name: event.target.value } : item
-                                )
-                              },
-                              status: current.status === 'accepted' ? 'pending' : current.status
-                            }))
-                          }
-                          placeholder="name"
-                        />
-                        <select
-                          aria-label={`Port ${index + 1} direction`}
-                          value={port.direction}
-                          onChange={(event) =>
-                            updateSuggestion(suggestion.id, (current) => ({
-                              ...current,
-                              draft: {
-                                ...current.draft,
-                                ports: (current.draft.ports ?? []).map((item, itemIndex) =>
-                                  itemIndex === index ? { ...item, direction: event.target.value as PortDraft['direction'] } : item
-                                )
-                              },
-                              status: current.status === 'accepted' ? 'pending' : current.status
-                            }))
-                          }
-                        >
-                          <option value="input">input</option>
-                          <option value="output">output</option>
-                          <option value="inout">inout</option>
-                        </select>
-                        <input
-                          aria-label={`Port ${index + 1} width`}
-                          value={port.width ?? ''}
-                          onChange={(event) =>
-                            updateSuggestion(suggestion.id, (current) => ({
-                              ...current,
-                              draft: {
-                                ...current.draft,
-                                ports: (current.draft.ports ?? []).map((item, itemIndex) =>
-                                  itemIndex === index ? { ...item, width: event.target.value } : item
-                                )
-                              },
-                              status: current.status === 'accepted' ? 'pending' : current.status
-                            }))
-                          }
-                          placeholder="width"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {suggestion.type === 'decomposition_suggestion' && (
-                  <>
-                    <label>
-                      Suggested status
-                      <select
-                        value={suggestion.draft.decompositionStatus ?? 'under_decomposition'}
-                        onChange={(event) =>
-                          updateSuggestion(suggestion.id, (current) => ({
-                            ...current,
-                            draft: {
-                              ...current.draft,
-                              decompositionStatus: event.target.value as NonNullable<ModulePackage['decompositionStatus']>['decompositionStatus']
-                            },
-                            status: current.status === 'accepted' ? 'pending' : current.status
-                          }))
-                        }
-                      >
-                        <option value="composite">composite</option>
-                        <option value="under_decomposition">under_decomposition</option>
-                        <option value="candidate_leaf">candidate_leaf</option>
-                        <option value="approved_leaf">approved_leaf</option>
-                      </select>
-                    </label>
-                    <label>
-                      Rationale (editable before accept)
-                      <textarea
-                        value={suggestion.draft.decompositionRationale ?? ''}
-                        onChange={(event) =>
-                          updateSuggestion(suggestion.id, (current) => ({
-                            ...current,
-                            draft: { ...current.draft, decompositionRationale: event.target.value },
-                            status: current.status === 'accepted' ? 'pending' : current.status
-                          }))
-                        }
-                        rows={3}
-                      />
-                    </label>
-                  </>
-                )}
-
-                <div className="suggestion-actions">
-                  <button type="button" onClick={() => acceptSuggestion(suggestion)} disabled={suggestion.status === 'accepted'}>Accept</button>
-                  <button type="button" onClick={() => rejectSuggestion(suggestion.id)} disabled={suggestion.status === 'rejected'}>Reject</button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="panel center-panel">
-          <h2>Diagram Workspace</h2>
-          <p className="muted">Basic interactions: create, select, and connect blocks.</p>
-          <div className="inline-form">
-            <input value={newModuleName} onChange={(event) => setNewModuleName(event.target.value)} placeholder="new block name" />
-            <select value={newModuleKind} onChange={(event) => setNewModuleKind(event.target.value as ModuleNode['kind'])} aria-label="Block kind">
-              <option value="leaf">leaf</option>
-              <option value="composite">composite</option>
-            </select>
-            <button type="button" onClick={createModule}>Create block</button>
-          </div>
-          <ul className="module-list">
-            {state.moduleList.map((moduleNode) => (
-              <li key={moduleNode.id}>
-                <button
-                  type="button"
-                  className={moduleNode.id === state.selectedModuleId ? 'module-button selected' : 'module-button'}
-                  onClick={() => setState((current) => ({ ...current, selectedModuleId: moduleNode.id }))}
-                >
-                  <span>{moduleNode.name}</span>
-                  <small>{moduleNode.kind}</small>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <div className="connection-builder">
-            <strong>Rename selected block</strong>
-            <div className="inline-form">
-              <input
-                value={renameDraft}
-                onChange={(event) => setRenameDraft(event.target.value)}
-                placeholder={selectedModule?.name ?? 'module name'}
-              />
-              <button type="button" onClick={renameSelectedModule}>Rename block</button>
-            </div>
-          </div>
-          <div className="connection-builder">
-            <strong>Connect blocks</strong>
-            <div className="inline-form">
-              <select value={connectionDraft.fromModuleId} onChange={(event) => setConnectionDraft((current) => ({ ...current, fromModuleId: event.target.value }))} aria-label="Connection source">
-                {state.moduleList.map((moduleNode) => (
-                  <option key={`from-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
-                ))}
-              </select>
-              <select value={connectionDraft.toModuleId} onChange={(event) => setConnectionDraft((current) => ({ ...current, toModuleId: event.target.value }))} aria-label="Connection target">
-                {state.moduleList.map((moduleNode) => (
-                  <option key={`to-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
-                ))}
-              </select>
-              <input value={connectionDraft.signal} onChange={(event) => setConnectionDraft((current) => ({ ...current, signal: event.target.value }))} placeholder="signal" />
-              <button type="button" onClick={addConnection}>Connect</button>
-            </div>
-          </div>
-        </section>
-
-        <section className="panel right-panel">
-          <h2>Module Package</h2>
-          <p className="muted">Selected module: {selectedModule?.name} ({state.selectedModuleId})</p>
-          <label>
-            Workspace mode
-            <select value={workspaceMode} onChange={(event) => setWorkspaceMode(event.target.value as WorkspaceMode)} aria-label="Workspace mode">
-              <option value="design">design</option>
-              <option value="review">review</option>
-              <option value="handoff">handoff</option>
-            </select>
-          </label>
-
-          <section className="lifecycle-card">
-            <h3>Package lifecycle</h3>
-            <p className="muted">Current state: <strong>{currentPackageContent.packageStatus}</strong></p>
-            {transitionReadiness ? (
-              <>
-                <p className="muted">Next transition: {transitionReadiness.title}</p>
-                {transitionReadiness.canTransition ? (
-                  <p className="ready-message">Ready to transition.</p>
-                ) : (
-                  <div className="missing-list">
-                    <strong>Missing before transition:</strong>
-                    <ul>
-                      {transitionReadiness.missingRequirements.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                <button type="button" onClick={moveToNextPackageState} disabled={!transitionReadiness.canTransition}>
-                  {getTransitionActionLabel(transitionReadiness.to)}
-                </button>
-              </>
-            ) : (
-              <p className="ready-message">No further transitions in MVP flow.</p>
-            )}
-          </section>
-
-          <ModulePackageSection title="Identity" status={currentSectionStatuses.identity}>
-            <label>
-              Name
-              <input value={currentPackageContent.identity?.name ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, identity: { ...current.identity, name: event.target.value } }))} placeholder="module name" />
-            </label>
-            <label>
-              Description
-              <textarea value={currentPackageContent.identity?.description ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, identity: { ...current.identity, description: event.target.value } }))} rows={2} placeholder="short identity description" />
-            </label>
-          </ModulePackageSection>
-
-          <ModulePackageSection title="Hierarchy" status={currentSectionStatuses.hierarchy}>
-            <label>
-              Parent module id
-              <input value={currentPackageContent.hierarchy?.parentModuleId ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, hierarchy: { ...current.hierarchy, parentModuleId: event.target.value } }))} placeholder="root" />
-            </label>
-            <label>
-              Child module ids (comma-separated)
-              <input value={stringifyList(currentPackageContent.hierarchy?.childModuleIds ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, hierarchy: { ...current.hierarchy, childModuleIds: parseList(event.target.value) } }))} placeholder="child_a, child_b" />
-            </label>
-            <label>
-              Hierarchy path (comma-separated)
-              <input value={stringifyList(currentPackageContent.hierarchy?.hierarchyPath ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, hierarchy: { ...current.hierarchy, hierarchyPath: parseList(event.target.value) } }))} placeholder="top_controller, module_name" />
-            </label>
-          </ModulePackageSection>
-
-          <ModulePackageSection title="Interfaces" status={currentSectionStatuses.interfaces}>
-            <label>
-              Input ports (comma-separated)
-              <input value={stringifyList(portsForDirection(currentPackageContent, 'input'))} onChange={(event) => updateCurrentPackage((current) => replaceDirectionPorts(current, 'input', parseList(event.target.value)))} placeholder="in_a, in_b" />
-            </label>
-            <label>
-              Output ports (comma-separated)
-              <input value={stringifyList(portsForDirection(currentPackageContent, 'output'))} onChange={(event) => updateCurrentPackage((current) => replaceDirectionPorts(current, 'output', parseList(event.target.value)))} placeholder="out_a, out_b" />
-            </label>
-            <label>
-              Inout ports (comma-separated)
-              <input value={stringifyList(portsForDirection(currentPackageContent, 'inout'))} onChange={(event) => updateCurrentPackage((current) => replaceDirectionPorts(current, 'inout', parseList(event.target.value)))} placeholder="io_bus" />
-            </label>
-          </ModulePackageSection>
-
-          <ModulePackageSection title="Purpose" status={currentSectionStatuses.purpose}>
-            <label>
-              Purpose summary
-              <textarea value={currentPackageContent.purpose?.summary ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, purpose: { ...current.purpose, summary: event.target.value } }))} rows={3} placeholder="what does this module do?" />
-            </label>
-          </ModulePackageSection>
-
-          <ModulePackageSection title="Behavior" status={currentSectionStatuses.behavior}>
-            <label>
-              Behavior summary
-              <textarea value={currentPackageContent.behavior?.behaviorSummary ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, behavior: { ...current.behavior, behaviorSummary: event.target.value } }))} rows={2} placeholder="high-level behavior" />
-            </label>
-            <label>
-              Behavior rules (comma-separated)
-              <input value={stringifyList(currentPackageContent.behavior?.behaviorRules ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, behavior: { ...current.behavior, behaviorRules: parseList(event.target.value) } }))} placeholder="rule_a, rule_b" />
-            </label>
-            <label>
-              Clock / reset notes
-              <textarea value={currentPackageContent.behavior?.clockResetNotes ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, behavior: { ...current.behavior, clockResetNotes: event.target.value } }))} rows={2} placeholder="clock and reset behavior" />
-            </label>
-          </ModulePackageSection>
-
-          <ModulePackageSection title="Constraints" status={currentSectionStatuses.constraints}>
-            <label>
-              Basic constraints (comma-separated)
-              <input value={stringifyList(currentPackageContent.constraints?.basicConstraints ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, constraints: { ...current.constraints, basicConstraints: parseList(event.target.value) } }))} placeholder="constraint_a, constraint_b" />
-            </label>
-            <label>
-              Timing constraints (comma-separated)
-              <input value={stringifyList(currentPackageContent.constraints?.timingConstraints ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, constraints: { ...current.constraints, timingConstraints: parseList(event.target.value) } }))} placeholder="setup < 2ns" />
-            </label>
-          </ModulePackageSection>
-
-          <ModulePackageSection title="Dependencies and Interactions" status={currentSectionStatuses.dependenciesAndInteractions}>
-            <label>
-              Relevant dependencies (comma-separated)
-              <input value={stringifyList(currentPackageContent.dependencies?.relevantDependencies ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, dependencies: { ...current.dependencies, relevantDependencies: parseList(event.target.value) } }))} placeholder="system clock, upstream block" />
-            </label>
-            <div className="connection-list">
-              <strong>Current interactions from connections</strong>
-              {moduleConnections.length === 0 ? <p className="muted">No connections for this module.</p> : (
-                <ul>
-                  {moduleConnections.map((connection, index) => (
-                    <li key={`${connection.fromModuleId}-${connection.toModuleId}-${connection.signal}-${index}`}>{connection.fromModuleId} → {connection.toModuleId} ({connection.signal})</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </ModulePackageSection>
-
-          <ModulePackageSection title="Decomposition Status" status={currentSectionStatuses.decompositionStatus}>
-            <label>
-              Decomposition status
-              <select
-                value={currentPackageContent.decompositionStatus?.decompositionStatus ?? 'under_decomposition'}
-                onChange={(event) =>
-                  updateCurrentPackage((current) => ({
-                    ...current,
-                    decompositionStatus: {
-                      decompositionStatus: event.target.value as NonNullable<ModulePackage['decompositionStatus']>['decompositionStatus'],
-                      decompositionRationale: current.decompositionStatus?.decompositionRationale ?? '',
-                      stopReason: current.decompositionStatus?.stopReason,
-                      stopRecommendedBy: current.decompositionStatus?.stopRecommendedBy,
-                      furtherDecompositionNotes: current.decompositionStatus?.furtherDecompositionNotes
-                    }
-                  }))
-                }
-              >
-                <option value="composite">composite</option>
-                <option value="under_decomposition">under_decomposition</option>
-                <option value="candidate_leaf">candidate_leaf</option>
-                <option value="approved_leaf">approved_leaf</option>
-              </select>
-            </label>
-            <label>
-              Rationale
-              <textarea value={currentPackageContent.decompositionStatus?.decompositionRationale ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, decompositionStatus: { decompositionStatus: current.decompositionStatus?.decompositionStatus ?? 'under_decomposition', decompositionRationale: event.target.value, stopReason: current.decompositionStatus?.stopReason, stopRecommendedBy: current.decompositionStatus?.stopRecommendedBy, furtherDecompositionNotes: current.decompositionStatus?.furtherDecompositionNotes } }))} rows={2} placeholder="why this decomposition state?" />
-            </label>
-          </ModulePackageSection>
-
-          {(workspaceMode === 'review' || workspaceMode === 'handoff') && (
-            <section className="payload-preview">
-              <strong>GenerationPayloadMinimal v1 preview (derived)</strong>
-              {canShowPayloadPreview ? (
-                <pre>{JSON.stringify(generatedPayload, null, 2)}</pre>
-              ) : (
-                <p className="muted">
-                  Payload preview is available only for approved leaf-ready modules.
-                  Ensure this module is a leaf, set decomposition to approved_leaf, and transition package status to leaf_ready.
-                </p>
-              )}
-            </section>
-          )}
-
-          {workspaceMode === 'handoff' && (
-            <section className="handoff-card">
-              <h3>Handoff / Export</h3>
-              <p className="muted">Approved leaf-ready modules</p>
-              {approvedLeafReadyModules.length === 0 ? (
-                <p className="muted">No modules are ready for handoff yet.</p>
-              ) : (
-                <ul className="handoff-list">
-                  {approvedLeafReadyModules.map((moduleNode) => {
-                    const handedOffAt = state.handedOffAtByModuleId[moduleNode.id];
-                    return (
-                      <li key={moduleNode.id}>
-                        <button
-                          type="button"
-                          className={moduleNode.id === state.selectedModuleId ? 'module-button selected' : 'module-button'}
-                          onClick={() => setState((current) => ({ ...current, selectedModuleId: moduleNode.id }))}
-                        >
-                          <span>
-                            {moduleNode.name}
-                            {handedOffAt ? <small className="handoff-indicator">handed_off</small> : null}
-                          </span>
-                          <small>{state.packageContentByModuleId[moduleNode.id]?.packageStatus}</small>
-                        </button>
-                        {handedOffAt ? <p className="muted">Handoff timestamp: {new Date(handedOffAt).toLocaleString()}</p> : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-
-              <button type="button" onClick={markSelectedModuleAsHandedOff} disabled={!isSelectedModuleHandoffReady || Boolean(selectedModuleHandedOffAt)}>
-                {selectedModuleHandedOffAt ? 'Already handed off' : 'Mark selected module as handed_off'}
-              </button>
-            </section>
-          )}
-        </section>
+        <ModulePackagePanel
+          selectedModule={selectedModule}
+          state={state}
+          workspaceMode={workspaceMode}
+          setWorkspaceMode={setWorkspaceMode}
+          currentPackageContent={currentPackageContent}
+          transitionReadiness={transitionReadiness}
+          moveToNextPackageState={moveToNextPackageState}
+          currentSectionStatuses={currentSectionStatuses}
+          updateCurrentPackage={updateCurrentPackage}
+          moduleConnections={moduleConnections}
+          canShowPayloadPreview={canShowPayloadPreview}
+          generatedPayload={generatedPayload}
+          approvedLeafReadyModules={approvedLeafReadyModules}
+          setState={setState}
+          markSelectedModuleAsHandedOff={markSelectedModuleAsHandedOff}
+          isSelectedModuleHandoffReady={isSelectedModuleHandoffReady}
+          selectedModuleHandedOffAt={selectedModuleHandedOffAt}
+        />
       </main>
     </div>
   );
 }
-
-type ModulePackageSectionProps = {
-  title: string;
-  status: PackageSectionStatus;
-  children: ReactNode;
-};
-
-function ModulePackageSection({ title, status, children }: ModulePackageSectionProps): JSX.Element {
-  return (
-    <section className="module-package-section">
-      <div className="section-header-row">
-        <h3>{title}</h3>
-        <StatusBadge label="status" status={status} />
-      </div>
-      <div>{children}</div>
-    </section>
-  );
-}
-
-type StatusBadgeProps = {
-  label: string;
-  status: PackageSectionStatus;
-};
-
-function StatusBadge({ label, status }: StatusBadgeProps): JSX.Element {
-  return <span className={`status-badge status-${status}`}>{label}: {status}</span>;
-}
-
 
 export default App;
