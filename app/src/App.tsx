@@ -30,6 +30,7 @@ type DesignState = {
   selectedModuleId: string;
   connections: Connection[];
   packageContentByModuleId: Record<string, ModulePackage>;
+  handedOffAtByModuleId: Record<string, string>;
 };
 
 type WorkspaceMode = 'design' | 'review' | 'handoff';
@@ -262,7 +263,8 @@ const seedState: DesignState = {
       },
       decompositionStatus: { decompositionStatus: 'approved_leaf', decompositionRationale: 'Simple block with clear fixed behavior.', stopRecommendedBy: 'system' }
     }
-  }
+  },
+  handedOffAtByModuleId: {}
 };
 
 export function App(): JSX.Element {
@@ -283,6 +285,20 @@ export function App(): JSX.Element {
   const moduleConnections = state.connections.filter((connection) => connection.fromModuleId === state.selectedModuleId || connection.toModuleId === state.selectedModuleId);
   const generatedPayload: GenerationPayloadMinimal = useMemo(() => deriveGenerationPayloadMinimalV1(currentPackageContent), [currentPackageContent]);
   const transitionReadiness = useMemo(() => getTransitionReadiness(currentPackageContent), [currentPackageContent]);
+  const approvedLeafReadyModules = useMemo(
+    () =>
+      state.moduleList.filter((moduleNode) => {
+        const modulePackage = state.packageContentByModuleId[moduleNode.id];
+        if (!modulePackage) {
+          return false;
+        }
+
+        const isLeafReadyPackage = modulePackage.packageStatus === 'leaf_ready' || modulePackage.packageStatus === 'handed_off';
+        const isApprovedLeaf = modulePackage.decompositionStatus?.decompositionStatus === 'approved_leaf';
+        return moduleNode.kind === 'leaf' && isLeafReadyPackage && isApprovedLeaf;
+      }),
+    [state.moduleList, state.packageContentByModuleId]
+  );
   const canShowPayloadPreview = useMemo(() => {
     const isReviewOrHandoffMode = workspaceMode === 'review' || workspaceMode === 'handoff';
     const isLeafReadyPackage = currentPackageContent.packageStatus === 'leaf_ready' || currentPackageContent.packageStatus === 'handed_off';
@@ -411,6 +427,36 @@ export function App(): JSX.Element {
       return withConnectionDependencies(withConnection, nextConnection);
     });
   };
+
+  const markSelectedModuleAsHandedOff = () => {
+    const nowIso = new Date().toISOString();
+    setState((current) => {
+      const selectedPackage = current.packageContentByModuleId[current.selectedModuleId];
+      if (!selectedPackage) {
+        return current;
+      }
+
+      return {
+        ...current,
+        packageContentByModuleId: {
+          ...current.packageContentByModuleId,
+          [current.selectedModuleId]: {
+            ...selectedPackage,
+            packageStatus: 'handed_off',
+            lastUpdatedAt: nowIso,
+            lastUpdatedBy: 'mock_user'
+          }
+        },
+        handedOffAtByModuleId: {
+          ...current.handedOffAtByModuleId,
+          [current.selectedModuleId]: nowIso
+        }
+      };
+    });
+  };
+
+  const selectedModuleHandedOffAt = state.handedOffAtByModuleId[state.selectedModuleId];
+  const isSelectedModuleHandoffReady = approvedLeafReadyModules.some((moduleNode) => moduleNode.id === state.selectedModuleId);
 
   return (
     <div className="app-shell">
@@ -649,6 +695,42 @@ export function App(): JSX.Element {
                   Ensure this module is a leaf, set decomposition to approved_leaf, and transition package status to leaf_ready.
                 </p>
               )}
+            </section>
+          )}
+
+          {workspaceMode === 'handoff' && (
+            <section className="handoff-card">
+              <h3>Handoff / Export</h3>
+              <p className="muted">Approved leaf-ready modules</p>
+              {approvedLeafReadyModules.length === 0 ? (
+                <p className="muted">No modules are ready for handoff yet.</p>
+              ) : (
+                <ul className="handoff-list">
+                  {approvedLeafReadyModules.map((moduleNode) => {
+                    const handedOffAt = state.handedOffAtByModuleId[moduleNode.id];
+                    return (
+                      <li key={moduleNode.id}>
+                        <button
+                          type="button"
+                          className={moduleNode.id === state.selectedModuleId ? 'module-button selected' : 'module-button'}
+                          onClick={() => setState((current) => ({ ...current, selectedModuleId: moduleNode.id }))}
+                        >
+                          <span>
+                            {moduleNode.name}
+                            {handedOffAt ? <small className="handoff-indicator">handed_off</small> : null}
+                          </span>
+                          <small>{state.packageContentByModuleId[moduleNode.id]?.packageStatus}</small>
+                        </button>
+                        {handedOffAt ? <p className="muted">Handoff timestamp: {new Date(handedOffAt).toLocaleString()}</p> : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              <button type="button" onClick={markSelectedModuleAsHandedOff} disabled={!isSelectedModuleHandoffReady || Boolean(selectedModuleHandedOffAt)}>
+                {selectedModuleHandedOffAt ? 'Already handed off' : 'Mark selected module as handed_off'}
+              </button>
             </section>
           )}
         </section>
