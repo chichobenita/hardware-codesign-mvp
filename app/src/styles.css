@@ -59,6 +59,82 @@ body {
   font-size: 14px;
 }
 
+.suggestions-note {
+  font-size: 12px;
+  color: #1f2937;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.suggestions-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.suggestion-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px;
+  background: #fafafa;
+}
+
+.suggestion-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggestion-header-row h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.suggestion-status {
+  font-size: 11px;
+  text-transform: uppercase;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  padding: 2px 6px;
+}
+
+.suggestion-pending {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.suggestion-accepted {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.suggestion-rejected {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.ports-suggestion-grid {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.port-edit-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 6px;
+}
+
+.suggestion-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .module-list {
   list-style: none;
   padding: 0;

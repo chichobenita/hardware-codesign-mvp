@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { deriveGenerationPayloadMinimalV1, type GenerationPayloadMinimal, type ModulePackage } from '../../shared/src';
 import { getTransitionActionLabel, getTransitionReadiness } from './packageLifecycle';
 
@@ -34,6 +34,24 @@ type DesignState = {
 };
 
 type WorkspaceMode = 'design' | 'review' | 'handoff';
+
+type SuggestionType = 'purpose_proposal' | 'behavior_summary' | 'ports_suggestion' | 'decomposition_suggestion';
+type SuggestionStatus = 'pending' | 'accepted' | 'rejected';
+type PortDraft = NonNullable<NonNullable<ModulePackage['interfaces']>['ports']>[number];
+
+type SuggestionCard = {
+  id: string;
+  type: SuggestionType;
+  title: string;
+  description: string;
+  status: SuggestionStatus;
+  draft: {
+    summaryText?: string;
+    ports?: PortDraft[];
+    decompositionStatus?: NonNullable<ModulePackage['decompositionStatus']>['decompositionStatus'];
+    decompositionRationale?: string;
+  };
+};
 
 function dependencyEntry(kind: 'upstream' | 'downstream', moduleName: string, signal: string): string {
   const cleanSignal = signal.trim();
@@ -84,6 +102,62 @@ function withConnectionDependencies(current: DesignState, connection: Connection
       }
     }
   };
+}
+
+function createMockSuggestions(moduleNode: ModuleNode, modulePackage: ModulePackage): SuggestionCard[] {
+  const moduleName = modulePackage.identity?.name ?? moduleNode.name;
+  const hasChildren = (modulePackage.hierarchy?.childModuleIds?.length ?? 0) > 0;
+
+  return [
+    {
+      id: `${moduleNode.id}-purpose`,
+      type: 'purpose_proposal',
+      title: 'Purpose proposal',
+      description: 'Suggested purpose statement. Accept will update Module Package → Purpose.',
+      status: 'pending',
+      draft: {
+        summaryText: `Coordinate ${moduleName} data flow and expose a stable contract to peer modules.`
+      }
+    },
+    {
+      id: `${moduleNode.id}-behavior`,
+      type: 'behavior_summary',
+      title: 'Behavior summary',
+      description: 'Suggested behavior summary. Accept will update Module Package → Behavior summary.',
+      status: 'pending',
+      draft: {
+        summaryText: `On each valid cycle, ${moduleName} consumes inputs, applies internal control rules, and updates outputs deterministically.`
+      }
+    },
+    {
+      id: `${moduleNode.id}-ports`,
+      type: 'ports_suggestion',
+      title: 'Ports suggestion',
+      description: 'Suggested interface ports. Accept will replace Module Package → Interfaces ports.',
+      status: 'pending',
+      draft: {
+        ports: [
+          { id: `${moduleNode.id}_clk`, name: 'clk', direction: 'input', width: '1', description: 'System clock' },
+          { id: `${moduleNode.id}_rst_n`, name: 'rst_n', direction: 'input', width: '1', description: 'Active-low reset' },
+          { id: `${moduleNode.id}_valid_i`, name: 'valid_i', direction: 'input', width: '1', description: 'Input valid handshake' },
+          { id: `${moduleNode.id}_ready_o`, name: 'ready_o', direction: 'output', width: '1', description: 'Output ready handshake' }
+        ]
+      }
+    },
+    {
+      id: `${moduleNode.id}-decomposition`,
+      type: 'decomposition_suggestion',
+      title: 'Decomposition suggestion',
+      description: 'Suggested decomposition status. Accept will update Module Package → Decomposition status.',
+      status: 'pending',
+      draft: {
+        decompositionStatus: hasChildren ? 'composite' : 'candidate_leaf',
+        decompositionRationale: hasChildren
+          ? `${moduleName} already coordinates sub-modules and should remain composite.`
+          : `${moduleName} looks self-contained enough to evaluate as a leaf candidate.`
+      }
+    }
+  ];
 }
 
 function parseList(value: string): string[] {
@@ -278,6 +352,7 @@ export function App(): JSX.Element {
     toModuleId: seedState.moduleList[1].id,
     signal: ''
   });
+  const [suggestionsByModuleId, setSuggestionsByModuleId] = useState<Record<string, SuggestionCard[]>>({});
 
   const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === state.selectedModuleId) ?? state.moduleList[0];
   const currentPackageContent = state.packageContentByModuleId[state.selectedModuleId];
@@ -308,6 +383,19 @@ export function App(): JSX.Element {
     return isReviewOrHandoffMode && isLeafReadyPackage && isApprovedLeaf && isLeafModule;
   }, [currentPackageContent, selectedModule?.kind, workspaceMode]);
 
+  useEffect(() => {
+    if (!selectedModule || suggestionsByModuleId[selectedModule.id]) {
+      return;
+    }
+
+    setSuggestionsByModuleId((current) => ({
+      ...current,
+      [selectedModule.id]: createMockSuggestions(selectedModule, currentPackageContent)
+    }));
+  }, [currentPackageContent, selectedModule, suggestionsByModuleId]);
+
+  const selectedSuggestions = suggestionsByModuleId[state.selectedModuleId] ?? [];
+
   const updateCurrentPackage = (updater: (current: ModulePackage) => ModulePackage) => {
     setState((current) => {
       const currentPackage = current.packageContentByModuleId[current.selectedModuleId];
@@ -331,11 +419,78 @@ export function App(): JSX.Element {
     });
   };
 
-  const applyMockSuggestion = () => {
-    updateCurrentPackage((current) => ({
+  const regenerateSuggestionsForSelectedModule = () => {
+    if (!selectedModule) {
+      return;
+    }
+
+    setSuggestionsByModuleId((current) => ({
       ...current,
-      purpose: { ...current.purpose, summary: 'AI suggestion: clarify module behavior and key constraints in one sentence.' }
+      [selectedModule.id]: createMockSuggestions(selectedModule, currentPackageContent)
     }));
+  };
+
+  const updateSuggestion = (suggestionId: string, updater: (current: SuggestionCard) => SuggestionCard) => {
+    setSuggestionsByModuleId((current) => {
+      const moduleSuggestions = current[state.selectedModuleId] ?? [];
+      return {
+        ...current,
+        [state.selectedModuleId]: moduleSuggestions.map((suggestion) =>
+          suggestion.id === suggestionId ? updater(suggestion) : suggestion
+        )
+      };
+    });
+  };
+
+  const rejectSuggestion = (suggestionId: string) => {
+    updateSuggestion(suggestionId, (current) => ({ ...current, status: 'rejected' }));
+  };
+
+  const acceptSuggestion = (suggestion: SuggestionCard) => {
+    updateCurrentPackage((current) => {
+      if (suggestion.type === 'purpose_proposal') {
+        return {
+          ...current,
+          purpose: {
+            ...current.purpose,
+            summary: suggestion.draft.summaryText ?? ''
+          }
+        };
+      }
+
+      if (suggestion.type === 'behavior_summary') {
+        return {
+          ...current,
+          behavior: {
+            ...current.behavior,
+            behaviorSummary: suggestion.draft.summaryText ?? ''
+          }
+        };
+      }
+
+      if (suggestion.type === 'ports_suggestion') {
+        return {
+          ...current,
+          interfaces: {
+            ...current.interfaces,
+            ports: suggestion.draft.ports ?? []
+          }
+        };
+      }
+
+      return {
+        ...current,
+        decompositionStatus: {
+          decompositionStatus: suggestion.draft.decompositionStatus ?? 'under_decomposition',
+          decompositionRationale: suggestion.draft.decompositionRationale ?? '',
+          stopReason: current.decompositionStatus?.stopReason,
+          stopRecommendedBy: current.decompositionStatus?.stopRecommendedBy,
+          furtherDecompositionNotes: current.decompositionStatus?.furtherDecompositionNotes
+        }
+      };
+    });
+
+    updateSuggestion(suggestion.id, (current) => ({ ...current, status: 'accepted' }));
   };
 
   const moveToNextPackageState = () => {
@@ -464,9 +619,145 @@ export function App(): JSX.Element {
       <main className="workspace-grid">
         <section className="panel left-panel">
           <h2>AI Collaboration</h2>
-          <p className="muted">Mock panel only. No real AI integration in v1.</p>
-          <div className="chat-bubble">Suggestion: add a clearer purpose statement for the selected module.</div>
-          <button type="button" onClick={applyMockSuggestion}>Apply suggestion</button>
+          <p className="muted">Mock suggestions for selected module: <strong>{selectedModule?.name}</strong></p>
+          <p className="suggestions-note">Suggestions are not committed until you click <strong>Accept</strong>.</p>
+          <button type="button" onClick={regenerateSuggestionsForSelectedModule}>Regenerate mock suggestions</button>
+          <div className="suggestions-list">
+            {selectedSuggestions.map((suggestion) => (
+              <article key={suggestion.id} className="suggestion-card">
+                <div className="suggestion-header-row">
+                  <h3>{suggestion.title}</h3>
+                  <span className={`suggestion-status suggestion-${suggestion.status}`}>{suggestion.status}</span>
+                </div>
+                <p className="muted">{suggestion.description}</p>
+
+                {(suggestion.type === 'purpose_proposal' || suggestion.type === 'behavior_summary') && (
+                  <label>
+                    Suggested text (editable before accept)
+                    <textarea
+                      value={suggestion.draft.summaryText ?? ''}
+                      onChange={(event) =>
+                        updateSuggestion(suggestion.id, (current) => ({
+                          ...current,
+                          draft: { ...current.draft, summaryText: event.target.value },
+                          status: current.status === 'accepted' ? 'pending' : current.status
+                        }))
+                      }
+                      rows={3}
+                    />
+                  </label>
+                )}
+
+                {suggestion.type === 'ports_suggestion' && (
+                  <div className="ports-suggestion-grid">
+                    {(suggestion.draft.ports ?? []).map((port, index) => (
+                      <div key={port.id} className="port-edit-row">
+                        <input
+                          aria-label={`Port ${index + 1} name`}
+                          value={port.name}
+                          onChange={(event) =>
+                            updateSuggestion(suggestion.id, (current) => ({
+                              ...current,
+                              draft: {
+                                ...current.draft,
+                                ports: (current.draft.ports ?? []).map((item, itemIndex) =>
+                                  itemIndex === index ? { ...item, name: event.target.value } : item
+                                )
+                              },
+                              status: current.status === 'accepted' ? 'pending' : current.status
+                            }))
+                          }
+                          placeholder="name"
+                        />
+                        <select
+                          aria-label={`Port ${index + 1} direction`}
+                          value={port.direction}
+                          onChange={(event) =>
+                            updateSuggestion(suggestion.id, (current) => ({
+                              ...current,
+                              draft: {
+                                ...current.draft,
+                                ports: (current.draft.ports ?? []).map((item, itemIndex) =>
+                                  itemIndex === index ? { ...item, direction: event.target.value as PortDraft['direction'] } : item
+                                )
+                              },
+                              status: current.status === 'accepted' ? 'pending' : current.status
+                            }))
+                          }
+                        >
+                          <option value="input">input</option>
+                          <option value="output">output</option>
+                          <option value="inout">inout</option>
+                        </select>
+                        <input
+                          aria-label={`Port ${index + 1} width`}
+                          value={port.width ?? ''}
+                          onChange={(event) =>
+                            updateSuggestion(suggestion.id, (current) => ({
+                              ...current,
+                              draft: {
+                                ...current.draft,
+                                ports: (current.draft.ports ?? []).map((item, itemIndex) =>
+                                  itemIndex === index ? { ...item, width: event.target.value } : item
+                                )
+                              },
+                              status: current.status === 'accepted' ? 'pending' : current.status
+                            }))
+                          }
+                          placeholder="width"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {suggestion.type === 'decomposition_suggestion' && (
+                  <>
+                    <label>
+                      Suggested status
+                      <select
+                        value={suggestion.draft.decompositionStatus ?? 'under_decomposition'}
+                        onChange={(event) =>
+                          updateSuggestion(suggestion.id, (current) => ({
+                            ...current,
+                            draft: {
+                              ...current.draft,
+                              decompositionStatus: event.target.value as NonNullable<ModulePackage['decompositionStatus']>['decompositionStatus']
+                            },
+                            status: current.status === 'accepted' ? 'pending' : current.status
+                          }))
+                        }
+                      >
+                        <option value="composite">composite</option>
+                        <option value="under_decomposition">under_decomposition</option>
+                        <option value="candidate_leaf">candidate_leaf</option>
+                        <option value="approved_leaf">approved_leaf</option>
+                      </select>
+                    </label>
+                    <label>
+                      Rationale (editable before accept)
+                      <textarea
+                        value={suggestion.draft.decompositionRationale ?? ''}
+                        onChange={(event) =>
+                          updateSuggestion(suggestion.id, (current) => ({
+                            ...current,
+                            draft: { ...current.draft, decompositionRationale: event.target.value },
+                            status: current.status === 'accepted' ? 'pending' : current.status
+                          }))
+                        }
+                        rows={3}
+                      />
+                    </label>
+                  </>
+                )}
+
+                <div className="suggestion-actions">
+                  <button type="button" onClick={() => acceptSuggestion(suggestion)} disabled={suggestion.status === 'accepted'}>Accept</button>
+                  <button type="button" onClick={() => rejectSuggestion(suggestion.id)} disabled={suggestion.status === 'rejected'}>Reject</button>
+                </div>
+              </article>
+            ))}
+          </div>
         </section>
 
         <section className="panel center-panel">
