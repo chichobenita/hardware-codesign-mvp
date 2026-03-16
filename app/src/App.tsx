@@ -32,6 +32,8 @@ type DesignState = {
   packageContentByModuleId: Record<string, ModulePackage>;
 };
 
+type WorkspaceMode = 'design' | 'review' | 'handoff';
+
 function dependencyEntry(kind: 'upstream' | 'downstream', moduleName: string, signal: string): string {
   const cleanSignal = signal.trim();
   return cleanSignal.length > 0 ? `${kind}:${moduleName}:${cleanSignal}` : `${kind}:${moduleName}`;
@@ -265,6 +267,7 @@ const seedState: DesignState = {
 
 export function App(): JSX.Element {
   const [state, setState] = useState<DesignState>(seedState);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('design');
   const [newModuleName, setNewModuleName] = useState('');
   const [newModuleKind, setNewModuleKind] = useState<ModuleNode['kind']>('leaf');
   const [renameDraft, setRenameDraft] = useState('');
@@ -280,6 +283,14 @@ export function App(): JSX.Element {
   const moduleConnections = state.connections.filter((connection) => connection.fromModuleId === state.selectedModuleId || connection.toModuleId === state.selectedModuleId);
   const generatedPayload: GenerationPayloadMinimal = useMemo(() => deriveGenerationPayloadMinimalV1(currentPackageContent), [currentPackageContent]);
   const transitionReadiness = useMemo(() => getTransitionReadiness(currentPackageContent), [currentPackageContent]);
+  const canShowPayloadPreview = useMemo(() => {
+    const isReviewOrHandoffMode = workspaceMode === 'review' || workspaceMode === 'handoff';
+    const isLeafReadyPackage = currentPackageContent.packageStatus === 'leaf_ready' || currentPackageContent.packageStatus === 'handed_off';
+    const isApprovedLeaf = currentPackageContent.decompositionStatus?.decompositionStatus === 'approved_leaf';
+    const isLeafModule = selectedModule?.kind === 'leaf';
+
+    return isReviewOrHandoffMode && isLeafReadyPackage && isApprovedLeaf && isLeafModule;
+  }, [currentPackageContent, selectedModule?.kind, workspaceMode]);
 
   const updateCurrentPackage = (updater: (current: ModulePackage) => ModulePackage) => {
     setState((current) => {
@@ -470,6 +481,14 @@ export function App(): JSX.Element {
         <section className="panel right-panel">
           <h2>Module Package</h2>
           <p className="muted">Selected module: {selectedModule?.name} ({state.selectedModuleId})</p>
+          <label>
+            Workspace mode
+            <select value={workspaceMode} onChange={(event) => setWorkspaceMode(event.target.value as WorkspaceMode)} aria-label="Workspace mode">
+              <option value="design">design</option>
+              <option value="review">review</option>
+              <option value="handoff">handoff</option>
+            </select>
+          </label>
 
           <section className="lifecycle-card">
             <h3>Package lifecycle</h3>
@@ -619,10 +638,19 @@ export function App(): JSX.Element {
             </label>
           </ModulePackageSection>
 
-          <div className="payload-preview">
-            <strong>GenerationPayloadMinimal v1 (derived)</strong>
-            <pre>{JSON.stringify(generatedPayload, null, 2)}</pre>
-          </div>
+          {(workspaceMode === 'review' || workspaceMode === 'handoff') && (
+            <section className="payload-preview">
+              <strong>GenerationPayloadMinimal v1 preview (derived)</strong>
+              {canShowPayloadPreview ? (
+                <pre>{JSON.stringify(generatedPayload, null, 2)}</pre>
+              ) : (
+                <p className="muted">
+                  Payload preview is available only for approved leaf-ready modules.
+                  Ensure this module is a leaf, set decomposition to approved_leaf, and transition package status to leaf_ready.
+                </p>
+              )}
+            </section>
+          )}
         </section>
       </main>
     </div>
