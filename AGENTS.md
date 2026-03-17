@@ -41,3 +41,25 @@ A task is done only if:
 - code builds
 - changed behavior is reflected in docs when needed
 - no unnecessary abstractions were added
+
+## Task completion summary rule
+
+After completing any non-trivial task, always be ready to provide a post-task architecture summary when asked.
+
+The summary must:
+- be based on the actual repository state
+- reference exact files and folders
+- clearly separate what changed, what improved, and what still remains risky
+- identify architectural impact, state/domain impact, and testing impact
+- end with recommended next engineering tasks in priority order
+
+When summarizing, keep the output concise, professional, and implementation-focused.
+Do not guess when repository evidence is missing.
+
+## Definition of done addendum
+
+A non-trivial task is not fully complete until:
+- the implementation works
+- relevant tests pass
+- documentation is updated if needed
+- a clear post-task summary can be produced on request
