@@ -1,4 +1,3 @@
-import type { Dispatch, SetStateAction } from 'react';
 import type { GenerationPayloadMinimal, ModulePackage } from '../../../shared/src';
 import { getTransitionActionLabel, type TransitionReadiness } from '../packageLifecycle';
 import type { Connection, DesignState, ModuleNode, PackageSectionStatus, SectionKey, WorkspaceMode } from '../types';
@@ -42,7 +41,7 @@ type ModulePackagePanelProps = {
   selectedModule?: ModuleNode;
   state: DesignState;
   workspaceMode: WorkspaceMode;
-  setWorkspaceMode: Dispatch<SetStateAction<WorkspaceMode>>;
+  setWorkspaceMode: (mode: WorkspaceMode) => void;
   currentPackageContent: ModulePackage;
   transitionReadiness: TransitionReadiness | null;
   moveToNextPackageState: () => void;
@@ -52,7 +51,7 @@ type ModulePackagePanelProps = {
   canShowPayloadPreview: boolean;
   generatedPayload: GenerationPayloadMinimal;
   approvedLeafReadyModules: ModuleNode[];
-  setState: Dispatch<SetStateAction<DesignState>>;
+  selectModule: (moduleId: string) => void;
   markSelectedModuleAsHandedOff: () => void;
   isSelectedModuleHandoffReady: boolean;
   selectedModuleHandedOffAt?: string;
@@ -73,7 +72,7 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
     canShowPayloadPreview,
     generatedPayload,
     approvedLeafReadyModules,
-    setState,
+    selectModule,
     markSelectedModuleAsHandedOff,
     isSelectedModuleHandoffReady,
     selectedModuleHandedOffAt
@@ -269,7 +268,7 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
                         <button
                           type="button"
                           className={moduleNode.id === state.selectedModuleId ? 'module-button selected' : 'module-button'}
-                          onClick={() => setState((current) => ({ ...current, selectedModuleId: moduleNode.id }))}
+                          onClick={() => selectModule(moduleNode.id)}
                         >
                           <span>
                             {moduleNode.name}

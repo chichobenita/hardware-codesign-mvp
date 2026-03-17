@@ -29,6 +29,7 @@ export type DesignState = {
   connections: Connection[];
   packageContentByModuleId: Record<string, ModulePackage>;
   handedOffAtByModuleId: Record<string, string>;
+  suggestionsByModuleId: Record<string, SuggestionCard[]>;
 };
 
 export type PersistedDesignState = {
