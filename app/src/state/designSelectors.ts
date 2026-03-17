@@ -1,4 +1,10 @@
-import { deriveGenerationPayloadMinimalV1, type GenerationPayloadMinimal, type ModulePackage } from '../../../shared/src';
+import {
+  deriveGenerationPayloadMinimalV1,
+  type GenerationPayloadMinimal,
+  type ModulePackage,
+  validateSemanticDesign,
+  type SemanticValidationIssue
+} from '../../../shared/src';
 import { getTransitionReadiness, type TransitionReadiness } from '../packageLifecycle';
 import type { DesignState, ModuleNode, PackageSectionStatus, SectionKey, WorkspaceMode } from '../types';
 
@@ -93,6 +99,31 @@ export function selectEligibleLeafReadyModules(state: DesignState): ModuleNode[]
   });
 }
 
+
+
+export function selectValidationIssues(state: DesignState): SemanticValidationIssue[] {
+  return validateSemanticDesign({
+    moduleIds: state.moduleList.map((moduleNode) => moduleNode.id),
+    packageContentByModuleId: state.packageContentByModuleId,
+    connections: state.connections
+  });
+}
+
+export function selectValidationIssuesForModule(state: DesignState, moduleId: string): SemanticValidationIssue[] {
+  return selectValidationIssues(state).filter((issue) => issue.moduleId === moduleId);
+}
+
+export function selectModuleHasBlockingValidationErrors(state: DesignState, moduleId: string): boolean {
+  return selectValidationIssuesForModule(state, moduleId).some((issue) => issue.severity === 'error');
+}
+
+export function selectDesignHasValidationIssues(state: DesignState): boolean {
+  return selectValidationIssues(state).length > 0;
+}
+
+export function selectModuleIsValidForReviewOrHandoff(state: DesignState, moduleId: string): boolean {
+  return !selectModuleHasBlockingValidationErrors(state, moduleId);
+}
 export function selectCanShowPayloadPreview(mode: WorkspaceMode, selectedModule: ModuleNode | undefined, modulePackage: ModulePackage): boolean {
   const isReviewOrHandoffMode = mode === 'review' || mode === 'handoff';
   const isLeafReadyPackage = modulePackage.packageStatus === 'leaf_ready' || modulePackage.packageStatus === 'handed_off';

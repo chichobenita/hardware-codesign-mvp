@@ -13,7 +13,11 @@ import {
   selectSectionStatuses,
   selectSelectedModule,
   selectSelectedModulePackage,
-  selectTransitionReadiness
+  selectTransitionReadiness,
+  selectValidationIssues,
+  selectValidationIssuesForModule,
+  selectDesignHasValidationIssues,
+  selectModuleIsValidForReviewOrHandoff
 } from './state/designSelectors';
 
 function createMockSuggestions(moduleNode: ModuleNode, modulePackage: ModulePackage): SuggestionCard[] {
@@ -197,6 +201,16 @@ function AppWorkspace(): JSX.Element {
     () => selectCanShowPayloadPreview(workspaceMode, selectedModule, currentPackageContent),
     [currentPackageContent, selectedModule, workspaceMode]
   );
+  const validationIssues = useMemo(() => selectValidationIssues(state), [state]);
+  const moduleValidationIssues = useMemo(
+    () => selectValidationIssuesForModule(state, state.selectedModuleId),
+    [state]
+  );
+  const designHasValidationIssues = useMemo(() => selectDesignHasValidationIssues(state), [state]);
+  const isSelectedModuleValidForReviewOrHandoff = useMemo(
+    () => selectModuleIsValidForReviewOrHandoff(state, state.selectedModuleId),
+    [state]
+  );
 
   useEffect(() => {
     if (!selectedModule || state.suggestionsByModuleId[selectedModule.id]) {
@@ -282,7 +296,8 @@ function AppWorkspace(): JSX.Element {
   };
 
   const selectedModuleHandedOffAt = state.handedOffAtByModuleId[state.selectedModuleId];
-  const isSelectedModuleHandoffReady = approvedLeafReadyModules.some((moduleNode) => moduleNode.id === state.selectedModuleId);
+  const isSelectedModuleHandoffReady = approvedLeafReadyModules.some((moduleNode) => moduleNode.id === state.selectedModuleId)
+    && isSelectedModuleValidForReviewOrHandoff;
 
   return (
     <div className="app-shell">
@@ -332,6 +347,9 @@ function AppWorkspace(): JSX.Element {
           markSelectedModuleAsHandedOff={markSelectedModuleAsHandedOff}
           isSelectedModuleHandoffReady={isSelectedModuleHandoffReady}
           selectedModuleHandedOffAt={selectedModuleHandedOffAt}
+          moduleValidationIssues={moduleValidationIssues}
+          designHasValidationIssues={designHasValidationIssues || validationIssues.length > 0}
+          isSelectedModuleValidForReviewOrHandoff={isSelectedModuleValidForReviewOrHandoff}
         />
       </main>
     </div>

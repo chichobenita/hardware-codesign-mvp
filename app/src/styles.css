@@ -338,3 +338,29 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.validation-card {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #f9fafb;
+}
+
+.validation-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.validation-issue {
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.validation-error {
+  color: #991b1b;
+}
+
+.validation-warning {
+  color: #92400e;
+}

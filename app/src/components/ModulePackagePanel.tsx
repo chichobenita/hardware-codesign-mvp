@@ -1,4 +1,4 @@
-import type { GenerationPayloadMinimal, ModulePackage } from '../../../shared/src';
+import type { GenerationPayloadMinimal, ModulePackage, SemanticValidationIssue } from '../../../shared/src';
 import { getTransitionActionLabel, type TransitionReadiness } from '../packageLifecycle';
 import type { Connection, DesignState, ModuleNode, PackageSectionStatus, SectionKey, WorkspaceMode } from '../types';
 
@@ -55,6 +55,9 @@ type ModulePackagePanelProps = {
   markSelectedModuleAsHandedOff: () => void;
   isSelectedModuleHandoffReady: boolean;
   selectedModuleHandedOffAt?: string;
+  moduleValidationIssues: SemanticValidationIssue[];
+  designHasValidationIssues: boolean;
+  isSelectedModuleValidForReviewOrHandoff: boolean;
 };
 
 export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element {
@@ -75,7 +78,10 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
     selectModule,
     markSelectedModuleAsHandedOff,
     isSelectedModuleHandoffReady,
-    selectedModuleHandedOffAt
+    selectedModuleHandedOffAt,
+    moduleValidationIssues,
+    designHasValidationIssues,
+    isSelectedModuleValidForReviewOrHandoff
   } = props;
 
   return (
@@ -115,6 +121,24 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
               </>
             ) : (
               <p className="ready-message">No further transitions in MVP flow.</p>
+            )}
+          </section>
+
+
+
+          <section className="validation-card">
+            <h3>Semantic validation</h3>
+            <p className="muted">Design validation status: <strong>{designHasValidationIssues ? 'issues found' : 'clean'}</strong></p>
+            {moduleValidationIssues.length === 0 ? (
+              <p className="ready-message">No semantic issues for selected module.</p>
+            ) : (
+              <ul className="validation-list">
+                {moduleValidationIssues.map((issue, index) => (
+                  <li key={`${issue.code}-${index}`} className={`validation-issue validation-${issue.severity}`}>
+                    <strong>{issue.severity.toUpperCase()}</strong> — {issue.message}
+                  </li>
+                ))}
+              </ul>
             )}
           </section>
 
@@ -242,12 +266,12 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
           {(workspaceMode === 'review' || workspaceMode === 'handoff') && (
             <section className="payload-preview">
               <strong>GenerationPayloadMinimal v1 preview (derived)</strong>
-              {canShowPayloadPreview ? (
+              {canShowPayloadPreview && isSelectedModuleValidForReviewOrHandoff ? (
                 <pre>{JSON.stringify(generatedPayload, null, 2)}</pre>
               ) : (
                 <p className="muted">
-                  Payload preview is available only for approved leaf-ready modules.
-                  Ensure this module is a leaf, set decomposition to approved_leaf, and transition package status to leaf_ready.
+                  Payload preview is available only for semantically valid approved leaf-ready modules.
+                  Resolve semantic errors, ensure this module is a leaf, set decomposition to approved_leaf, and transition package status to leaf_ready.
                 </p>
               )}
             </section>
