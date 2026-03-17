@@ -1,4 +1,5 @@
-import type { ModulePackage } from './types';
+import { dependencyLinkKey, expectedDependencyLinks, splitDependencyNotes } from './dependencySemantics';
+import type { ModuleDependencyLink, ModulePackage } from './types';
 
 export type ValidationSeverity = 'error' | 'warning';
 
@@ -30,11 +31,6 @@ export type SemanticDesignSnapshot = {
   connections: SemanticConnection[];
 };
 
-type DependencyShape = {
-  upstream: Set<string>;
-  downstream: Set<string>;
-};
-
 function cleanKey(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -53,14 +49,14 @@ function requiresLeafCompleteness(modulePackage: ModulePackage): boolean {
   return isApprovedLeaf || isLeafReady;
 }
 
-function parseDependencyEntry(entry: string): { kind: 'upstream' | 'downstream'; value: string } | null {
+function parseLegacyDependencyEntry(entry: string): ModuleDependencyLink | null {
   const separatorIndex = entry.indexOf(':');
   if (separatorIndex < 0) {
     return null;
   }
 
-  const kind = entry.slice(0, separatorIndex);
-  if (kind !== 'upstream' && kind !== 'downstream') {
+  const direction = entry.slice(0, separatorIndex);
+  if (direction !== 'upstream' && direction !== 'downstream') {
     return null;
   }
 
@@ -69,38 +65,55 @@ function parseDependencyEntry(entry: string): { kind: 'upstream' | 'downstream';
     return null;
   }
 
-  return { kind, value };
+  const [moduleIdOrName, ...signalParts] = value.split(':');
+  const signal = signalParts.join(':').trim();
+  return {
+    direction,
+    moduleId: moduleIdOrName.trim(),
+    signal: signal.length > 0 ? signal : undefined
+  };
 }
 
-function expectedDependencies(snapshot: SemanticDesignSnapshot): Record<string, DependencyShape> {
-  const expected: Record<string, DependencyShape> = {};
-  for (const moduleId of snapshot.moduleIds) {
-    expected[moduleId] = { upstream: new Set<string>(), downstream: new Set<string>() };
+function declaredDependencyKeys(modulePackage: ModulePackage): { upstream: Set<string>; downstream: Set<string> } {
+  const declared = {
+    upstream: new Set<string>(),
+    downstream: new Set<string>()
+  };
+
+  for (const link of modulePackage.dependencies?.links ?? []) {
+    const key = dependencyLinkKey(link);
+    if (link.direction === 'upstream') {
+      declared.upstream.add(key);
+    } else {
+      declared.downstream.add(key);
+    }
   }
 
-  for (const connection of snapshot.connections) {
-    if (!expected[connection.fromModuleId] || !expected[connection.toModuleId]) {
+  if (declared.upstream.size > 0 || declared.downstream.size > 0) {
+    return declared;
+  }
+
+  const legacyManagedEntries = splitDependencyNotes(modulePackage.dependencies?.relevantDependencies ?? []).managedEntries;
+  for (const entry of legacyManagedEntries) {
+    const parsed = parseLegacyDependencyEntry(entry);
+    if (!parsed) {
       continue;
     }
 
-    const sourcePackage = snapshot.packageContentByModuleId[connection.fromModuleId];
-    const targetPackage = snapshot.packageContentByModuleId[connection.toModuleId];
-    if (!sourcePackage || !targetPackage) {
-      continue;
+    const normalized = {
+      ...parsed,
+      moduleId: cleanKey(parsed.moduleId),
+      signal: parsed.signal ? cleanKey(parsed.signal) : undefined
+    };
+
+    if (parsed.direction === 'upstream') {
+      declared.upstream.add(dependencyLinkKey(normalized));
+    } else {
+      declared.downstream.add(dependencyLinkKey(normalized));
     }
-
-    const sourceName = sourcePackage.identity?.name ?? connection.fromModuleId;
-    const targetName = targetPackage.identity?.name ?? connection.toModuleId;
-    const cleanSignal = connection.signal.trim();
-
-    const downstreamDependency = cleanSignal.length > 0 ? `${targetName}:${cleanSignal}` : targetName;
-    const upstreamDependency = cleanSignal.length > 0 ? `${sourceName}:${cleanSignal}` : sourceName;
-
-    expected[connection.fromModuleId].downstream.add(cleanKey(downstreamDependency));
-    expected[connection.toModuleId].upstream.add(cleanKey(upstreamDependency));
   }
 
-  return expected;
+  return declared;
 }
 
 export function validateSemanticDesign(snapshot: SemanticDesignSnapshot): SemanticValidationIssue[] {
@@ -180,74 +193,53 @@ export function validateSemanticDesign(snapshot: SemanticDesignSnapshot): Semant
     }
   }
 
-  const expectedByModuleId = expectedDependencies(snapshot);
+  const expectedByModuleId = expectedDependencyLinks(snapshot.connections);
 
   for (const moduleId of snapshot.moduleIds) {
     const modulePackage = snapshot.packageContentByModuleId[moduleId];
-    const dependencyEntries = modulePackage?.dependencies?.relevantDependencies ?? [];
-    const expected = expectedByModuleId[moduleId];
-
-    if (!expected) {
-      continue;
-    }
-
-    const declaredUpstream = new Set<string>();
-    const declaredDownstream = new Set<string>();
-
-    for (const entry of dependencyEntries) {
-      const parsed = parseDependencyEntry(entry);
-      if (!parsed) {
-        continue;
-      }
-
-      const normalizedValue = cleanKey(parsed.value);
-      if (parsed.kind === 'upstream') {
-        declaredUpstream.add(normalizedValue);
-      } else {
-        declaredDownstream.add(normalizedValue);
-      }
-    }
+    const expected = expectedByModuleId[moduleId] ?? { upstream: new Set<string>(), downstream: new Set<string>() };
+    const declared = modulePackage ? declaredDependencyKeys(modulePackage) : { upstream: new Set<string>(), downstream: new Set<string>() };
 
     for (const expectedUpstream of expected.upstream) {
-      if (!declaredUpstream.has(expectedUpstream)) {
+      if (!declared.upstream.has(expectedUpstream)) {
         issues.push({
           code: 'missing_dependency_for_connection',
           severity: 'warning',
           moduleId,
-          message: `Missing dependency entry: upstream:${expectedUpstream}.`
+          message: `Missing dependency entry: ${expectedUpstream}.`
         });
       }
     }
 
     for (const expectedDownstream of expected.downstream) {
-      if (!declaredDownstream.has(expectedDownstream)) {
+      if (!declared.downstream.has(expectedDownstream)) {
         issues.push({
           code: 'missing_dependency_for_connection',
           severity: 'warning',
           moduleId,
-          message: `Missing dependency entry: downstream:${expectedDownstream}.`
+          message: `Missing dependency entry: ${expectedDownstream}.`
         });
       }
     }
 
-    for (const upstream of declaredUpstream) {
+    for (const upstream of declared.upstream) {
       if (!expected.upstream.has(upstream)) {
         issues.push({
           code: 'stale_dependency_entry',
           severity: 'warning',
           moduleId,
-          message: `Dependency entry upstream:${upstream} does not match active connections.`
+          message: `Dependency entry ${upstream} does not match active connections.`
         });
       }
     }
 
-    for (const downstream of declaredDownstream) {
+    for (const downstream of declared.downstream) {
       if (!expected.downstream.has(downstream)) {
         issues.push({
           code: 'stale_dependency_entry',
           severity: 'warning',
           moduleId,
-          message: `Dependency entry downstream:${downstream} does not match active connections.`
+          message: `Dependency entry ${downstream} does not match active connections.`
         });
       }
     }

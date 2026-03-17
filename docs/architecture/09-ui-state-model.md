@@ -99,6 +99,16 @@ Examples:
 
 Autofill should reduce manual work, but filled values should remain visible and editable.
 
+### 1.5.1 MVP Consistency Guardrails
+
+To reduce identity drift and brittle dependency text handling, the MVP should keep two explicit rules:
+
+* `modulePackage.identity.name` is the authoritative module display identity
+* connection-derived dependencies should be stored as structured links (`direction`, `moduleId`, optional `signal`) and then rendered to human-readable dependency notes
+
+This keeps UI editing lightweight while preserving deterministic semantics for validation and future hierarchy/diagram work.
+
+
 ### 1.6 Missing Information Guidance
 
 The UI should help the engineer understand what is missing for the next readiness transition.
