@@ -13,7 +13,7 @@ function createPackage(moduleId: string, overrides: Partial<ModulePackage> = {})
     identity: { name: moduleId },
     interfaces: { ports: [] },
     purpose: { summary: '' },
-    dependencies: { relevantDependencies: [] },
+    dependencies: { relevantDependencies: [], links: [] },
     decompositionStatus: { decompositionStatus: 'under_decomposition', decompositionRationale: 'test' },
     ...overrides
   };
@@ -90,23 +90,26 @@ describe('validateSemanticDesign', () => {
     expect(issues.some((issue) => issue.code === 'leaf_missing_ports' && issue.moduleId === 'leaf1')).toBe(true);
   });
 
-  it('flags missing and stale dependency entries compared to connections', () => {
+  it('validates dependency links against active connections', () => {
     const issues = validateSemanticDesign({
       moduleIds: ['src', 'dst'],
       connections: [{ fromModuleId: 'src', toModuleId: 'dst', signal: 'data' }],
       packageContentByModuleId: {
         src: createPackage('src', {
-          identity: { name: 'src' },
-          dependencies: { relevantDependencies: [] }
+          dependencies: {
+            relevantDependencies: ['downstream:dst:data'],
+            links: [{ direction: 'downstream', moduleId: 'dst', signal: 'data' }]
+          }
         }),
         dst: createPackage('dst', {
-          identity: { name: 'dst' },
-          dependencies: { relevantDependencies: ['upstream:legacy_mod:old_sig'] }
+          dependencies: {
+            relevantDependencies: ['upstream:src:data', 'upstream:legacy_mod:old_sig'],
+            links: [{ direction: 'upstream', moduleId: 'legacy_mod', signal: 'old_sig' }]
+          }
         })
       }
     });
 
-    expect(issues.some((issue) => issue.code === 'missing_dependency_for_connection' && issue.moduleId === 'src')).toBe(true);
     expect(issues.some((issue) => issue.code === 'missing_dependency_for_connection' && issue.moduleId === 'dst')).toBe(true);
     expect(issues.some((issue) => issue.code === 'stale_dependency_entry' && issue.moduleId === 'dst')).toBe(true);
   });

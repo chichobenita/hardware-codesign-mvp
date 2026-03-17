@@ -1,4 +1,10 @@
-import type { ModulePackage } from '../../../shared/src';
+import {
+  dependencyLink,
+  getAuthoritativeModuleName,
+  mergeDependencyLinks,
+  syncDependencyDisplayEntries,
+  type ModulePackage
+} from '../../../shared/src';
 import type { Connection, DesignState, ModuleNode, SuggestionCard } from '../types';
 import type { DesignAction } from './designActions';
 
@@ -6,9 +12,35 @@ function nowIso(value?: string): string {
   return value ?? new Date().toISOString();
 }
 
-function dependencyEntry(kind: 'upstream' | 'downstream', moduleName: string, signal: string): string {
-  const cleanSignal = signal.trim();
-  return cleanSignal.length > 0 ? `${kind}:${moduleName}:${cleanSignal}` : `${kind}:${moduleName}`;
+function syncModuleIdentityProjection(state: DesignState): DesignState {
+  return {
+    ...state,
+    moduleList: state.moduleList.map((moduleNode) => ({
+      ...moduleNode,
+      name: getAuthoritativeModuleName(moduleNode.id, state.packageContentByModuleId[moduleNode.id], moduleNode.name)
+    }))
+  };
+}
+
+
+function syncAllDependencyDisplayEntries(state: DesignState): DesignState {
+  const nextPackages: DesignState['packageContentByModuleId'] = {};
+
+  for (const moduleNode of state.moduleList) {
+    const modulePackage = state.packageContentByModuleId[moduleNode.id];
+    if (!modulePackage) {
+      continue;
+    }
+    nextPackages[moduleNode.id] = syncDependencyDisplayEntries(modulePackage, state.packageContentByModuleId);
+  }
+
+  return {
+    ...state,
+    packageContentByModuleId: {
+      ...state.packageContentByModuleId,
+      ...nextPackages
+    }
+  };
 }
 
 function withConnectionDependencies(current: DesignState, connection: Connection, timestamp: string): DesignState {
@@ -19,15 +51,16 @@ function withConnectionDependencies(current: DesignState, connection: Connection
     return current;
   }
 
-  const sourceName = sourcePackage.identity?.name ?? connection.fromModuleId;
-  const targetName = targetPackage.identity?.name ?? connection.toModuleId;
+  const nextSourceLinks = mergeDependencyLinks(
+    sourcePackage.dependencies?.links ?? [],
+    dependencyLink('downstream', connection.toModuleId, connection.signal)
+  );
+  const nextTargetLinks = mergeDependencyLinks(
+    targetPackage.dependencies?.links ?? [],
+    dependencyLink('upstream', connection.fromModuleId, connection.signal)
+  );
 
-  const sourceDependencies = sourcePackage.dependencies?.relevantDependencies ?? [];
-  const targetDependencies = targetPackage.dependencies?.relevantDependencies ?? [];
-  const downstreamItem = dependencyEntry('downstream', targetName, connection.signal);
-  const upstreamItem = dependencyEntry('upstream', sourceName, connection.signal);
-
-  return {
+  const withUpdatedPackages: DesignState = {
     ...current,
     packageContentByModuleId: {
       ...current.packageContentByModuleId,
@@ -37,9 +70,7 @@ function withConnectionDependencies(current: DesignState, connection: Connection
         lastUpdatedBy: 'mock_user',
         dependencies: {
           ...sourcePackage.dependencies,
-          relevantDependencies: sourceDependencies.includes(downstreamItem)
-            ? sourceDependencies
-            : [...sourceDependencies, downstreamItem]
+          links: nextSourceLinks
         }
       },
       [connection.toModuleId]: {
@@ -48,11 +79,24 @@ function withConnectionDependencies(current: DesignState, connection: Connection
         lastUpdatedBy: 'mock_user',
         dependencies: {
           ...targetPackage.dependencies,
-          relevantDependencies: targetDependencies.includes(upstreamItem)
-            ? targetDependencies
-            : [...targetDependencies, upstreamItem]
+          links: nextTargetLinks
         }
       }
+    }
+  };
+
+  return {
+    ...withUpdatedPackages,
+    packageContentByModuleId: {
+      ...withUpdatedPackages.packageContentByModuleId,
+      [connection.fromModuleId]: syncDependencyDisplayEntries(
+        withUpdatedPackages.packageContentByModuleId[connection.fromModuleId],
+        withUpdatedPackages.packageContentByModuleId
+      ),
+      [connection.toModuleId]: syncDependencyDisplayEntries(
+        withUpdatedPackages.packageContentByModuleId[connection.toModuleId],
+        withUpdatedPackages.packageContentByModuleId
+      )
     }
   };
 }
@@ -63,23 +107,25 @@ function applyModulePackageUpdate(state: DesignState, moduleId: string, updater:
     return state;
   }
 
-  const nextPackage = {
-    ...updater(currentPackage),
-    moduleId,
-    lastUpdatedAt: timestamp,
-    lastUpdatedBy: 'mock_user'
-  };
-
-  return {
-    ...state,
-    packageContentByModuleId: {
-      ...state.packageContentByModuleId,
-      [moduleId]: nextPackage
+  const nextPackage = syncDependencyDisplayEntries(
+    {
+      ...updater(currentPackage),
+      moduleId,
+      lastUpdatedAt: timestamp,
+      lastUpdatedBy: 'mock_user'
     },
-    moduleList: state.moduleList.map((moduleNode) =>
-      moduleNode.id === moduleId ? { ...moduleNode, name: nextPackage.identity?.name || 'unnamed_module' } : moduleNode
-    )
-  };
+    state.packageContentByModuleId
+  );
+
+  return syncModuleIdentityProjection(
+    syncAllDependencyDisplayEntries({
+      ...state,
+      packageContentByModuleId: {
+        ...state.packageContentByModuleId,
+        [moduleId]: nextPackage
+      }
+    })
+  );
 }
 
 function applyAcceptedSuggestion(current: ModulePackage, suggestion: SuggestionCard): ModulePackage {
@@ -193,7 +239,7 @@ export const seedState: DesignState = {
       },
       purpose: { summary: 'Receives UART serial data and emits decoded bytes.' },
       constraints: { basicConstraints: ['115200 baud nominal', '8-N-1 format'] },
-      dependencies: { relevantDependencies: ['system clock', 'upstream UART TX timing assumptions'] },
+      dependencies: { relevantDependencies: ['system clock', 'upstream UART TX timing assumptions'], links: [] },
       behavior: {
         behaviorSummary: 'Detect start bit, sample 8 data bits, emit output byte.',
         behaviorRules: ['Sample start bit midpoint before data bits', 'Assert data_o only after a full valid frame'],
@@ -219,7 +265,7 @@ function createModulePackage(nextId: string, cleanName: string, timestamp: strin
     interfaces: { ports: [] },
     purpose: { summary: '' },
     constraints: { basicConstraints: [] },
-    dependencies: { relevantDependencies: [] },
+    dependencies: { relevantDependencies: [], links: [] },
     behavior: { behaviorRules: [], clockResetNotes: '' },
     decompositionStatus: { decompositionStatus: 'under_decomposition', decompositionRationale: '' }
   };
@@ -233,12 +279,12 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       const nextId = action.payload.nextId ?? `${cleanName.replace(/\s+/g, '_')}_${Date.now().toString(36)}`;
       const newPackage = createModulePackage(nextId, cleanName, timestamp);
 
-      return {
+      return syncModuleIdentityProjection({
         ...state,
         moduleList: [...state.moduleList, { id: nextId, name: cleanName, kind: action.payload.kind }],
         selectedModuleId: nextId,
         packageContentByModuleId: { ...state.packageContentByModuleId, [nextId]: newPackage }
-      };
+      });
     }
     case 'rename_module': {
       const cleanName = action.payload.name.trim();
@@ -351,9 +397,9 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       };
     }
     case 'load_persisted_design_state':
-      return action.payload.state;
+      return syncModuleIdentityProjection(action.payload.state);
     case 'replace_design_state':
-      return action.payload.state;
+      return syncModuleIdentityProjection(action.payload.state);
     default:
       return state;
   }

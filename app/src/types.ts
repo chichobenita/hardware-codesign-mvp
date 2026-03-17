@@ -1,16 +1,16 @@
-import type { ModulePackage } from '../../shared/src';
+import type { ModulePackage, SemanticConnection } from '../../shared/src';
 
 export type ModuleNode = {
   id: string;
+  /**
+   * Denormalized projection for list rendering.
+   * Authoritative identity is ModulePackage.identity.name.
+   */
   name: string;
   kind: 'composite' | 'leaf';
 };
 
-export type Connection = {
-  fromModuleId: string;
-  toModuleId: string;
-  signal: string;
-};
+export type Connection = SemanticConnection;
 
 export type PackageSectionStatus = 'empty' | 'partial' | 'complete' | 'needs_review';
 export type SectionKey =

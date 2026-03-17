@@ -13,7 +13,7 @@ describe('designReducer', () => {
     expect(state.packageContentByModuleId.new_unit_1.identity?.name).toBe('new_unit');
   });
 
-  it('renames a module and keeps package identity synchronized', () => {
+  it('renames a module and keeps package identity synchronized as source of truth', () => {
     const state = designReducer(seedState, {
       type: 'rename_module',
       payload: { moduleId: 'child_a', name: 'input_buffer', nowIso: '2026-01-01T00:00:00.000Z' }
@@ -21,6 +21,23 @@ describe('designReducer', () => {
 
     expect(state.moduleList.find((moduleNode) => moduleNode.id === 'child_a')?.name).toBe('input_buffer');
     expect(state.packageContentByModuleId.child_a.identity?.name).toBe('input_buffer');
+  });
+
+  it('keeps module list projection synchronized when package identity changes directly', () => {
+    const state = designReducer(seedState, {
+      type: 'update_module_package',
+      payload: {
+        moduleId: 'child_b',
+        updater: (current) => ({
+          ...current,
+          identity: { ...current.identity, name: 'dispatch_scheduler' }
+        }),
+        nowIso: '2026-01-01T00:00:00.000Z'
+      }
+    });
+
+    expect(state.packageContentByModuleId.child_b.identity?.name).toBe('dispatch_scheduler');
+    expect(state.moduleList.find((moduleNode) => moduleNode.id === 'child_b')?.name).toBe('dispatch_scheduler');
   });
 
   it('selects a module', () => {
@@ -32,7 +49,7 @@ describe('designReducer', () => {
     expect(state.selectedModuleId).toBe('root');
   });
 
-  it('connects modules and records dependency entries', () => {
+  it('connects modules and records structured dependency links + display entries', () => {
     const state = designReducer(seedState, {
       type: 'connect_modules',
       payload: {
@@ -42,8 +59,29 @@ describe('designReducer', () => {
     });
 
     expect(state.connections[state.connections.length - 1]).toEqual({ fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_valid' });
+    expect(state.packageContentByModuleId.child_a.dependencies?.links).toContainEqual({ direction: 'downstream', moduleId: 'child_b', signal: 'fifo_valid' });
+    expect(state.packageContentByModuleId.child_b.dependencies?.links).toContainEqual({ direction: 'upstream', moduleId: 'child_a', signal: 'fifo_valid' });
     expect(state.packageContentByModuleId.child_a.dependencies?.relevantDependencies).toContain('downstream:scheduler:fifo_valid');
     expect(state.packageContentByModuleId.child_b.dependencies?.relevantDependencies).toContain('upstream:input_fifo:fifo_valid');
+  });
+
+  it('preserves structured dependency links after rename while refreshing display entries', () => {
+    const withConnection = designReducer(seedState, {
+      type: 'connect_modules',
+      payload: {
+        connection: { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_valid' },
+        nowIso: '2026-01-01T00:00:00.000Z'
+      }
+    });
+
+    const renamed = designReducer(withConnection, {
+      type: 'rename_module',
+      payload: { moduleId: 'child_b', name: 'dispatch_scheduler', nowIso: '2026-01-01T00:00:01.000Z' }
+    });
+
+    expect(renamed.packageContentByModuleId.child_a.dependencies?.links).toContainEqual({ direction: 'downstream', moduleId: 'child_b', signal: 'fifo_valid' });
+    expect(renamed.packageContentByModuleId.child_a.dependencies?.relevantDependencies).toContain('downstream:dispatch_scheduler:fifo_valid');
+    expect(renamed.packageContentByModuleId.child_a.dependencies?.relevantDependencies).not.toContain('downstream:scheduler:fifo_valid');
   });
 
   it('updates selected package content', () => {

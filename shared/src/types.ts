@@ -38,6 +38,12 @@ export interface Connection {
   description?: string;
 }
 
+export interface ModuleDependencyLink {
+  direction: 'upstream' | 'downstream';
+  moduleId: string;
+  signal?: string;
+}
+
 export interface ModulePackage {
   packageId: string;
   moduleId: string;
@@ -79,6 +85,15 @@ export interface ModulePackage {
     basicConstraints?: string[];
   };
   dependencies?: {
+    /**
+     * Structured dependency links are the preferred semantic representation in MVP.
+     * These should be updated from deterministic app actions (e.g. connect modules).
+     */
+    links?: ModuleDependencyLink[];
+    /**
+     * Human-readable dependency notes kept for UI editing and payload output.
+     * Entries prefixed with upstream:/downstream: may be synchronized from links.
+     */
     relevantDependencies?: string[];
   };
   decompositionStatus?: {
