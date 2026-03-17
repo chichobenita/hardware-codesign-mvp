@@ -1,5 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
-import type { DesignState, ModuleNode } from '../types';
+import type { Connection, DesignState, ModuleNode } from '../types';
 
 type DiagramWorkspaceProps = {
   state: DesignState;
@@ -8,13 +7,13 @@ type DiagramWorkspaceProps = {
   newModuleKind: ModuleNode['kind'];
   setNewModuleKind: (value: ModuleNode['kind']) => void;
   createModule: () => void;
-  setState: Dispatch<SetStateAction<DesignState>>;
+  selectModule: (moduleId: string) => void;
   renameDraft: string;
   setRenameDraft: (value: string) => void;
   selectedModule?: ModuleNode;
   renameSelectedModule: () => void;
-  connectionDraft: { fromModuleId: string; toModuleId: string; signal: string };
-  setConnectionDraft: Dispatch<SetStateAction<{ fromModuleId: string; toModuleId: string; signal: string }>>;
+  connectionDraft: Connection;
+  setConnectionDraft: (next: Connection) => void;
   addConnection: () => void;
 };
 
@@ -25,7 +24,7 @@ export function DiagramWorkspace({
   newModuleKind,
   setNewModuleKind,
   createModule,
-  setState,
+  selectModule,
   renameDraft,
   setRenameDraft,
   selectedModule,
@@ -52,7 +51,7 @@ export function DiagramWorkspace({
             <button
               type="button"
               className={moduleNode.id === state.selectedModuleId ? 'module-button selected' : 'module-button'}
-              onClick={() => setState((current) => ({ ...current, selectedModuleId: moduleNode.id }))}
+              onClick={() => selectModule(moduleNode.id)}
             >
               <span>{moduleNode.name}</span>
               <small>{moduleNode.kind}</small>
@@ -74,17 +73,17 @@ export function DiagramWorkspace({
       <div className="connection-builder">
         <strong>Connect blocks</strong>
         <div className="inline-form">
-          <select value={connectionDraft.fromModuleId} onChange={(event) => setConnectionDraft((current) => ({ ...current, fromModuleId: event.target.value }))} aria-label="Connection source">
+          <select value={connectionDraft.fromModuleId} onChange={(event) => setConnectionDraft({ ...connectionDraft, fromModuleId: event.target.value })} aria-label="Connection source">
             {state.moduleList.map((moduleNode) => (
               <option key={`from-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
             ))}
           </select>
-          <select value={connectionDraft.toModuleId} onChange={(event) => setConnectionDraft((current) => ({ ...current, toModuleId: event.target.value }))} aria-label="Connection target">
+          <select value={connectionDraft.toModuleId} onChange={(event) => setConnectionDraft({ ...connectionDraft, toModuleId: event.target.value })} aria-label="Connection target">
             {state.moduleList.map((moduleNode) => (
               <option key={`to-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
             ))}
           </select>
-          <input value={connectionDraft.signal} onChange={(event) => setConnectionDraft((current) => ({ ...current, signal: event.target.value }))} placeholder="signal" />
+          <input value={connectionDraft.signal} onChange={(event) => setConnectionDraft({ ...connectionDraft, signal: event.target.value })} placeholder="signal" />
           <button type="button" onClick={addConnection}>Connect</button>
         </div>
       </div>
