@@ -403,5 +403,11 @@ describe('designReducer', () => {
 
     expect(state.packageContentByModuleId.example_uart_rx.packageStatus).toBe('handed_off');
     expect(state.handedOffAtByModuleId.example_uart_rx).toBe('2026-01-01T00:00:00.000Z');
+    expect(state.handoffArtifacts[0]).toMatchObject({
+      moduleId: 'example_uart_rx',
+      moduleName: 'uart_rx',
+      targetProviderId: state.ui.selectedProviderId,
+      handoffStatus: 'handed_off'
+    });
   });
 });

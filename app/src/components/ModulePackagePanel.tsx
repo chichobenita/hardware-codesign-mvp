@@ -1,4 +1,6 @@
 import type { GenerationPayloadMinimal, ModulePackage, SemanticValidationIssue } from '../../../shared/src';
+import type { HandoffArtifact } from '../ai/handoffTypes';
+import type { HandoffProvider } from '../ai/providers/providerTypes';
 import type { PromptBuildResult } from '../ai/promptTypes';
 import { getTransitionActionLabel, type TransitionReadiness } from '../packageLifecycle';
 import type { Connection, DesignState, ModuleNode, PackageSectionStatus, SectionKey, WorkspaceMode } from '../types';
@@ -42,6 +44,9 @@ type ModulePackagePanelProps = {
   selectedModule?: ModuleNode;
   state: DesignState;
   setWorkspaceMode: (mode: WorkspaceMode) => void;
+  handoffProviders: HandoffProvider[];
+  selectedProviderId: string;
+  setSelectedProvider: (providerId: string) => void;
   currentPackageContent: ModulePackage;
   transitionReadiness: TransitionReadiness | null;
   moveToNextPackageState: () => void;
@@ -51,6 +56,11 @@ type ModulePackagePanelProps = {
   canShowPayloadPreview: boolean;
   generatedPayload: GenerationPayloadMinimal;
   generatedPrompt: PromptBuildResult | null;
+  handoffArtifacts: HandoffArtifact[];
+  latestHandoffArtifact: HandoffArtifact | null;
+  copyGeneratedPrompt: () => Promise<void>;
+  exportGeneratedPrompt: () => void;
+  exportLatestHandoffArtifact: () => void;
   approvedLeafReadyModules: ModuleNode[];
   selectModule: (moduleId: string) => void;
   markSelectedModuleAsHandedOff: () => void;
@@ -74,6 +84,9 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
     selectedModule,
     state,
     setWorkspaceMode,
+    handoffProviders,
+    selectedProviderId,
+    setSelectedProvider,
     currentPackageContent,
     transitionReadiness,
     moveToNextPackageState,
@@ -83,6 +96,11 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
     canShowPayloadPreview,
     generatedPayload,
     generatedPrompt,
+    handoffArtifacts,
+    latestHandoffArtifact,
+    copyGeneratedPrompt,
+    exportGeneratedPrompt,
+    exportLatestHandoffArtifact,
     approvedLeafReadyModules,
     selectModule,
     markSelectedModuleAsHandedOff,
@@ -113,6 +131,17 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
               <option value="handoff">handoff</option>
             </select>
           </label>
+          <label>
+            Handoff provider
+            <select value={selectedProviderId} onChange={(event) => setSelectedProvider(event.target.value)} aria-label="Handoff provider">
+              {handoffProviders.map((provider) => (
+                <option key={provider.id} value={provider.id}>{provider.label}</option>
+              ))}
+            </select>
+          </label>
+          <p className="muted">
+            {handoffProviders.find((provider) => provider.id === selectedProviderId)?.description ?? 'Frontend-local mock provider.'}
+          </p>
 
 
           <section className="project-transfer-card">
@@ -343,7 +372,13 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
                 <strong>HDL generation prompt preview (derived)</strong>
                 <p className="muted">Structured handoff prompt for a downstream AI code engine.</p>
                 {canShowPayloadPreview && isSelectedModuleValidForReviewOrHandoff && generatedPrompt ? (
-                  <pre>{generatedPrompt.promptText}</pre>
+                  <>
+                    <div className="artifact-actions">
+                      <button type="button" onClick={() => { void copyGeneratedPrompt(); }}>Copy generated prompt</button>
+                      <button type="button" onClick={exportGeneratedPrompt}>Export prompt</button>
+                    </div>
+                    <pre>{generatedPrompt.promptText}</pre>
+                  </>
                 ) : (
                   <p className="muted">
                     Prompt preview follows the same readiness gate as the payload preview so review and handoff stay aligned.
@@ -386,6 +421,37 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
               <button type="button" onClick={markSelectedModuleAsHandedOff} disabled={!isSelectedModuleHandoffReady || Boolean(selectedModuleHandedOffAt)}>
                 {selectedModuleHandedOffAt ? 'Already handed off' : 'Mark selected module as handed_off'}
               </button>
+
+              <section className="payload-preview">
+                <strong>Handoff artifact preview</strong>
+                <p className="muted">Concrete handoff record built from the derived payload and prompt snapshots.</p>
+                {latestHandoffArtifact ? (
+                  <>
+                    <div className="artifact-actions">
+                      <button type="button" onClick={exportLatestHandoffArtifact}>Export handoff artifact</button>
+                    </div>
+                    <pre>{JSON.stringify(latestHandoffArtifact, null, 2)}</pre>
+                  </>
+                ) : (
+                  <p className="muted">No handoff artifact created for the selected module yet.</p>
+                )}
+              </section>
+
+              <section className="handoff-history">
+                <strong>Local handoff history</strong>
+                {handoffArtifacts.length === 0 ? (
+                  <p className="muted">No local handoff records for this module yet.</p>
+                ) : (
+                  <ul className="handoff-list">
+                    {handoffArtifacts.map((artifact) => (
+                      <li key={artifact.artifactId}>
+                        <span>{artifact.createdAt}</span>
+                        <small>{artifact.targetProviderId} · {artifact.handoffStatus}</small>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             </section>
           )}
         </section>

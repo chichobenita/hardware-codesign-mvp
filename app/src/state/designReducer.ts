@@ -1,4 +1,5 @@
 import { type ModulePackage } from '../../../shared/src';
+import { createHandoffArtifactFromState } from '../ai/handoffArtifacts';
 import type { DesignState, ModuleNode } from '../types';
 import type { DesignAction } from './designActions';
 import { normalizeDesignState } from './normalization/normalizeDesignState';
@@ -203,6 +204,8 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       return normalizeInteractiveState({ ...state, selectedModuleId: action.payload.moduleId });
     case 'set_workspace_mode':
       return { ...state, ui: { ...state.ui, workspaceMode: action.payload.mode } };
+    case 'set_selected_provider':
+      return { ...state, ui: { ...state.ui, selectedProviderId: action.payload.providerId } };
     case 'enter_hierarchy_view':
       return normalizeInteractiveState({
         ...state,
@@ -347,6 +350,10 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       );
     case 'mark_selected_module_handed_off': {
       const timestamp = nowIso(action.payload.nowIso);
+      const artifact = createHandoffArtifactFromState(state, state.selectedModuleId, state.ui.selectedProviderId, timestamp);
+      if (!artifact) {
+        return state;
+      }
       const withPackageUpdate = applyModulePackageUpdate(
         state,
         state.selectedModuleId,
@@ -358,7 +365,8 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
         handedOffAtByModuleId: {
           ...withPackageUpdate.handedOffAtByModuleId,
           [state.selectedModuleId]: timestamp
-        }
+        },
+        handoffArtifacts: [artifact, ...withPackageUpdate.handoffArtifacts]
       };
     }
     case 'load_persisted_design_state':

@@ -6,6 +6,7 @@ import {
   type SemanticValidationIssue
 } from '../../../shared/src';
 import { buildHdlGenerationPromptFromState } from '../ai/promptBuilder';
+import type { HandoffArtifact } from '../ai/handoffTypes';
 import type { PromptBuildResult } from '../ai/promptTypes';
 import { getTransitionReadiness, type TransitionReadiness } from '../packageLifecycle';
 import {
@@ -190,4 +191,12 @@ export function selectGenerationPayloadSource(modulePackage: ModulePackage): Gen
 
 export function selectGenerationPromptSource(state: DesignState, moduleId: string): PromptBuildResult | null {
   return buildHdlGenerationPromptFromState(state, moduleId);
+}
+
+export function selectHandoffArtifactsForModule(state: DesignState, moduleId: string): HandoffArtifact[] {
+  return state.handoffArtifacts.filter((artifact) => artifact.moduleId === moduleId);
+}
+
+export function selectLatestHandoffArtifactForModule(state: DesignState, moduleId: string): HandoffArtifact | null {
+  return selectHandoffArtifactsForModule(state, moduleId)[0] ?? null;
 }

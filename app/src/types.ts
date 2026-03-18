@@ -1,4 +1,5 @@
 import type { ModulePackage, SemanticConnection } from '../../shared/src';
+import type { HandoffArtifact } from './ai/handoffTypes';
 
 export type ModuleNode = {
   id: string;
@@ -55,6 +56,7 @@ export type HierarchyDecompositionDraft = {
 
 export type DesignUiState = {
   workspaceMode: WorkspaceMode;
+  selectedProviderId: string;
   currentHierarchyModuleId: string;
   newModuleName: string;
   newModuleKind: ModuleNode['kind'];
@@ -70,6 +72,7 @@ export type DesignState = {
   connections: Connection[];
   packageContentByModuleId: Record<string, ModulePackage>;
   handedOffAtByModuleId: Record<string, string>;
+  handoffArtifacts: HandoffArtifact[];
   suggestionsByModuleId: Record<string, SuggestionCard[]>;
   ui: DesignUiState;
 };
@@ -80,4 +83,5 @@ export type PersistedDesignState = {
   connections: Connection[];
   packageContentByModuleId: Record<string, ModulePackage>;
   handedOffAtByModuleId: Record<string, string>;
+  handoffArtifacts: HandoffArtifact[];
 };

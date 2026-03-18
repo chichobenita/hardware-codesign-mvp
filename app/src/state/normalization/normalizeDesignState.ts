@@ -1,4 +1,5 @@
 import { getAuthoritativeModuleName, type ModulePackage } from '../../../../shared/src';
+import { DEFAULT_PROVIDER_ID } from '../../ai/providers/providerRegistry';
 import type { Connection, DesignState, ModuleNode } from '../../types';
 import { createMockSuggestions } from '../reducerHelpers/suggestionSync';
 import { normalizeHierarchyForPackages, selectHierarchyModuleId, selectVisibleHierarchyModuleIds } from '../hierarchy/hierarchyHelpers';
@@ -52,6 +53,7 @@ function normalizeUiState(state: DesignState): DesignState {
     selectedModuleId,
     ui: {
       ...state.ui,
+      selectedProviderId: state.ui.selectedProviderId || DEFAULT_PROVIDER_ID,
       currentHierarchyModuleId,
       renameDraft: selectedModule?.name ?? '',
       connectionDraft: {
@@ -109,7 +111,8 @@ export function normalizeDesignState(
     packageContentByModuleId: normalizeDependencies(normalizedPackages, normalizedConnections),
     handedOffAtByModuleId: Object.fromEntries(
       Object.entries(state.handedOffAtByModuleId).filter(([moduleId]) => normalizedPackages[moduleId])
-    )
+    ),
+    handoffArtifacts: state.handoffArtifacts.filter((artifact) => normalizedPackages[artifact.moduleId])
   };
 
   if (options.ensureUi) {
@@ -124,7 +127,7 @@ export function normalizeDesignState(
 }
 
 export function createRestoredDesignState(
-  persistedState: Pick<DesignState, 'moduleList' | 'selectedModuleId' | 'connections' | 'packageContentByModuleId' | 'handedOffAtByModuleId'>,
+  persistedState: Pick<DesignState, 'moduleList' | 'selectedModuleId' | 'connections' | 'packageContentByModuleId' | 'handedOffAtByModuleId' | 'handoffArtifacts'>,
   fallbackUpdatedBy = 'restored_snapshot'
 ): DesignState {
   const normalizedModuleList = normalizeModuleList(persistedState.moduleList, persistedState.packageContentByModuleId);
@@ -134,6 +137,7 @@ export function createRestoredDesignState(
     suggestionsByModuleId: {},
     ui: {
       workspaceMode: 'design',
+      selectedProviderId: DEFAULT_PROVIDER_ID,
       currentHierarchyModuleId: persistedState.selectedModuleId,
       newModuleName: '',
       newModuleKind: 'leaf',
@@ -151,9 +155,11 @@ export function createRestoredDesignState(
       connections: persistedState.connections,
       packageContentByModuleId: persistedState.packageContentByModuleId,
       handedOffAtByModuleId: persistedState.handedOffAtByModuleId,
+      handoffArtifacts: persistedState.handoffArtifacts,
       suggestionsByModuleId: {},
       ui: {
         workspaceMode: 'design',
+        selectedProviderId: DEFAULT_PROVIDER_ID,
         currentHierarchyModuleId: defaultHierarchyId,
         newModuleName: '',
         newModuleKind: 'leaf',

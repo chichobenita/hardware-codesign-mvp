@@ -121,7 +121,8 @@ describe('DiagramWorkspace', () => {
           dependencies: { relevantDependencies: [], links: [] }
         }
       },
-      handedOffAtByModuleId: {}
+      handedOffAtByModuleId: {},
+      handoffArtifacts: []
     });
 
     renderWorkspace(nestedState);
@@ -216,7 +217,8 @@ describe('DiagramWorkspace', () => {
           dependencies: { relevantDependencies: [], links: [] }
         }
       },
-      handedOffAtByModuleId: {}
+      handedOffAtByModuleId: {},
+      handoffArtifacts: []
     });
 
     renderWorkspace(restored);

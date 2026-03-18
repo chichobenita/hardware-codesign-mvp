@@ -229,6 +229,13 @@ button {
   overflow-x: auto;
 }
 
+.artifact-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
 .right-panel {
   max-height: calc(100vh - 92px);
   overflow-y: auto;
@@ -267,6 +274,10 @@ button {
   padding: 10px;
   margin-bottom: 10px;
   background: #f9fafb;
+}
+
+.handoff-history {
+  margin-top: 10px;
 }
 
 .handoff-card h3 {
