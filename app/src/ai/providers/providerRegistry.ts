@@ -1,7 +1,14 @@
+
+import { mockLocalHdlProvider, mockStructuredHdlProvider, MOCK_PROVIDER_ID } from './mockProvider';
+import type { HandoffProvider } from './providerTypes';
+
+const providers: HandoffProvider[] = [mockLocalHdlProvider, mockStructuredHdlProvider];
+
 import { mockLocalHdlProvider, MOCK_PROVIDER_ID } from './mockProvider';
 import type { HandoffProvider } from './providerTypes';
 
 const providers: HandoffProvider[] = [mockLocalHdlProvider];
+
 
 export const DEFAULT_PROVIDER_ID = MOCK_PROVIDER_ID;
 
