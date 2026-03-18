@@ -1,5 +1,6 @@
 import { deriveGenerationPayloadMinimalV1, getAuthoritativeModuleName, type ModulePackage } from '../../../shared/src';
-import type { DesignState, ModuleNode } from '../types';
+import type { ModuleNode } from '../../../shared/src';
+import type { DesignState } from '../types';
 import type { PromptBuildInput, PromptBuildResult, PromptHierarchyContext } from './promptTypes';
 
 function cleanText(value: string | undefined): string {

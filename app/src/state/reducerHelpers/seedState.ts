@@ -1,6 +1,7 @@
 import type { ModulePackage } from '../../../../shared/src';
 import { DEFAULT_PROVIDER_ID } from '../../ai/providers/providerRegistry';
-import type { Connection, DesignState, ModuleNode } from '../../types';
+import type { ModuleNode } from '../../../../shared/src';
+import type { Connection, DesignState } from '../../types';
 
 export function nowIso(value?: string): string {
   return value ?? new Date().toISOString();
@@ -129,6 +130,7 @@ export const baseSeedState: DesignState = {
   },
   handedOffAtByModuleId: {},
   handoffArtifacts: [],
+  providerJobs: [],
   suggestionsByModuleId: {},
   ui: {
     workspaceMode: 'design',
