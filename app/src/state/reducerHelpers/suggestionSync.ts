@@ -1,5 +1,6 @@
 import type { ModulePackage } from '../../../../shared/src';
-import type { DesignState, ModuleNode, SuggestionCard } from '../../types';
+import type { ModuleNode } from '../../../../shared/src';
+import type { DesignState, SuggestionCard } from '../../types';
 
 export function createMockSuggestions(moduleNode: ModuleNode, modulePackage: ModulePackage): SuggestionCard[] {
   const moduleName = modulePackage.identity?.name ?? moduleNode.name;

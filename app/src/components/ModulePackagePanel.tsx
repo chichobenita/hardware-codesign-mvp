@@ -47,9 +47,9 @@ type ModulePackagePanelProps = {
   isSelectedModuleValidForReviewOrHandoff: boolean;
   currentHierarchyModule?: ModuleNode;
   decompositionDraftNamesText: string;
-  decompositionDraftChildKind: ModuleNode['kind'];
+  decompositionDraftChildKind: ModuleKind;
   setDecompositionNamesText: (value: string) => void;
-  setDecompositionChildKind: (value: ModuleNode['kind']) => void;
+  setDecompositionChildKind: (value: ModuleKind) => void;
   decomposeSelectedModule: () => void;
 };
 

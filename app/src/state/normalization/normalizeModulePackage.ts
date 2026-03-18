@@ -1,5 +1,5 @@
 import { getAuthoritativeModuleName, type ModuleDependencyLink, type ModulePackage, type PackageStatus } from '../../../../shared/src';
-import type { ModuleNode } from '../../types';
+import type { ModuleNode } from '../../../../shared/src';
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');

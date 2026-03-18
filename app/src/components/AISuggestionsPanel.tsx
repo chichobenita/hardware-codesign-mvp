@@ -1,5 +1,5 @@
-import type { ModulePackage } from '../../../shared/src';
-import type { ModuleNode, PortDraft, SuggestionCard } from '../types';
+import type { ModuleNode, ModulePackage, ModulePort } from '../../../shared/src';
+import type { SuggestionCard } from '../types';
 
 type AISuggestionsPanelProps = {
   selectedModule?: ModuleNode;
@@ -80,7 +80,7 @@ export function AISuggestionsPanel({
                           draft: {
                             ...current.draft,
                             ports: (current.draft.ports ?? []).map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, direction: event.target.value as PortDraft['direction'] } : item
+                              itemIndex === index ? { ...item, direction: event.target.value as ModulePort['direction'] } : item
                             )
                           },
                           status: current.status === 'accepted' ? 'pending' : current.status

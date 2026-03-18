@@ -16,10 +16,10 @@ import {
   selectNormalizedHierarchyPackages,
   selectVisibleModulesFromState
 } from './hierarchy/hierarchySelectors';
+import type { ModuleNode } from '../../../shared/src';
 import type {
   Connection,
   DesignState,
-  ModuleNode,
   PackageSectionStatus,
   SectionKey,
   WorkspaceMode

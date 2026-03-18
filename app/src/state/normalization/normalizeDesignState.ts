@@ -1,7 +1,8 @@
 import { getAuthoritativeModuleName, type ModulePackage } from '../../../../shared/src';
 import { DEFAULT_PROVIDER_ID } from '../../ai/providers/providerRegistry';
 import { normalizeHandoffArtifacts } from '../../ai/handoffArtifacts';
-import type { Connection, DesignState, ModuleNode } from '../../types';
+import type { ModuleNode } from '../../../../shared/src';
+import type { Connection, DesignState } from '../../types';
 import { createMockSuggestions } from '../reducerHelpers/suggestionSync';
 import { normalizeHierarchyForPackages, selectHierarchyModuleId, selectVisibleHierarchyModuleIds } from '../hierarchy/hierarchyHelpers';
 import { defaultConnectionDraft } from '../reducerHelpers/seedState';

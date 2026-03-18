@@ -1,5 +1,5 @@
 import type { ModuleDependencyLink, ModulePackage } from './types';
-import type { SemanticConnection } from './semanticValidation';
+import type { SemanticConnection } from './types';
 import { getAuthoritativeModuleName } from './moduleIdentity';
 
 function cleanSignal(signal?: string): string | undefined {
