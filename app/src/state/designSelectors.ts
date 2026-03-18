@@ -6,6 +6,7 @@ import {
   type SemanticValidationIssue
 } from '../../../shared/src';
 import { buildHdlGenerationPromptFromState } from '../ai/promptBuilder';
+import type { HandoffArtifact } from '../ai/handoffTypes';
 import type { PromptBuildResult } from '../ai/promptTypes';
 import { getTransitionReadiness, type TransitionReadiness } from '../packageLifecycle';
 import {
@@ -177,11 +178,22 @@ export function selectModuleIsValidForReviewOrHandoff(state: DesignState, module
 
 export function selectCanShowPayloadPreview(mode: WorkspaceMode, selectedModule: ModuleNode | undefined, modulePackage: ModulePackage): boolean {
   const isReviewOrHandoffMode = mode === 'review' || mode === 'handoff';
+  return isReviewOrHandoffMode && selectModuleQualifiesForReviewOrHandoff(selectedModule, modulePackage);
+}
+
+function selectModuleQualifiesForReviewOrHandoff(
+  selectedModule: ModuleNode | undefined,
+  modulePackage: ModulePackage | undefined
+): boolean {
+  if (!selectedModule || !modulePackage) {
+    return false;
+  }
+
   const isLeafReadyPackage = modulePackage.packageStatus === 'leaf_ready' || modulePackage.packageStatus === 'handed_off';
   const isApprovedLeaf = modulePackage.decompositionStatus?.decompositionStatus === 'approved_leaf';
   const isLeafModule = selectedModule?.kind === 'leaf';
 
-  return isReviewOrHandoffMode && isLeafReadyPackage && isApprovedLeaf && isLeafModule;
+  return isLeafReadyPackage && isApprovedLeaf && isLeafModule;
 }
 
 export function selectGenerationPayloadSource(modulePackage: ModulePackage): GenerationPayloadMinimal {
@@ -190,4 +202,28 @@ export function selectGenerationPayloadSource(modulePackage: ModulePackage): Gen
 
 export function selectGenerationPromptSource(state: DesignState, moduleId: string): PromptBuildResult | null {
   return buildHdlGenerationPromptFromState(state, moduleId);
+}
+
+export function selectHandoffArtifactsForModule(state: DesignState, moduleId: string): HandoffArtifact[] {
+  return state.handoffArtifacts
+    .filter((artifact) => artifact.moduleId === moduleId)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+export function selectLatestHandoffArtifactForModule(state: DesignState, moduleId: string): HandoffArtifact | null {
+  return selectHandoffArtifactsForModule(state, moduleId)[0] ?? null;
+}
+
+export function selectModuleCanBeHandedOff(state: DesignState, moduleId: string): boolean {
+  const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === moduleId);
+  const modulePackage = state.packageContentByModuleId[moduleId];
+
+  if (!selectedModule || !modulePackage) {
+    return false;
+  }
+
+  return (
+    selectModuleQualifiesForReviewOrHandoff(selectedModule, modulePackage)
+    && selectModuleIsValidForReviewOrHandoff(state, moduleId)
+  );
 }

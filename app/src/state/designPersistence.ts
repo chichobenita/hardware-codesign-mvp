@@ -1,10 +1,11 @@
 import { type ModulePackage } from '../../../shared/src';
+import { isHandoffArtifactRecord } from '../ai/handoffArtifacts';
 import type { Connection, DesignState, ModuleNode } from '../types';
 import { seedState } from './designReducer';
 import { createRestoredDesignState } from './normalization/normalizeDesignState';
 
 export const LOCAL_STORAGE_KEY = 'hardware-codesign-mvp.design-state.v1';
-export const PERSISTED_DESIGN_SCHEMA_VERSION = 1;
+export const PERSISTED_DESIGN_SCHEMA_VERSION = 2;
 
 /**
  * Suggestions remain intentionally non-persisted in the MVP.
@@ -17,6 +18,7 @@ export type PersistedDesignSnapshot = {
   connections: Connection[];
   packageContentByModuleId: Record<string, ModulePackage>;
   handedOffAtByModuleId: Record<string, string>;
+  handoffArtifacts: DesignState['handoffArtifacts'];
 };
 
 
@@ -81,6 +83,9 @@ function parseSnapshotRecord(parsed: unknown): SnapshotParseResult {
   }
 
   const handedOffAtByModuleId = isStringMap(parsed.handedOffAtByModuleId) ? parsed.handedOffAtByModuleId : {};
+  const handoffArtifacts = Array.isArray(parsed.handoffArtifacts)
+    ? parsed.handoffArtifacts.filter(isHandoffArtifactRecord)
+    : [];
 
   return {
     ok: true,
@@ -90,7 +95,8 @@ function parseSnapshotRecord(parsed: unknown): SnapshotParseResult {
       selectedModuleId: parsed.selectedModuleId,
       connections: parsed.connections,
       packageContentByModuleId: parsed.packageContentByModuleId,
-      handedOffAtByModuleId
+      handedOffAtByModuleId,
+      handoffArtifacts
     }
   };
 }
@@ -114,7 +120,8 @@ function normalizeRestoredState(snapshot: PersistedDesignSnapshot): DesignState 
     packageContentByModuleId: snapshot.packageContentByModuleId,
     handedOffAtByModuleId: Object.fromEntries(
       Object.entries(snapshot.handedOffAtByModuleId).filter(([moduleId]) => moduleIds.has(moduleId))
-    )
+    ),
+    handoffArtifacts: snapshot.handoffArtifacts.filter((artifact) => moduleIds.has(artifact.moduleId))
   });
 }
 
@@ -125,7 +132,8 @@ export function createPersistedDesignSnapshot(state: DesignState): PersistedDesi
     selectedModuleId: state.selectedModuleId,
     connections: state.connections,
     packageContentByModuleId: state.packageContentByModuleId,
-    handedOffAtByModuleId: state.handedOffAtByModuleId
+    handedOffAtByModuleId: state.handedOffAtByModuleId,
+    handoffArtifacts: state.handoffArtifacts
   };
 }
 

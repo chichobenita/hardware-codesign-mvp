@@ -1,7 +1,10 @@
 import { type ModulePackage } from '../../../shared/src';
+import { createHandoffArtifactFromState } from '../ai/handoffArtifacts';
+import { normalizeHandoffProviderId } from '../ai/providers/providerRegistry';
 import type { DesignState, ModuleNode } from '../types';
 import type { DesignAction } from './designActions';
 import { normalizeDesignState } from './normalization/normalizeDesignState';
+import { selectModuleCanBeHandedOff } from './designSelectors';
 import { normalizeHierarchyForPackages } from './hierarchy/hierarchyHelpers';
 import {
   baseSeedState,
@@ -203,6 +206,8 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       return normalizeInteractiveState({ ...state, selectedModuleId: action.payload.moduleId });
     case 'set_workspace_mode':
       return { ...state, ui: { ...state.ui, workspaceMode: action.payload.mode } };
+    case 'set_selected_provider':
+      return { ...state, ui: { ...state.ui, selectedProviderId: normalizeHandoffProviderId(action.payload.providerId) } };
     case 'enter_hierarchy_view':
       return normalizeInteractiveState({
         ...state,
@@ -346,7 +351,14 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
         nowIso(action.payload.nowIso)
       );
     case 'mark_selected_module_handed_off': {
+      if (!selectModuleCanBeHandedOff({ ...state, ui: { ...state.ui, workspaceMode: 'handoff' } }, state.selectedModuleId)) {
+        return state;
+      }
       const timestamp = nowIso(action.payload.nowIso);
+      const artifact = createHandoffArtifactFromState(state, state.selectedModuleId, state.ui.selectedProviderId, timestamp);
+      if (!artifact) {
+        return state;
+      }
       const withPackageUpdate = applyModulePackageUpdate(
         state,
         state.selectedModuleId,
@@ -358,7 +370,8 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
         handedOffAtByModuleId: {
           ...withPackageUpdate.handedOffAtByModuleId,
           [state.selectedModuleId]: timestamp
-        }
+        },
+        handoffArtifacts: [artifact, ...withPackageUpdate.handoffArtifacts]
       };
     }
     case 'load_persisted_design_state':

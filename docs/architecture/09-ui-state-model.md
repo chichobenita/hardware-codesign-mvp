@@ -171,8 +171,12 @@ In this mode, the interface should:
 
 * highlight the remaining leaf-ready fields
 * show the future generation payload preview
+* show the prompt snapshot derived from the same normalized source
+* create and display a concrete handoff artifact record when handoff occurs
+* clearly indicate when a previously created artifact is stale after later module edits
 * allow the engineer to review the final compact handoff content
 * make the handoff decision explicit
+* keep selected provider state normalized to known local providers so restore and reducer actions stay deterministic
 
 ### 1.10 MVP Design Principle
 

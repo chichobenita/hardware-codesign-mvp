@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MOCK_PROVIDER_ID } from '../ai/providers/mockProvider';
 import { designReducer, seedState } from '../state/designReducer';
 import type { DesignState } from '../types';
 
@@ -122,6 +123,15 @@ describe('designReducer', () => {
     expect(state.ui.workspaceMode).toBe('handoff');
   });
 
+  it('normalizes invalid provider selections back to the default provider', () => {
+    const state = designReducer(seedState, {
+      type: 'set_selected_provider',
+      payload: { providerId: 'unknown-provider' }
+    });
+
+    expect(state.ui.selectedProviderId).toBe(MOCK_PROVIDER_ID);
+  });
+
   it('updates hierarchy navigation state through reducer actions', () => {
     const entered = designReducer(seedState, {
       type: 'enter_hierarchy_view',
@@ -195,6 +205,17 @@ describe('designReducer', () => {
     });
 
     expect(state.ui.connectionDraft).toEqual(draft);
+  });
+
+  it('ignores handoff action when the selected module is not eligible for handoff', () => {
+    const state = designReducer(seedState, {
+      type: 'mark_selected_module_handed_off',
+      payload: { nowIso: '2026-01-01T00:00:00.000Z' }
+    });
+
+    expect(state).toEqual(seedState);
+    expect(state.handoffArtifacts).toHaveLength(0);
+    expect(state.packageContentByModuleId[state.selectedModuleId].packageStatus).toBe(seedState.packageContentByModuleId[state.selectedModuleId].packageStatus);
   });
 
   it('refreshes rename draft from the current authoritative module identity when selection changes', () => {
@@ -396,12 +417,29 @@ describe('designReducer', () => {
   });
 
   it('marks the selected module as handed off and records the timestamp', () => {
-    const state = designReducer(seedState, {
+    const eligibleState = {
+      ...cloneSeedState(),
+      packageContentByModuleId: {
+        ...cloneSeedState().packageContentByModuleId,
+        example_uart_rx: {
+          ...cloneSeedState().packageContentByModuleId.example_uart_rx,
+          packageStatus: 'leaf_ready' as const
+        }
+      }
+    };
+
+    const state = designReducer(eligibleState, {
       type: 'mark_selected_module_handed_off',
       payload: { nowIso: '2026-01-01T00:00:00.000Z' }
     });
 
     expect(state.packageContentByModuleId.example_uart_rx.packageStatus).toBe('handed_off');
     expect(state.handedOffAtByModuleId.example_uart_rx).toBe('2026-01-01T00:00:00.000Z');
+    expect(state.handoffArtifacts[0]).toMatchObject({
+      moduleId: 'example_uart_rx',
+      moduleName: 'uart_rx',
+      targetProviderId: state.ui.selectedProviderId,
+      handoffStatus: 'handed_off'
+    });
   });
 });

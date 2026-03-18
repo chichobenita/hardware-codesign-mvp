@@ -1,3 +1,5 @@
+import { buildArtifactExportFilename, buildPromptExportFilename, copyTextToClipboard, serializeHandoffArtifact, serializePromptExport, triggerTextDownload } from './ai/handoffExport';
+import { listHandoffProviders } from './ai/providers/providerRegistry';
 import type { ModulePackage } from '../../shared/src';
 import { AISuggestionsPanel } from './components/AISuggestionsPanel';
 import { DiagramWorkspace } from './components/DiagramWorkspace';
@@ -9,6 +11,8 @@ import {
   selectCurrentHierarchyModule,
   selectDesignHasValidationIssues,
   selectEligibleLeafReadyModules,
+  selectHandoffArtifactsForModule,
+  selectLatestHandoffArtifactForModule,
   selectGenerationPayloadSource,
   selectGenerationPromptSource,
   selectHierarchyBreadcrumbs,
@@ -16,6 +20,7 @@ import {
   selectSectionStatuses,
   selectSelectedModule,
   selectSelectedModulePackage,
+  selectModuleCanBeHandedOff,
   selectTransitionReadiness,
   selectValidationIssues,
   selectValidationIssuesForModule,
@@ -46,6 +51,9 @@ export function AppWorkspace(): JSX.Element {
   const moduleConnections = state.connections.filter((connection) => connection.fromModuleId === state.selectedModuleId || connection.toModuleId === state.selectedModuleId);
   const generatedPayload = selectGenerationPayloadSource(currentPackageContent);
   const generatedPrompt = selectGenerationPromptSource(state, state.selectedModuleId);
+  const handoffArtifacts = selectHandoffArtifactsForModule(state, state.selectedModuleId);
+  const latestHandoffArtifact = selectLatestHandoffArtifactForModule(state, state.selectedModuleId);
+  const handoffProviders = listHandoffProviders();
   const transitionReadiness = selectTransitionReadiness(currentPackageContent);
   const approvedLeafReadyModules = selectEligibleLeafReadyModules(state);
   const canShowPayloadPreview = selectCanShowPayloadPreview(state.ui.workspaceMode, selectedModule, currentPackageContent);
@@ -122,6 +130,37 @@ export function AppWorkspace(): JSX.Element {
     dispatch({ type: 'mark_selected_module_handed_off', payload: {} });
   };
 
+  const copyGeneratedPrompt = async () => {
+    if (!generatedPrompt) {
+      return;
+    }
+
+    await copyTextToClipboard(generatedPrompt.promptText);
+  };
+
+  const exportGeneratedPrompt = () => {
+    if (!generatedPrompt || !selectedModule) {
+      return;
+    }
+
+    triggerTextDownload(
+      buildPromptExportFilename(selectedModule.name),
+      serializePromptExport(generatedPrompt.promptText)
+    );
+  };
+
+  const exportLatestHandoffArtifact = () => {
+    if (!latestHandoffArtifact) {
+      return;
+    }
+
+    triggerTextDownload(
+      buildArtifactExportFilename(latestHandoffArtifact.moduleName),
+      serializeHandoffArtifact(latestHandoffArtifact),
+      'application/json;charset=utf-8'
+    );
+  };
+
   const exportCurrentProject = () => {
     const exported = exportProjectSnapshot(state);
     triggerProjectDownload(exported.filename, exported.json);
@@ -171,9 +210,11 @@ export function AppWorkspace(): JSX.Element {
     dispatch({ type: 'enter_hierarchy_view', payload: { moduleId: selectedModule.id } });
   };
 
-  const selectedModuleHandedOffAt = state.handedOffAtByModuleId[state.selectedModuleId];
-  const isSelectedModuleHandoffReady = approvedLeafReadyModules.some((moduleNode) => moduleNode.id === state.selectedModuleId)
-    && isSelectedModuleValidForReviewOrHandoff;
+  const hasCurrentSelectedArtifact = latestHandoffArtifact?.handoffStatus === 'handed_off';
+  const isSelectedModuleHandoffReady = selectModuleCanBeHandedOff(
+    { ...state, ui: { ...state.ui, workspaceMode: 'handoff' } },
+    state.selectedModuleId
+  );
 
   return (
     <div className="app-shell">
@@ -213,6 +254,9 @@ export function AppWorkspace(): JSX.Element {
           selectedModule={selectedModule}
           state={state}
           setWorkspaceMode={(mode) => dispatch({ type: 'set_workspace_mode', payload: { mode } })}
+          handoffProviders={handoffProviders}
+          selectedProviderId={state.ui.selectedProviderId}
+          setSelectedProvider={(providerId) => dispatch({ type: 'set_selected_provider', payload: { providerId } })}
           currentPackageContent={currentPackageContent}
           transitionReadiness={transitionReadiness}
           moveToNextPackageState={moveToNextPackageState}
@@ -222,13 +266,18 @@ export function AppWorkspace(): JSX.Element {
           canShowPayloadPreview={canShowPayloadPreview}
           generatedPayload={generatedPayload}
           generatedPrompt={generatedPrompt}
+          handoffArtifacts={handoffArtifacts}
+          latestHandoffArtifact={latestHandoffArtifact}
+          copyGeneratedPrompt={copyGeneratedPrompt}
+          exportGeneratedPrompt={exportGeneratedPrompt}
+          exportLatestHandoffArtifact={exportLatestHandoffArtifact}
           approvedLeafReadyModules={approvedLeafReadyModules}
           selectModule={(moduleId) => dispatch({ type: 'select_module', payload: { moduleId } })}
           markSelectedModuleAsHandedOff={markSelectedModuleAsHandedOff}
           exportCurrentProject={exportCurrentProject}
           importProjectFromFile={importProjectFromFile}
           isSelectedModuleHandoffReady={isSelectedModuleHandoffReady}
-          selectedModuleHandedOffAt={selectedModuleHandedOffAt}
+          hasCurrentSelectedArtifact={hasCurrentSelectedArtifact}
           moduleValidationIssues={moduleValidationIssues}
           designHasValidationIssues={designHasValidationIssues || validationIssues.length > 0}
           isSelectedModuleValidForReviewOrHandoff={isSelectedModuleValidForReviewOrHandoff}
