@@ -2,7 +2,6 @@ import type { HandoffProvider } from './providerTypes';
 
 export const MOCK_PROVIDER_ID = 'mock-local-hdl';
 export const MOCK_STRUCTURED_PROVIDER_ID = 'mock-structured-hdl';
-export const MOCK_STRUCTURED_PROVIDER_ID = 'mock-structured-hdl';
 
 export const mockLocalHdlProvider: HandoffProvider = {
   id: MOCK_PROVIDER_ID,
