@@ -1,216 +1,45 @@
 import {
-  dependencyLink,
-  getAuthoritativeModuleName,
-  mergeDependencyLinks,
   syncDependencyDisplayEntries,
   type ModulePackage
 } from '../../../shared/src';
-import type { Connection, DesignState, ModuleNode, SuggestionCard } from '../types';
+import type { DesignState } from '../types';
 import type { DesignAction } from './designActions';
-
-function nowIso(value?: string): string {
-  return value ?? new Date().toISOString();
-}
-
-function createMockSuggestions(moduleNode: ModuleNode, modulePackage: ModulePackage): SuggestionCard[] {
-  const moduleName = modulePackage.identity?.name ?? moduleNode.name;
-  const hasChildren = (modulePackage.hierarchy?.childModuleIds?.length ?? 0) > 0;
-
-  return [
-    {
-      id: `${moduleNode.id}-purpose`,
-      type: 'purpose_proposal',
-      title: 'Purpose proposal',
-      description: 'Suggested purpose statement. Accept will update Module Package → Purpose.',
-      status: 'pending',
-      draft: {
-        summaryText: `Coordinate ${moduleName} data flow and expose a stable contract to peer modules.`
-      }
-    },
-    {
-      id: `${moduleNode.id}-behavior`,
-      type: 'behavior_summary',
-      title: 'Behavior summary',
-      description: 'Suggested behavior summary. Accept will update Module Package → Behavior summary.',
-      status: 'pending',
-      draft: {
-        summaryText: `On each valid cycle, ${moduleName} consumes inputs, applies internal control rules, and updates outputs deterministically.`
-      }
-    },
-    {
-      id: `${moduleNode.id}-ports`,
-      type: 'ports_suggestion',
-      title: 'Ports suggestion',
-      description: 'Suggested interface ports. Accept will replace Module Package → Interfaces ports.',
-      status: 'pending',
-      draft: {
-        ports: [
-          { id: `${moduleNode.id}_clk`, name: 'clk', direction: 'input', width: '1', description: 'System clock' },
-          { id: `${moduleNode.id}_rst_n`, name: 'rst_n', direction: 'input', width: '1', description: 'Active-low reset' },
-          { id: `${moduleNode.id}_valid_i`, name: 'valid_i', direction: 'input', width: '1', description: 'Input valid handshake' },
-          { id: `${moduleNode.id}_ready_o`, name: 'ready_o', direction: 'output', width: '1', description: 'Output ready handshake' }
-        ]
-      }
-    },
-    {
-      id: `${moduleNode.id}-decomposition`,
-      type: 'decomposition_suggestion',
-      title: 'Decomposition suggestion',
-      description: 'Suggested decomposition status. Accept will update Module Package → Decomposition status.',
-      status: 'pending',
-      draft: {
-        decompositionStatus: hasChildren ? 'composite' : 'candidate_leaf',
-        decompositionRationale: hasChildren
-          ? `${moduleName} already coordinates sub-modules and should remain composite.`
-          : `${moduleName} looks self-contained enough to evaluate as a leaf candidate.`
-      }
-    }
-  ];
-}
-
-function syncModuleIdentityProjection(state: DesignState): DesignState {
-  return {
-    ...state,
-    moduleList: state.moduleList.map((moduleNode) => ({
-      ...moduleNode,
-      name: getAuthoritativeModuleName(moduleNode.id, state.packageContentByModuleId[moduleNode.id], moduleNode.name)
-    }))
-  };
-}
-
-function syncRenameDraft(state: DesignState): DesignState {
-  const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === state.selectedModuleId);
-  return {
-    ...state,
-    ui: {
-      ...state.ui,
-      renameDraft: selectedModule?.name ?? ''
-    }
-  };
-}
-
-function syncConnectionDraftOptions(state: DesignState): DesignState {
-  const moduleIds = new Set(state.moduleList.map((moduleNode) => moduleNode.id));
-  const fallbackFromId = state.moduleList[0]?.id ?? '';
-  const fallbackToId = state.moduleList[1]?.id ?? fallbackFromId;
-  const currentDraft = state.ui.connectionDraft;
-
-  return {
-    ...state,
-    ui: {
-      ...state.ui,
-      connectionDraft: {
-        ...currentDraft,
-        fromModuleId: moduleIds.has(currentDraft.fromModuleId) ? currentDraft.fromModuleId : fallbackFromId,
-        toModuleId: moduleIds.has(currentDraft.toModuleId) ? currentDraft.toModuleId : fallbackToId
-      }
-    }
-  };
-}
-
-function ensureSelectedModuleSuggestions(state: DesignState): DesignState {
-  const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === state.selectedModuleId);
-  if (!selectedModule || state.suggestionsByModuleId[selectedModule.id]) {
-    return state;
-  }
-
-  const modulePackage = state.packageContentByModuleId[selectedModule.id];
-  if (!modulePackage) {
-    return state;
-  }
-
-  return {
-    ...state,
-    suggestionsByModuleId: {
-      ...state.suggestionsByModuleId,
-      [selectedModule.id]: createMockSuggestions(selectedModule, modulePackage)
-    }
-  };
-}
+import {
+  syncAllDependencyDisplayEntries,
+  withConnectionDependencies
+} from './reducerHelpers/dependencySync';
+import { syncModuleIdentityProjection } from './reducerHelpers/identitySync';
+import {
+  baseSeedState,
+  createModulePackage,
+  defaultConnectionDraft,
+  nowIso
+} from './reducerHelpers/seedState';
+import {
+  applyAcceptedSuggestion,
+  ensureSelectedModuleSuggestions
+} from './reducerHelpers/suggestionSync';
+import {
+  syncConnectionDraftOptions,
+  syncRenameDraft
+} from './reducerHelpers/uiSync';
 
 function syncDerivedUiState(state: DesignState): DesignState {
-  return ensureSelectedModuleSuggestions(syncConnectionDraftOptions(syncRenameDraft(syncModuleIdentityProjection(state))));
-}
-
-function syncAllDependencyDisplayEntries(state: DesignState): DesignState {
-  const nextPackages: DesignState['packageContentByModuleId'] = {};
-
-  for (const moduleNode of state.moduleList) {
-    const modulePackage = state.packageContentByModuleId[moduleNode.id];
-    if (!modulePackage) {
-      continue;
-    }
-    nextPackages[moduleNode.id] = syncDependencyDisplayEntries(modulePackage, state.packageContentByModuleId);
-  }
-
-  return {
-    ...state,
-    packageContentByModuleId: {
-      ...state.packageContentByModuleId,
-      ...nextPackages
-    }
-  };
-}
-
-function withConnectionDependencies(current: DesignState, connection: Connection, timestamp: string): DesignState {
-  const sourcePackage = current.packageContentByModuleId[connection.fromModuleId];
-  const targetPackage = current.packageContentByModuleId[connection.toModuleId];
-
-  if (!sourcePackage || !targetPackage) {
-    return current;
-  }
-
-  const nextSourceLinks = mergeDependencyLinks(
-    sourcePackage.dependencies?.links ?? [],
-    dependencyLink('downstream', connection.toModuleId, connection.signal)
-  );
-  const nextTargetLinks = mergeDependencyLinks(
-    targetPackage.dependencies?.links ?? [],
-    dependencyLink('upstream', connection.fromModuleId, connection.signal)
-  );
-
-  const withUpdatedPackages: DesignState = {
-    ...current,
-    packageContentByModuleId: {
-      ...current.packageContentByModuleId,
-      [connection.fromModuleId]: {
-        ...sourcePackage,
-        lastUpdatedAt: timestamp,
-        lastUpdatedBy: 'mock_user',
-        dependencies: {
-          ...sourcePackage.dependencies,
-          links: nextSourceLinks
-        }
-      },
-      [connection.toModuleId]: {
-        ...targetPackage,
-        lastUpdatedAt: timestamp,
-        lastUpdatedBy: 'mock_user',
-        dependencies: {
-          ...targetPackage.dependencies,
-          links: nextTargetLinks
-        }
-      }
-    }
-  };
-
-  return {
-    ...withUpdatedPackages,
-    packageContentByModuleId: {
-      ...withUpdatedPackages.packageContentByModuleId,
-      [connection.fromModuleId]: syncDependencyDisplayEntries(
-        withUpdatedPackages.packageContentByModuleId[connection.fromModuleId],
-        withUpdatedPackages.packageContentByModuleId
-      ),
-      [connection.toModuleId]: syncDependencyDisplayEntries(
-        withUpdatedPackages.packageContentByModuleId[connection.toModuleId],
-        withUpdatedPackages.packageContentByModuleId
+  return ensureSelectedModuleSuggestions(
+    syncConnectionDraftOptions(
+      syncRenameDraft(
+        syncModuleIdentityProjection(state)
       )
-    }
-  };
+    )
+  );
 }
 
-function applyModulePackageUpdate(state: DesignState, moduleId: string, updater: (current: ModulePackage) => ModulePackage, timestamp: string): DesignState {
+function applyModulePackageUpdate(
+  state: DesignState,
+  moduleId: string,
+  updater: (current: ModulePackage) => ModulePackage,
+  timestamp: string
+): DesignState {
   const currentPackage = state.packageContentByModuleId[moduleId];
   if (!currentPackage) {
     return state;
@@ -237,163 +66,9 @@ function applyModulePackageUpdate(state: DesignState, moduleId: string, updater:
   );
 }
 
-function applyAcceptedSuggestion(current: ModulePackage, suggestion: SuggestionCard): ModulePackage {
-  if (suggestion.type === 'purpose_proposal') {
-    return {
-      ...current,
-      purpose: {
-        ...current.purpose,
-        summary: suggestion.draft.summaryText ?? ''
-      }
-    };
-  }
+export { defaultConnectionDraft };
 
-  if (suggestion.type === 'behavior_summary') {
-    return {
-      ...current,
-      behavior: {
-        ...current.behavior,
-        behaviorSummary: suggestion.draft.summaryText ?? ''
-      }
-    };
-  }
-
-  if (suggestion.type === 'ports_suggestion') {
-    return {
-      ...current,
-      interfaces: {
-        ...current.interfaces,
-        ports: suggestion.draft.ports ?? []
-      }
-    };
-  }
-
-  return {
-    ...current,
-    decompositionStatus: {
-      decompositionStatus: suggestion.draft.decompositionStatus ?? 'under_decomposition',
-      decompositionRationale: suggestion.draft.decompositionRationale ?? '',
-      stopReason: current.decompositionStatus?.stopReason,
-      stopRecommendedBy: current.decompositionStatus?.stopRecommendedBy,
-      furtherDecompositionNotes: current.decompositionStatus?.furtherDecompositionNotes
-    }
-  };
-}
-
-export function defaultConnectionDraft(moduleList: ModuleNode[]): Connection {
-  return {
-    fromModuleId: moduleList[0]?.id ?? '',
-    toModuleId: moduleList[1]?.id ?? moduleList[0]?.id ?? '',
-    signal: ''
-  };
-}
-
-export const seedState: DesignState = syncDerivedUiState({
-  moduleList: [
-    { id: 'root', name: 'top_controller', kind: 'composite' },
-    { id: 'child_a', name: 'input_fifo', kind: 'leaf' },
-    { id: 'child_b', name: 'scheduler', kind: 'leaf' },
-    { id: 'example_uart_rx', name: 'uart_rx', kind: 'leaf' }
-  ],
-  selectedModuleId: 'example_uart_rx',
-  connections: [
-    { fromModuleId: 'child_a', toModuleId: 'root', signal: 'fifo_out' },
-    { fromModuleId: 'root', toModuleId: 'child_b', signal: 'dispatch_cmd' },
-    { fromModuleId: 'example_uart_rx', toModuleId: 'root', signal: 'uart_data_byte' }
-  ],
-  packageContentByModuleId: {
-    root: {
-      packageId: 'pkg_root',
-      moduleId: 'root',
-      packageVersion: '0.1.0',
-      packageStatus: 'draft',
-      lastUpdatedAt: new Date().toISOString(),
-      lastUpdatedBy: 'mock_user',
-      identity: { name: 'top_controller', description: 'Top-level orchestrator for subsystem coordination.' },
-      hierarchy: { parentModuleId: '', childModuleIds: ['child_a', 'child_b'], hierarchyPath: ['top_controller'] },
-      interfaces: { ports: [{ id: 'cfg_bus', name: 'cfg_bus', direction: 'input', width: '32' }, { id: 'data_out', name: 'data_out', direction: 'output', width: '32' }] },
-      purpose: { summary: 'Coordinates data flow and control decisions.' },
-      decompositionStatus: { decompositionStatus: 'under_decomposition', decompositionRationale: 'Still splitting control and data scheduling.', furtherDecompositionNotes: 'Need one more refinement pass.' }
-    },
-    child_a: {
-      packageId: 'pkg_child_a',
-      moduleId: 'child_a',
-      packageVersion: '0.1.0',
-      packageStatus: 'draft',
-      lastUpdatedAt: new Date().toISOString(),
-      lastUpdatedBy: 'mock_user',
-      identity: { name: 'input_fifo' },
-      interfaces: { ports: [{ id: 'data_in', name: 'data_in', direction: 'input' }, { id: 'fifo_out', name: 'fifo_out', direction: 'output' }] },
-      purpose: { summary: '' }
-    },
-    child_b: {
-      packageId: 'pkg_child_b',
-      moduleId: 'child_b',
-      packageVersion: '0.1.0',
-      packageStatus: 'draft',
-      lastUpdatedAt: new Date().toISOString(),
-      lastUpdatedBy: 'mock_user',
-      identity: { name: 'scheduler' },
-      interfaces: { ports: [] },
-      purpose: { summary: '' }
-    },
-    example_uart_rx: {
-      packageId: 'pkg_example_uart_rx',
-      moduleId: 'example_uart_rx',
-      packageVersion: '0.1.0',
-      packageStatus: 'partially_defined',
-      lastUpdatedAt: new Date().toISOString(),
-      lastUpdatedBy: 'mock_user',
-      identity: { name: 'uart_rx', description: 'UART receiver converting serial stream to bytes.' },
-      hierarchy: { parentModuleId: 'root', childModuleIds: [], hierarchyPath: ['top_controller', 'uart_rx'] },
-      interfaces: {
-        ports: [
-          { id: 'clk', name: 'clk', direction: 'input', width: '1', description: 'System clock' },
-          { id: 'rst_n', name: 'rst_n', direction: 'input', width: '1', description: 'Active-low reset' },
-          { id: 'rx_i', name: 'rx_i', direction: 'input', width: '1', description: 'UART serial input' },
-          { id: 'data_o', name: 'data_o', direction: 'output', width: '8', description: 'Received byte' }
-        ]
-      },
-      purpose: { summary: 'Receives UART serial data and emits decoded bytes.' },
-      constraints: { basicConstraints: ['115200 baud nominal', '8-N-1 format'] },
-      dependencies: { relevantDependencies: ['system clock', 'upstream UART TX timing assumptions'], links: [] },
-      behavior: {
-        behaviorSummary: 'Detect start bit, sample 8 data bits, emit output byte.',
-        behaviorRules: ['Sample start bit midpoint before data bits', 'Assert data_o only after a full valid frame'],
-        clockResetNotes: 'Synchronous to clk. rst_n clears RX state machine and output valid flags.'
-      },
-      decompositionStatus: { decompositionStatus: 'approved_leaf', decompositionRationale: 'Simple block with clear fixed behavior.', stopRecommendedBy: 'system' }
-    }
-  },
-  handedOffAtByModuleId: {},
-  suggestionsByModuleId: {},
-  ui: {
-    workspaceMode: 'design',
-    newModuleName: '',
-    newModuleKind: 'leaf',
-    renameDraft: '',
-    connectionDraft: { fromModuleId: '', toModuleId: '', signal: '' }
-  }
-});
-
-function createModulePackage(nextId: string, cleanName: string, timestamp: string): ModulePackage {
-  return {
-    packageId: `pkg_${nextId}`,
-    moduleId: nextId,
-    packageVersion: '0.1.0',
-    packageStatus: 'draft',
-    lastUpdatedAt: timestamp,
-    lastUpdatedBy: 'mock_user',
-    identity: { name: cleanName },
-    hierarchy: { parentModuleId: '', childModuleIds: [], hierarchyPath: [cleanName] },
-    interfaces: { ports: [] },
-    purpose: { summary: '' },
-    constraints: { basicConstraints: [] },
-    dependencies: { relevantDependencies: [], links: [] },
-    behavior: { behaviorRules: [], clockResetNotes: '' },
-    decompositionStatus: { decompositionStatus: 'under_decomposition', decompositionRationale: '' }
-  };
-}
+export const seedState: DesignState = syncDerivedUiState(baseSeedState);
 
 export function designReducer(state: DesignState, action: DesignAction): DesignState {
   switch (action.type) {
@@ -457,6 +132,7 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
           }
         }
       };
+
       return syncDerivedUiState(withConnectionDependencies(withConnection, action.payload.connection, timestamp));
     }
     case 'update_selected_module_package':
@@ -471,6 +147,7 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
         nowIso(action.payload.nowIso)
       );
       const suggestions = withPackageUpdate.suggestionsByModuleId[action.payload.moduleId] ?? [];
+
       return {
         ...withPackageUpdate,
         suggestionsByModuleId: {
