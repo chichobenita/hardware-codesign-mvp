@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ModulePackage } from '../../../shared/src';
-import { importDesignState } from '../state/designPersistence';
+import { importDesignState, PERSISTED_DESIGN_SCHEMA_VERSION } from '../state/designPersistence';
 import { seedState } from '../state/designReducer';
 import { buildHdlGenerationPrompt, buildHdlGenerationPromptFromState, createPromptBuildInput } from '../ai/promptBuilder';
 import type { PromptBuildInput } from '../ai/promptTypes';
@@ -141,12 +141,13 @@ describe('promptBuilder', () => {
     ));
 
     const snapshot = JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: PERSISTED_DESIGN_SCHEMA_VERSION,
       moduleList: state.moduleList,
       selectedModuleId: state.selectedModuleId,
       connections: state.connections,
       packageContentByModuleId: state.packageContentByModuleId,
-      handedOffAtByModuleId: state.handedOffAtByModuleId
+      handedOffAtByModuleId: state.handedOffAtByModuleId,
+      handoffArtifacts: state.handoffArtifacts
     });
 
     const imported = importDesignState(snapshot);
@@ -156,12 +157,13 @@ describe('promptBuilder', () => {
       ? buildHdlGenerationPromptFromState(imported.state, 'example_uart_rx')
       : null;
     const reimported = imported.ok && imported.state ? importDesignState(JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: PERSISTED_DESIGN_SCHEMA_VERSION,
       moduleList: imported.state.moduleList,
       selectedModuleId: imported.state.selectedModuleId,
       connections: imported.state.connections,
       packageContentByModuleId: imported.state.packageContentByModuleId,
-      handedOffAtByModuleId: imported.state.handedOffAtByModuleId
+      handedOffAtByModuleId: imported.state.handedOffAtByModuleId,
+      handoffArtifacts: imported.state.handoffArtifacts
     })) : null;
     const reimportedPrompt = reimported && reimported.ok && reimported.state
       ? buildHdlGenerationPromptFromState(reimported.state, 'example_uart_rx')
