@@ -2,7 +2,7 @@ import type { GenerationPayloadMinimal } from '../../../shared/src';
 
 export const HANDOFF_ARTIFACT_SCHEMA_VERSION = 'handoff-artifact/v1';
 
-export type HandoffStatus = 'created' | 'handed_off';
+export type HandoffStatus = 'prepared' | 'handed_off' | 'stale';
 
 export type HandoffArtifact = {
   artifactId: string;
@@ -12,6 +12,7 @@ export type HandoffArtifact = {
   createdAt: string;
   targetProviderId: string;
   handoffStatus: HandoffStatus;
+  consistencyMarker: string;
   generationPayloadSnapshot: GenerationPayloadMinimal;
   promptSnapshot: {
     title: string;

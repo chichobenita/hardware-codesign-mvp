@@ -209,7 +209,7 @@ export function AppWorkspace(): JSX.Element {
     dispatch({ type: 'enter_hierarchy_view', payload: { moduleId: selectedModule.id } });
   };
 
-  const selectedModuleHandedOffAt = state.handedOffAtByModuleId[state.selectedModuleId];
+  const hasCurrentSelectedArtifact = latestHandoffArtifact?.handoffStatus === 'handed_off';
   const isSelectedModuleHandoffReady = approvedLeafReadyModules.some((moduleNode) => moduleNode.id === state.selectedModuleId)
     && isSelectedModuleValidForReviewOrHandoff;
 
@@ -274,7 +274,7 @@ export function AppWorkspace(): JSX.Element {
           exportCurrentProject={exportCurrentProject}
           importProjectFromFile={importProjectFromFile}
           isSelectedModuleHandoffReady={isSelectedModuleHandoffReady}
-          selectedModuleHandedOffAt={selectedModuleHandedOffAt}
+          hasCurrentSelectedArtifact={hasCurrentSelectedArtifact}
           moduleValidationIssues={moduleValidationIssues}
           designHasValidationIssues={designHasValidationIssues || validationIssues.length > 0}
           isSelectedModuleValidForReviewOrHandoff={isSelectedModuleValidForReviewOrHandoff}

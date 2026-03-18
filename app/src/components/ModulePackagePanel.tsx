@@ -67,7 +67,7 @@ type ModulePackagePanelProps = {
   exportCurrentProject: () => void;
   importProjectFromFile: (file: File | null) => Promise<void>;
   isSelectedModuleHandoffReady: boolean;
-  selectedModuleHandedOffAt?: string;
+  hasCurrentSelectedArtifact: boolean;
   moduleValidationIssues: SemanticValidationIssue[];
   designHasValidationIssues: boolean;
   isSelectedModuleValidForReviewOrHandoff: boolean;
@@ -107,7 +107,7 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
     exportCurrentProject,
     importProjectFromFile,
     isSelectedModuleHandoffReady,
-    selectedModuleHandedOffAt,
+    hasCurrentSelectedArtifact,
     moduleValidationIssues,
     designHasValidationIssues,
     isSelectedModuleValidForReviewOrHandoff,
@@ -398,6 +398,7 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
                 <ul className="handoff-list">
                   {approvedLeafReadyModules.map((moduleNode) => {
                     const handedOffAt = state.handedOffAtByModuleId[moduleNode.id];
+                    const latestModuleArtifact = state.handoffArtifacts.find((artifact) => artifact.moduleId === moduleNode.id);
                     return (
                       <li key={moduleNode.id}>
                         <button
@@ -407,7 +408,7 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
                         >
                           <span>
                             {moduleNode.name}
-                            {handedOffAt ? <small className="handoff-indicator">handed_off</small> : null}
+                            {latestModuleArtifact ? <small className="handoff-indicator">{latestModuleArtifact.handoffStatus}</small> : null}
                           </span>
                           <small>{state.packageContentByModuleId[moduleNode.id]?.packageStatus}</small>
                         </button>
@@ -418,8 +419,12 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
                 </ul>
               )}
 
-              <button type="button" onClick={markSelectedModuleAsHandedOff} disabled={!isSelectedModuleHandoffReady || Boolean(selectedModuleHandedOffAt)}>
-                {selectedModuleHandedOffAt ? 'Already handed off' : 'Mark selected module as handed_off'}
+              <button type="button" onClick={markSelectedModuleAsHandedOff} disabled={!isSelectedModuleHandoffReady || hasCurrentSelectedArtifact}>
+                {hasCurrentSelectedArtifact
+                  ? 'Already handed off'
+                  : latestHandoffArtifact?.handoffStatus === 'stale'
+                    ? 'Create refreshed handoff artifact'
+                    : 'Mark selected module as handed_off'}
               </button>
 
               <section className="payload-preview">
@@ -427,6 +432,10 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
                 <p className="muted">Concrete handoff record built from the derived payload and prompt snapshots.</p>
                 {latestHandoffArtifact ? (
                   <>
+                    <p className="muted">
+                      Current artifact status: <strong>{latestHandoffArtifact.handoffStatus}</strong>
+                      {latestHandoffArtifact.handoffStatus === 'stale' ? ' — module handoff inputs changed after this artifact was created.' : ''}
+                    </p>
                     <div className="artifact-actions">
                       <button type="button" onClick={exportLatestHandoffArtifact}>Export handoff artifact</button>
                     </div>

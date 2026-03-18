@@ -1,8 +1,8 @@
-import type { HandoffArtifact, HandoffStatus } from '../handoffTypes';
+import type { HandoffArtifact } from '../handoffTypes';
 
 export type ProviderHandoffResult = {
   providerId: string;
-  status: HandoffStatus;
+  status: 'prepared' | 'handed_off';
   summary: string;
 };
 

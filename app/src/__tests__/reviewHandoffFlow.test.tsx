@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { AppWorkspace } from '../App';
+import { createArtifactConsistencyMarkerFromState } from '../ai/handoffArtifacts';
 import { HANDOFF_ARTIFACT_SCHEMA_VERSION } from '../ai/handoffTypes';
 import { MOCK_PROVIDER_ID, MOCK_STRUCTURED_PROVIDER_ID } from '../ai/providers/mockProvider';
 import { DesignStoreProvider } from '../state/designStore';
@@ -120,6 +121,7 @@ describe('review/handoff UI flow', () => {
         createdAt: '2026-03-18T12:00:00.000Z',
         targetProviderId: MOCK_STRUCTURED_PROVIDER_ID,
         handoffStatus: 'handed_off',
+        consistencyMarker: createArtifactConsistencyMarkerFromState(state, 'example_uart_rx') ?? 'hf_test',
         generationPayloadSnapshot: {
           module_name: 'uart_rx',
           ports: [],
@@ -154,6 +156,34 @@ describe('review/handoff UI flow', () => {
     expect(historySection).not.toBeNull();
     expect(within(historySection as HTMLElement).getByText(/mock-structured-hdl · handed_off/i)).toBeInTheDocument();
     expect(screen.getByText(/"targetProviderId": "mock-structured-hdl"/)).toBeInTheDocument();
+  });
+
+  it('shows stale lifecycle status after a relevant module edit invalidates the current artifact', async () => {
+    const handedOffState = designReducer(createEligibleHandoffState(), {
+      type: 'mark_selected_module_handed_off',
+      payload: { nowIso: '2026-03-18T12:00:00.000Z' }
+    });
+    const staleState = designReducer(handedOffState, {
+      type: 'update_selected_module_package',
+      payload: {
+        updater: (current) => ({
+          ...current,
+          constraints: {
+            ...current.constraints,
+            basicConstraints: [...(current.constraints?.basicConstraints ?? []), 'Oversampling x16']
+          }
+        }),
+        nowIso: '2026-03-18T12:10:00.000Z'
+      }
+    });
+
+    renderWorkspace(staleState);
+
+    expect(screen.getByText(/Current artifact status:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Current artifact status:/i).textContent).toContain('stale');
+    expect(screen.getByText(/module handoff inputs changed after this artifact was created/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create refreshed handoff artifact' })).toBeEnabled();
+    expect(screen.getByText(/mock-local-hdl · stale/i)).toBeInTheDocument();
   });
 
   it('supports prompt copy/export and artifact export interactions through the UI', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createPersistedDesignSnapshot, importDesignState, loadDesignState, LOCAL_STORAGE_KEY, PERSISTED_DESIGN_SCHEMA_VERSION, saveDesignState, serializeDesignSnapshot } from '../state/designPersistence';
-import { seedState } from '../state/designReducer';
+import { seedState, designReducer } from '../state/designReducer';
 import type { DesignState } from '../types';
 
 type StorageMock = {
@@ -144,6 +144,49 @@ describe('designPersistence', () => {
     ]);
     expect(restored.suggestionsByModuleId).toEqual({});
     expect(restored.handedOffAtByModuleId).toEqual({ child: '2026-03-18T00:00:00.000Z' });
+  });
+
+  it('recomputes artifact lifecycle status on restore and filters malformed artifact records', () => {
+    const eligibleState = cloneSeedState();
+    eligibleState.selectedModuleId = 'example_uart_rx';
+    eligibleState.packageContentByModuleId.example_uart_rx = {
+      ...eligibleState.packageContentByModuleId.example_uart_rx,
+      packageStatus: 'leaf_ready'
+    };
+
+    const handedOffState = designReducer(eligibleState, {
+      type: 'mark_selected_module_handed_off',
+      payload: { nowIso: '2026-03-18T12:00:00.000Z' }
+    });
+    const staleState = designReducer(handedOffState, {
+      type: 'update_selected_module_package',
+      payload: {
+        updater: (current) => ({
+          ...current,
+          purpose: {
+            ...current.purpose,
+            summary: 'Updated UART receive and framing behavior.'
+          }
+        }),
+        nowIso: '2026-03-18T12:05:00.000Z'
+      }
+    });
+
+    const snapshot = createPersistedDesignSnapshot({
+      ...staleState,
+      handoffArtifacts: [
+        staleState.handoffArtifacts[0],
+        {
+          artifactId: 'malformed'
+        } as never
+      ]
+    });
+
+    const restored = importDesignState(JSON.stringify(snapshot));
+
+    expect(restored.ok).toBe(true);
+    expect(restored.state?.handoffArtifacts).toHaveLength(1);
+    expect(restored.state?.handoffArtifacts[0]?.handoffStatus).toBe('stale');
   });
 
   it('falls back to seed state for invalid snapshots', () => {

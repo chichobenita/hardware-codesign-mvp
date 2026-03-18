@@ -1,4 +1,5 @@
 import { type ModulePackage } from '../../../shared/src';
+import { isHandoffArtifactRecord } from '../ai/handoffArtifacts';
 import type { Connection, DesignState, ModuleNode } from '../types';
 import { seedState } from './designReducer';
 import { createRestoredDesignState } from './normalization/normalizeDesignState';
@@ -82,7 +83,9 @@ function parseSnapshotRecord(parsed: unknown): SnapshotParseResult {
   }
 
   const handedOffAtByModuleId = isStringMap(parsed.handedOffAtByModuleId) ? parsed.handedOffAtByModuleId : {};
-  const handoffArtifacts = Array.isArray(parsed.handoffArtifacts) ? parsed.handoffArtifacts as DesignState['handoffArtifacts'] : [];
+  const handoffArtifacts = Array.isArray(parsed.handoffArtifacts)
+    ? parsed.handoffArtifacts.filter(isHandoffArtifactRecord)
+    : [];
 
   return {
     ok: true,

@@ -199,8 +199,28 @@ The artifact should stay lightweight and frontend-local in v1, while capturing:
 * schema/version marker
 * target provider id
 * handoff status
+* consistency marker derived from handoff semantics
 * generation payload snapshot
 * prompt snapshot
+
+### 4.2.1 Minimal lifecycle states
+
+The MVP handoff artifact lifecycle should stay intentionally small:
+
+* `prepared` — a local artifact has been assembled but has not yet been treated as the current handoff record
+* `handed_off` — the artifact matches current module handoff semantics and is the current local handoff record
+* `stale` — the module changed after artifact creation such that the artifact no longer matches the current handoff semantics
+
+### 4.2.2 Consistency marker
+
+Each artifact should include one deterministic local consistency marker derived from the same normalized handoff inputs used to build the payload and prompt.
+
+For MVP purposes, this marker may be based on the compact generation payload plus deterministic prompt snapshot. It should remain:
+
+* local-only
+* deterministic
+* inexpensive to recompute
+* sufficient to tell whether a prior artifact still matches the current module handoff view
 
 ### 4.3 MVP provider seam
 
@@ -215,3 +235,5 @@ The frontend should keep a lightweight local history of created handoff artifact
 * inspect the latest artifact
 * review prior handoff events for a module
 * export a concrete handoff record when needed
+
+When the current module handoff inputs no longer match an older artifact's consistency marker, that artifact should be shown as stale rather than silently treated as current.

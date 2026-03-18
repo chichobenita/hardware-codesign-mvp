@@ -1,5 +1,6 @@
 import { getAuthoritativeModuleName, type ModulePackage } from '../../../../shared/src';
 import { DEFAULT_PROVIDER_ID } from '../../ai/providers/providerRegistry';
+import { normalizeHandoffArtifacts } from '../../ai/handoffArtifacts';
 import type { Connection, DesignState, ModuleNode } from '../../types';
 import { createMockSuggestions } from '../reducerHelpers/suggestionSync';
 import { normalizeHierarchyForPackages, selectHierarchyModuleId, selectVisibleHierarchyModuleIds } from '../hierarchy/hierarchyHelpers';
@@ -112,7 +113,12 @@ export function normalizeDesignState(
     handedOffAtByModuleId: Object.fromEntries(
       Object.entries(state.handedOffAtByModuleId).filter(([moduleId]) => normalizedPackages[moduleId])
     ),
-    handoffArtifacts: state.handoffArtifacts.filter((artifact) => normalizedPackages[artifact.moduleId])
+    handoffArtifacts: []
+  };
+
+  nextState = {
+    ...nextState,
+    handoffArtifacts: normalizeHandoffArtifacts(nextState, state.handoffArtifacts.filter((artifact) => normalizedPackages[artifact.moduleId]))
   };
 
   if (options.ensureUi) {

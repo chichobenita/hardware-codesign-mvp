@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { createHandoffArtifactFromState } from '../ai/handoffArtifacts';
+
+import { createArtifactConsistencyMarkerFromState, createHandoffArtifactFromState } from '../ai/handoffArtifacts';
 import { buildArtifactExportFilename, buildPromptExportFilename, serializeHandoffArtifact, serializePromptExport } from '../ai/handoffExport';
 import { mockLocalHdlProvider } from '../ai/providers/mockProvider';
 import { DEFAULT_PROVIDER_ID } from '../ai/providers/providerRegistry';
 import { selectCanShowPayloadPreview } from '../state/designSelectors';
-import { seedState } from '../state/designReducer';
+
+import { designReducer, seedState } from '../state/designReducer';
+
+
 
 describe('handoff artifacts', () => {
   it('creates a handoff artifact from a valid leaf-ready module with payload and prompt snapshots', () => {
@@ -27,6 +31,8 @@ describe('handoff artifacts', () => {
         module_name: 'uart_rx'
       }
     });
+
+    expect(artifact?.consistencyMarker).toBe(createArtifactConsistencyMarkerFromState(state, 'example_uart_rx'));
     expect(artifact?.promptSnapshot.promptText).toContain('HDL Generation Prompt v1');
     expect(artifact?.promptSnapshot.promptText).toContain('- Module name: uart_rx');
     expect(artifact?.providerResponse.summary).toContain('uart_rx');
@@ -40,7 +46,8 @@ describe('handoff artifacts', () => {
       moduleName: 'uart_rx',
       createdAt: '2026-03-18T12:00:00.000Z',
       targetProviderId: mockLocalHdlProvider.id,
-      handoffStatus: 'created',
+      handoffStatus: 'prepared',
+      consistencyMarker: 'hf_test',
       generationPayloadSnapshot: {
         module_name: 'uart_rx',
         ports: [],
@@ -56,7 +63,7 @@ describe('handoff artifacts', () => {
       },
       providerResponse: {
         providerId: mockLocalHdlProvider.id,
-        status: 'created',
+        status: 'prepared',
         summary: 'prepared'
       }
     });
@@ -78,6 +85,7 @@ describe('handoff artifacts', () => {
       createdAt: '2026-03-18T12:00:00.000Z',
       targetProviderId: DEFAULT_PROVIDER_ID,
       handoffStatus: 'handed_off',
+      consistencyMarker: 'hf_test',
       generationPayloadSnapshot: {
         module_name: 'uart_rx',
         ports: [],
@@ -102,6 +110,55 @@ describe('handoff artifacts', () => {
     expect(buildPromptExportFilename('uart_rx')).toBe('uart_rx-hdl-prompt.txt');
     expect(buildArtifactExportFilename('uart_rx')).toBe('uart_rx-handoff-artifact.json');
     expect(JSON.parse(artifactJson).promptSnapshot.promptText).toBe(promptText);
+  });
+
+  it('marks older artifacts stale after relevant module edits', () => {
+    const eligibleState = structuredClone(seedState);
+    eligibleState.selectedModuleId = 'example_uart_rx';
+    eligibleState.packageContentByModuleId.example_uart_rx = {
+      ...eligibleState.packageContentByModuleId.example_uart_rx,
+      packageStatus: 'leaf_ready'
+    };
+
+    const handedOffState = designReducer(eligibleState, {
+      type: 'mark_selected_module_handed_off',
+      payload: { nowIso: '2026-03-18T12:00:00.000Z' }
+    });
+    const updatedState = designReducer(handedOffState, {
+      type: 'update_selected_module_package',
+      payload: {
+        updater: (current) => ({
+          ...current,
+          behavior: {
+            ...current.behavior,
+            behaviorRules: [...(current.behavior?.behaviorRules ?? []), 'Raise rx_done after byte capture']
+          }
+        }),
+        nowIso: '2026-03-18T12:05:00.000Z'
+      }
+    });
+
+    expect(updatedState.handoffArtifacts[0]?.handoffStatus).toBe('stale');
+  });
+
+  it('does not mark artifacts stale for irrelevant UI-only state changes', () => {
+    const eligibleState = structuredClone(seedState);
+    eligibleState.selectedModuleId = 'example_uart_rx';
+    eligibleState.packageContentByModuleId.example_uart_rx = {
+      ...eligibleState.packageContentByModuleId.example_uart_rx,
+      packageStatus: 'leaf_ready'
+    };
+
+    const handedOffState = designReducer(eligibleState, {
+      type: 'mark_selected_module_handed_off',
+      payload: { nowIso: '2026-03-18T12:00:00.000Z' }
+    });
+    const uiOnlyChangedState = designReducer(handedOffState, {
+      type: 'set_workspace_mode',
+      payload: { mode: 'review' }
+    });
+
+    expect(uiOnlyChangedState.handoffArtifacts[0]?.handoffStatus).toBe('handed_off');
   });
 
   it('preserves existing review/handoff gating for payload preview', () => {

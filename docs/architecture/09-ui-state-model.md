@@ -173,6 +173,7 @@ In this mode, the interface should:
 * show the future generation payload preview
 * show the prompt snapshot derived from the same normalized source
 * create and display a concrete handoff artifact record when handoff occurs
+* clearly indicate when a previously created artifact is stale after later module edits
 * allow the engineer to review the final compact handoff content
 * make the handoff decision explicit
 
