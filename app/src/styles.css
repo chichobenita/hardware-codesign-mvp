@@ -364,3 +364,47 @@ button:disabled {
 .validation-warning {
   color: #92400e;
 }
+
+
+.project-transfer-card {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #f9fafb;
+}
+
+.project-transfer-card h3 {
+  margin-top: 0;
+}
+
+.project-transfer-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.button-like {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px;
+  font: inherit;
+  background: #111827;
+  color: #fff;
+  cursor: pointer;
+}
+
+.file-upload-button input {
+  display: none;
+}
+
+.import-error {
+  margin: 8px 0 0;
+  color: #991b1b;
+  font-size: 12px;
+}

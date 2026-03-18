@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadDesignState, LOCAL_STORAGE_KEY, PERSISTED_DESIGN_SCHEMA_VERSION, saveDesignState } from '../state/designPersistence';
+import { createPersistedDesignSnapshot, importDesignState, loadDesignState, LOCAL_STORAGE_KEY, PERSISTED_DESIGN_SCHEMA_VERSION, saveDesignState, serializeDesignSnapshot } from '../state/designPersistence';
 import { seedState } from '../state/designReducer';
 import type { DesignState } from '../types';
 
@@ -29,6 +29,73 @@ function cloneSeedState(): DesignState {
 }
 
 describe('designPersistence', () => {
+
+
+  it('exports the expected versioned snapshot shape', () => {
+    const state = cloneSeedState();
+    state.suggestionsByModuleId.root = [
+      {
+        id: 'suggestion-1',
+        type: 'purpose_proposal',
+        title: 'Ignored suggestion',
+        description: 'Should not persist',
+        status: 'pending',
+        draft: { summaryText: 'ignore me' }
+      }
+    ];
+
+    const snapshot = createPersistedDesignSnapshot(state);
+    const serialized = JSON.parse(serializeDesignSnapshot(state));
+
+    expect(snapshot.schemaVersion).toBe(PERSISTED_DESIGN_SCHEMA_VERSION);
+    expect(snapshot).not.toHaveProperty('suggestionsByModuleId');
+    expect(serialized).toEqual(snapshot);
+  });
+
+  it('imports a valid snapshot through the same restore semantics as persistence restore', () => {
+    const snapshot = {
+      schemaVersion: PERSISTED_DESIGN_SCHEMA_VERSION,
+      moduleList: [{ id: 'child', name: 'stale_list_name', kind: 'leaf' }],
+      selectedModuleId: 'child',
+      connections: [],
+      packageContentByModuleId: {
+        child: {
+          packageId: 'pkg_child',
+          moduleId: 'child',
+          packageVersion: '0.1.0',
+          packageStatus: 'draft',
+          lastUpdatedAt: '2026-03-18T00:00:00.000Z',
+          lastUpdatedBy: 'tester',
+          identity: { name: 'normalized_name' }
+        }
+      },
+      handedOffAtByModuleId: {}
+    };
+
+    const imported = importDesignState(JSON.stringify(snapshot));
+    const restored = loadDesignState(createStorageMock(JSON.stringify(snapshot)));
+
+    expect(imported.ok).toBe(true);
+    expect(imported.state).toEqual(restored);
+    expect(imported.state?.moduleList[0]?.name).toBe('normalized_name');
+    expect(imported.state?.suggestionsByModuleId).toEqual({});
+  });
+
+  it('fails safely for unsupported snapshot versions', () => {
+    const imported = importDesignState(
+      JSON.stringify({
+        schemaVersion: PERSISTED_DESIGN_SCHEMA_VERSION + 1,
+        moduleList: [],
+        selectedModuleId: 'root',
+        connections: [],
+        packageContentByModuleId: {},
+        handedOffAtByModuleId: {}
+      })
+    );
+
+    expect(imported).toEqual({ ok: false, reason: 'unsupported_schema_version' });
+  });
+
   it('loads a valid persisted snapshot', () => {
     const snapshot = {
       schemaVersion: PERSISTED_DESIGN_SCHEMA_VERSION,

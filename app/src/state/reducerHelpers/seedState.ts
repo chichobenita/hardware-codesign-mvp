@@ -116,6 +116,7 @@ export const baseSeedState: DesignState = {
     newModuleName: '',
     newModuleKind: 'leaf',
     renameDraft: '',
-    connectionDraft: { fromModuleId: '', toModuleId: '', signal: '' }
+    connectionDraft: { fromModuleId: '', toModuleId: '', signal: '' },
+    projectImportError: null
   }
 };

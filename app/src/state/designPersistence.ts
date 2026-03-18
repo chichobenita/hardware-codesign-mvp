@@ -19,11 +19,13 @@ export type PersistedDesignSnapshot = {
   handedOffAtByModuleId: Record<string, string>;
 };
 
-type LegacyPersistedDesignSnapshot = Omit<PersistedDesignSnapshot, 'schemaVersion'>;
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
-type ParsedSnapshot = PersistedDesignSnapshot | LegacyPersistedDesignSnapshot;
+
+export type SnapshotParseResult =
+  | { ok: true; snapshot: PersistedDesignSnapshot }
+  | { ok: false; reason: 'invalid_json' | 'invalid_shape' | 'unsupported_schema_version' | 'invalid_restore_state' };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -55,47 +57,45 @@ function isPackageMap(value: unknown): value is Record<string, ModulePackage> {
   return isRecord(value) && Object.values(value).every((item) => isRecord(item));
 }
 
-function parseSnapshot(raw: string): ParsedSnapshot | null {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!isRecord(parsed)) {
-      return null;
-    }
+function parseSnapshotRecord(parsed: unknown): SnapshotParseResult {
+  if (!isRecord(parsed)) {
+    return { ok: false, reason: 'invalid_shape' };
+  }
 
-    const schemaVersion = parsed.schemaVersion;
-    if (schemaVersion !== undefined && schemaVersion !== PERSISTED_DESIGN_SCHEMA_VERSION) {
-      return null;
-    }
+  const schemaVersion = parsed.schemaVersion;
+  if (schemaVersion !== undefined && schemaVersion !== PERSISTED_DESIGN_SCHEMA_VERSION) {
+    return { ok: false, reason: 'unsupported_schema_version' };
+  }
 
-    if (!Array.isArray(parsed.moduleList) || !parsed.moduleList.every(isModuleNode)) {
-      return null;
-    }
-    if (typeof parsed.selectedModuleId !== 'string') {
-      return null;
-    }
-    if (!Array.isArray(parsed.connections) || !parsed.connections.every(isConnection)) {
-      return null;
-    }
-    if (!isPackageMap(parsed.packageContentByModuleId)) {
-      return null;
-    }
+  if (!Array.isArray(parsed.moduleList) || !parsed.moduleList.every(isModuleNode)) {
+    return { ok: false, reason: 'invalid_shape' };
+  }
+  if (typeof parsed.selectedModuleId !== 'string') {
+    return { ok: false, reason: 'invalid_shape' };
+  }
+  if (!Array.isArray(parsed.connections) || !parsed.connections.every(isConnection)) {
+    return { ok: false, reason: 'invalid_shape' };
+  }
+  if (!isPackageMap(parsed.packageContentByModuleId)) {
+    return { ok: false, reason: 'invalid_shape' };
+  }
 
-    const handedOffAtByModuleId = isStringMap(parsed.handedOffAtByModuleId) ? parsed.handedOffAtByModuleId : {};
+  const handedOffAtByModuleId = isStringMap(parsed.handedOffAtByModuleId) ? parsed.handedOffAtByModuleId : {};
 
-    return {
+  return {
+    ok: true,
+    snapshot: {
       schemaVersion: typeof schemaVersion === 'number' ? schemaVersion : PERSISTED_DESIGN_SCHEMA_VERSION,
       moduleList: parsed.moduleList,
       selectedModuleId: parsed.selectedModuleId,
       connections: parsed.connections,
       packageContentByModuleId: parsed.packageContentByModuleId,
       handedOffAtByModuleId
-    };
-  } catch {
-    return null;
-  }
+    }
+  };
 }
 
-function normalizeRestoredState(snapshot: ParsedSnapshot): DesignState | null {
+function normalizeRestoredState(snapshot: PersistedDesignSnapshot): DesignState | null {
   if (snapshot.moduleList.length === 0) {
     return null;
   }
@@ -118,22 +118,8 @@ function normalizeRestoredState(snapshot: ParsedSnapshot): DesignState | null {
   });
 }
 
-export function loadDesignState(storage: StorageLike = window.localStorage): DesignState {
-  const raw = storage.getItem(LOCAL_STORAGE_KEY);
-  if (!raw) {
-    return seedState;
-  }
-
-  const parsedSnapshot = parseSnapshot(raw);
-  if (!parsedSnapshot) {
-    return seedState;
-  }
-
-  return normalizeRestoredState(parsedSnapshot) ?? seedState;
-}
-
-export function saveDesignState(state: DesignState, storage: StorageLike = window.localStorage): void {
-  const snapshot: PersistedDesignSnapshot = {
+export function createPersistedDesignSnapshot(state: DesignState): PersistedDesignSnapshot {
+  return {
     schemaVersion: PERSISTED_DESIGN_SCHEMA_VERSION,
     moduleList: state.moduleList,
     selectedModuleId: state.selectedModuleId,
@@ -141,6 +127,53 @@ export function saveDesignState(state: DesignState, storage: StorageLike = windo
     packageContentByModuleId: state.packageContentByModuleId,
     handedOffAtByModuleId: state.handedOffAtByModuleId
   };
+}
 
-  storage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(snapshot));
+export function serializeDesignSnapshot(state: DesignState): string {
+  return JSON.stringify(createPersistedDesignSnapshot(state), null, 2);
+}
+
+export function parsePersistedDesignSnapshot(raw: string): SnapshotParseResult {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parseSnapshotRecord(parsed);
+  } catch {
+    return { ok: false, reason: 'invalid_json' };
+  }
+}
+
+export function restoreDesignStateFromSnapshot(snapshot: PersistedDesignSnapshot): SnapshotParseResult & { state?: DesignState } {
+  const restoredState = normalizeRestoredState(snapshot);
+  if (!restoredState) {
+    return { ok: false, reason: 'invalid_restore_state' };
+  }
+
+  return { ok: true, snapshot, state: restoredState };
+}
+
+export function importDesignState(raw: string): SnapshotParseResult & { state?: DesignState } {
+  const parsedSnapshot = parsePersistedDesignSnapshot(raw);
+  if (!parsedSnapshot.ok) {
+    return parsedSnapshot;
+  }
+
+  return restoreDesignStateFromSnapshot(parsedSnapshot.snapshot);
+}
+
+export function loadDesignState(storage: StorageLike = window.localStorage): DesignState {
+  const raw = storage.getItem(LOCAL_STORAGE_KEY);
+  if (!raw) {
+    return seedState;
+  }
+
+  const imported = importDesignState(raw);
+  if (!imported.ok || !imported.state) {
+    return seedState;
+  }
+
+  return imported.state;
+}
+
+export function saveDesignState(state: DesignState, storage: StorageLike = window.localStorage): void {
+  storage.setItem(LOCAL_STORAGE_KEY, serializeDesignSnapshot(state));
 }

@@ -50,7 +50,8 @@ function normalizeUiState(state: DesignState): DesignState {
         ...currentDraft,
         fromModuleId: moduleIds.has(currentDraft.fromModuleId) ? currentDraft.fromModuleId : fallbackFromId,
         toModuleId: moduleIds.has(currentDraft.toModuleId) ? currentDraft.toModuleId : fallbackToId
-      }
+      },
+      projectImportError: state.ui.projectImportError
     }
   };
 }
@@ -126,7 +127,8 @@ export function createRestoredDesignState(
         newModuleName: '',
         newModuleKind: 'leaf',
         renameDraft: normalizedModuleList.find((moduleNode) => moduleNode.id === persistedState.selectedModuleId)?.name ?? '',
-        connectionDraft: defaultConnectionDraft(normalizedModuleList)
+        connectionDraft: defaultConnectionDraft(normalizedModuleList),
+        projectImportError: null
       }
     },
     { fallbackUpdatedBy, ensureUi: true, ensureSuggestions: false }

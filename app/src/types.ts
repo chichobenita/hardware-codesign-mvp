@@ -49,6 +49,7 @@ export type DesignUiState = {
   newModuleKind: ModuleNode['kind'];
   renameDraft: string;
   connectionDraft: Connection;
+  projectImportError: string | null;
 };
 
 export type DesignState = {

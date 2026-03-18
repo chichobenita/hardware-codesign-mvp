@@ -96,6 +96,8 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       return { ...state, ui: { ...state.ui, renameDraft: action.payload.value } };
     case 'set_connection_draft':
       return { ...state, ui: { ...state.ui, connectionDraft: action.payload.value } };
+    case 'set_project_import_error':
+      return { ...state, ui: { ...state.ui, projectImportError: action.payload.message } };
     case 'connect_modules': {
       const withConnection = {
         ...state,

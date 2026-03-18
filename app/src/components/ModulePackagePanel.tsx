@@ -52,6 +52,8 @@ type ModulePackagePanelProps = {
   approvedLeafReadyModules: ModuleNode[];
   selectModule: (moduleId: string) => void;
   markSelectedModuleAsHandedOff: () => void;
+  exportCurrentProject: () => void;
+  importProjectFromFile: (file: File | null) => Promise<void>;
   isSelectedModuleHandoffReady: boolean;
   selectedModuleHandedOffAt?: string;
   moduleValidationIssues: SemanticValidationIssue[];
@@ -75,6 +77,8 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
     approvedLeafReadyModules,
     selectModule,
     markSelectedModuleAsHandedOff,
+    exportCurrentProject,
+    importProjectFromFile,
     isSelectedModuleHandoffReady,
     selectedModuleHandedOffAt,
     moduleValidationIssues,
@@ -94,6 +98,27 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
               <option value="handoff">handoff</option>
             </select>
           </label>
+
+
+          <section className="project-transfer-card">
+            <h3>Project JSON</h3>
+            <p className="muted">Export or restore the full MVP project snapshot.</p>
+            <div className="project-transfer-actions">
+              <button type="button" onClick={exportCurrentProject}>Export project JSON</button>
+              <label className="button-like file-upload-button">
+                Import project JSON
+                <input
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={async (event) => {
+                    await importProjectFromFile(event.target.files?.[0] ?? null);
+                    event.target.value = '';
+                  }}
+                />
+              </label>
+            </div>
+            {state.ui.projectImportError ? <p className="import-error">{state.ui.projectImportError}</p> : null}
+          </section>
 
           <section className="lifecycle-card">
             <h3>Package lifecycle</h3>
