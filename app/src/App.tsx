@@ -19,7 +19,7 @@ import {
 } from './state/designSelectors';
 import type { SuggestionCard } from './types';
 
-function AppWorkspace(): JSX.Element {
+export function AppWorkspace(): JSX.Element {
   const { state, dispatch } = useDesignStore();
 
   const selectedModule = selectSelectedModule(state);
