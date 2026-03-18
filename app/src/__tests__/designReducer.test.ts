@@ -31,6 +31,55 @@ describe('designReducer', () => {
     expect(state.packageContentByModuleId.child_a.hierarchy?.hierarchyPath).toEqual(['top_controller', 'input_buffer']);
   });
 
+
+  it('updates descendant hierarchy paths when an ancestor is renamed', () => {
+    let state = designReducer(seedState, {
+      type: 'select_module',
+      payload: { moduleId: 'root' }
+    });
+    state = designReducer(state, {
+      type: 'decompose_selected_module',
+      payload: { childNames: ['control_slice'], childKind: 'composite', nowIso: '2026-01-01T00:00:00.000Z' }
+    });
+
+    const controlSlice = state.moduleList.find((moduleNode) => moduleNode.name === 'control_slice');
+    expect(controlSlice).toBeDefined();
+
+    state = designReducer(state, {
+      type: 'rename_module',
+      payload: { moduleId: 'root', name: 'system_top', nowIso: '2026-01-01T00:00:01.000Z' }
+    });
+
+    expect(state.packageContentByModuleId.child_a.hierarchy?.hierarchyPath).toEqual(['system_top', 'input_fifo']);
+    expect(state.packageContentByModuleId[controlSlice!.id].hierarchy?.hierarchyPath).toEqual(['system_top', 'control_slice']);
+  });
+
+  it('keeps decomposed parents composite even after direct package edits', () => {
+    let state = designReducer(seedState, {
+      type: 'select_module',
+      payload: { moduleId: 'root' }
+    });
+    state = designReducer(state, {
+      type: 'decompose_selected_module',
+      payload: { childNames: ['parser_stage'], childKind: 'leaf', nowIso: '2026-01-01T00:00:00.000Z' }
+    });
+
+    state = designReducer(state, {
+      type: 'update_module_package',
+      payload: {
+        moduleId: 'root',
+        updater: (current) => ({
+          ...current,
+          decompositionStatus: { decompositionStatus: 'approved_leaf', decompositionRationale: 'stale manual edit' }
+        }),
+        nowIso: '2026-01-01T00:00:01.000Z'
+      }
+    });
+
+    expect(state.packageContentByModuleId.root.decompositionStatus?.decompositionStatus).toBe('composite');
+    expect(state.packageContentByModuleId.root.hierarchy?.childModuleIds?.length ?? 0).toBeGreaterThan(0);
+  });
+
   it('keeps module list projection synchronized when package identity changes directly', () => {
     const state = designReducer(seedState, {
       type: 'update_module_package',

@@ -6,10 +6,16 @@ import {
   type SemanticValidationIssue
 } from '../../../shared/src';
 import { getTransitionReadiness, type TransitionReadiness } from '../packageLifecycle';
+import {
+  selectCurrentHierarchyModuleFromState,
+  selectCurrentHierarchyPackageFromState,
+  selectHierarchyBreadcrumbsFromState,
+  selectNormalizedHierarchyPackages,
+  selectVisibleModulesFromState
+} from './hierarchy/hierarchySelectors';
 import type {
   Connection,
   DesignState,
-  HierarchyBreadcrumbItem,
   ModuleNode,
   PackageSectionStatus,
   SectionKey,
@@ -47,60 +53,19 @@ export function selectSelectedModulePackage(state: DesignState): ModulePackage {
 }
 
 export function selectCurrentHierarchyModule(state: DesignState): ModuleNode | undefined {
-  return state.moduleList.find((moduleNode) => moduleNode.id === state.ui.currentHierarchyModuleId) ?? state.moduleList[0];
+  return selectCurrentHierarchyModuleFromState(state);
 }
 
 export function selectCurrentHierarchyPackage(state: DesignState): ModulePackage | undefined {
-  const currentHierarchyModule = selectCurrentHierarchyModule(state);
-  return currentHierarchyModule ? state.packageContentByModuleId[currentHierarchyModule.id] : undefined;
+  return selectCurrentHierarchyPackageFromState(state);
 }
 
-export function selectHierarchyBreadcrumbs(state: DesignState): HierarchyBreadcrumbItem[] {
-  const currentHierarchyModule = selectCurrentHierarchyModule(state);
-  if (!currentHierarchyModule) {
-    return [];
-  }
-
-  const hierarchyPath = state.packageContentByModuleId[currentHierarchyModule.id]?.hierarchy?.hierarchyPath ?? [currentHierarchyModule.name];
-  const breadcrumbs: HierarchyBreadcrumbItem[] = [];
-
-  hierarchyPath.forEach((label, index) => {
-    const moduleId = index === 0
-      ? currentHierarchyModule.id
-      : breadcrumbs[index - 1]?.moduleId ?? currentHierarchyModule.id;
-    breadcrumbs.push({
-      moduleId,
-      label
-    });
-  });
-
-  let cursorId = currentHierarchyModule.id;
-  for (let index = breadcrumbs.length - 1; index >= 0; index -= 1) {
-    breadcrumbs[index] = {
-      ...breadcrumbs[index],
-      moduleId: cursorId
-    };
-    const parentId = state.packageContentByModuleId[cursorId]?.hierarchy?.parentModuleId?.trim();
-    if (parentId) {
-      cursorId = parentId;
-    }
-  }
-
-  return breadcrumbs;
+export function selectHierarchyBreadcrumbs(state: DesignState) {
+  return selectHierarchyBreadcrumbsFromState(state);
 }
 
 export function selectVisibleModules(state: DesignState): ModuleNode[] {
-  const currentHierarchyModule = selectCurrentHierarchyModule(state);
-  if (!currentHierarchyModule) {
-    return state.moduleList;
-  }
-
-  const childIds = state.packageContentByModuleId[currentHierarchyModule.id]?.hierarchy?.childModuleIds ?? [];
-  const inferredChildIds = state.moduleList
-    .filter((moduleNode) => state.packageContentByModuleId[moduleNode.id]?.hierarchy?.parentModuleId === currentHierarchyModule.id)
-    .map((moduleNode) => moduleNode.id);
-  const visibleIds = new Set<string>([currentHierarchyModule.id, ...childIds, ...inferredChildIds]);
-  return state.moduleList.filter((moduleNode) => visibleIds.has(moduleNode.id));
+  return selectVisibleModulesFromState(state);
 }
 
 export function selectVisibleConnections(state: DesignState): Connection[] {
@@ -113,10 +78,15 @@ export function selectIsModuleVisibleInHierarchy(state: DesignState, moduleId: s
 }
 
 export function selectParentHierarchyModuleId(state: DesignState): string | null {
-  const currentHierarchyPackage = selectCurrentHierarchyPackage(state);
-  const parentId = currentHierarchyPackage?.hierarchy?.parentModuleId?.trim();
+  const currentHierarchyModule = selectCurrentHierarchyModule(state);
+  if (!currentHierarchyModule) {
+    return null;
+  }
+
+  const parentId = selectNormalizedHierarchyPackages(state)[currentHierarchyModule.id]?.hierarchy?.parentModuleId?.trim();
   return parentId ? parentId : null;
 }
+
 
 export function selectSectionStatuses(modulePackage: ModulePackage): Record<SectionKey, PackageSectionStatus> {
   const reviewMode = modulePackage.packageStatus === 'under_review';
