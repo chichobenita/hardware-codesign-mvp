@@ -12,6 +12,62 @@ function nowIso(value?: string): string {
   return value ?? new Date().toISOString();
 }
 
+function createMockSuggestions(moduleNode: ModuleNode, modulePackage: ModulePackage): SuggestionCard[] {
+  const moduleName = modulePackage.identity?.name ?? moduleNode.name;
+  const hasChildren = (modulePackage.hierarchy?.childModuleIds?.length ?? 0) > 0;
+
+  return [
+    {
+      id: `${moduleNode.id}-purpose`,
+      type: 'purpose_proposal',
+      title: 'Purpose proposal',
+      description: 'Suggested purpose statement. Accept will update Module Package → Purpose.',
+      status: 'pending',
+      draft: {
+        summaryText: `Coordinate ${moduleName} data flow and expose a stable contract to peer modules.`
+      }
+    },
+    {
+      id: `${moduleNode.id}-behavior`,
+      type: 'behavior_summary',
+      title: 'Behavior summary',
+      description: 'Suggested behavior summary. Accept will update Module Package → Behavior summary.',
+      status: 'pending',
+      draft: {
+        summaryText: `On each valid cycle, ${moduleName} consumes inputs, applies internal control rules, and updates outputs deterministically.`
+      }
+    },
+    {
+      id: `${moduleNode.id}-ports`,
+      type: 'ports_suggestion',
+      title: 'Ports suggestion',
+      description: 'Suggested interface ports. Accept will replace Module Package → Interfaces ports.',
+      status: 'pending',
+      draft: {
+        ports: [
+          { id: `${moduleNode.id}_clk`, name: 'clk', direction: 'input', width: '1', description: 'System clock' },
+          { id: `${moduleNode.id}_rst_n`, name: 'rst_n', direction: 'input', width: '1', description: 'Active-low reset' },
+          { id: `${moduleNode.id}_valid_i`, name: 'valid_i', direction: 'input', width: '1', description: 'Input valid handshake' },
+          { id: `${moduleNode.id}_ready_o`, name: 'ready_o', direction: 'output', width: '1', description: 'Output ready handshake' }
+        ]
+      }
+    },
+    {
+      id: `${moduleNode.id}-decomposition`,
+      type: 'decomposition_suggestion',
+      title: 'Decomposition suggestion',
+      description: 'Suggested decomposition status. Accept will update Module Package → Decomposition status.',
+      status: 'pending',
+      draft: {
+        decompositionStatus: hasChildren ? 'composite' : 'candidate_leaf',
+        decompositionRationale: hasChildren
+          ? `${moduleName} already coordinates sub-modules and should remain composite.`
+          : `${moduleName} looks self-contained enough to evaluate as a leaf candidate.`
+      }
+    }
+  ];
+}
+
 function syncModuleIdentityProjection(state: DesignState): DesignState {
   return {
     ...state,
@@ -22,6 +78,59 @@ function syncModuleIdentityProjection(state: DesignState): DesignState {
   };
 }
 
+function syncRenameDraft(state: DesignState): DesignState {
+  const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === state.selectedModuleId);
+  return {
+    ...state,
+    ui: {
+      ...state.ui,
+      renameDraft: selectedModule?.name ?? ''
+    }
+  };
+}
+
+function syncConnectionDraftOptions(state: DesignState): DesignState {
+  const moduleIds = new Set(state.moduleList.map((moduleNode) => moduleNode.id));
+  const fallbackFromId = state.moduleList[0]?.id ?? '';
+  const fallbackToId = state.moduleList[1]?.id ?? fallbackFromId;
+  const currentDraft = state.ui.connectionDraft;
+
+  return {
+    ...state,
+    ui: {
+      ...state.ui,
+      connectionDraft: {
+        ...currentDraft,
+        fromModuleId: moduleIds.has(currentDraft.fromModuleId) ? currentDraft.fromModuleId : fallbackFromId,
+        toModuleId: moduleIds.has(currentDraft.toModuleId) ? currentDraft.toModuleId : fallbackToId
+      }
+    }
+  };
+}
+
+function ensureSelectedModuleSuggestions(state: DesignState): DesignState {
+  const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === state.selectedModuleId);
+  if (!selectedModule || state.suggestionsByModuleId[selectedModule.id]) {
+    return state;
+  }
+
+  const modulePackage = state.packageContentByModuleId[selectedModule.id];
+  if (!modulePackage) {
+    return state;
+  }
+
+  return {
+    ...state,
+    suggestionsByModuleId: {
+      ...state.suggestionsByModuleId,
+      [selectedModule.id]: createMockSuggestions(selectedModule, modulePackage)
+    }
+  };
+}
+
+function syncDerivedUiState(state: DesignState): DesignState {
+  return ensureSelectedModuleSuggestions(syncConnectionDraftOptions(syncRenameDraft(syncModuleIdentityProjection(state))));
+}
 
 function syncAllDependencyDisplayEntries(state: DesignState): DesignState {
   const nextPackages: DesignState['packageContentByModuleId'] = {};
@@ -117,7 +226,7 @@ function applyModulePackageUpdate(state: DesignState, moduleId: string, updater:
     state.packageContentByModuleId
   );
 
-  return syncModuleIdentityProjection(
+  return syncDerivedUiState(
     syncAllDependencyDisplayEntries({
       ...state,
       packageContentByModuleId: {
@@ -171,7 +280,15 @@ function applyAcceptedSuggestion(current: ModulePackage, suggestion: SuggestionC
   };
 }
 
-export const seedState: DesignState = {
+export function defaultConnectionDraft(moduleList: ModuleNode[]): Connection {
+  return {
+    fromModuleId: moduleList[0]?.id ?? '',
+    toModuleId: moduleList[1]?.id ?? moduleList[0]?.id ?? '',
+    signal: ''
+  };
+}
+
+export const seedState: DesignState = syncDerivedUiState({
   moduleList: [
     { id: 'root', name: 'top_controller', kind: 'composite' },
     { id: 'child_a', name: 'input_fifo', kind: 'leaf' },
@@ -249,8 +366,15 @@ export const seedState: DesignState = {
     }
   },
   handedOffAtByModuleId: {},
-  suggestionsByModuleId: {}
-};
+  suggestionsByModuleId: {},
+  ui: {
+    workspaceMode: 'design',
+    newModuleName: '',
+    newModuleKind: 'leaf',
+    renameDraft: '',
+    connectionDraft: { fromModuleId: '', toModuleId: '', signal: '' }
+  }
+});
 
 function createModulePackage(nextId: string, cleanName: string, timestamp: string): ModulePackage {
   return {
@@ -279,11 +403,20 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       const nextId = action.payload.nextId ?? `${cleanName.replace(/\s+/g, '_')}_${Date.now().toString(36)}`;
       const newPackage = createModulePackage(nextId, cleanName, timestamp);
 
-      return syncModuleIdentityProjection({
+      return syncDerivedUiState({
         ...state,
         moduleList: [...state.moduleList, { id: nextId, name: cleanName, kind: action.payload.kind }],
         selectedModuleId: nextId,
-        packageContentByModuleId: { ...state.packageContentByModuleId, [nextId]: newPackage }
+        packageContentByModuleId: { ...state.packageContentByModuleId, [nextId]: newPackage },
+        ui: {
+          ...state.ui,
+          newModuleName: '',
+          newModuleKind: action.payload.kind,
+          connectionDraft: {
+            ...state.ui.connectionDraft,
+            toModuleId: nextId
+          }
+        }
       });
     }
     case 'rename_module': {
@@ -300,14 +433,31 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       );
     }
     case 'select_module':
-      return { ...state, selectedModuleId: action.payload.moduleId };
+      return syncDerivedUiState({ ...state, selectedModuleId: action.payload.moduleId });
+    case 'set_workspace_mode':
+      return { ...state, ui: { ...state.ui, workspaceMode: action.payload.mode } };
+    case 'set_new_module_name':
+      return { ...state, ui: { ...state.ui, newModuleName: action.payload.value } };
+    case 'set_new_module_kind':
+      return { ...state, ui: { ...state.ui, newModuleKind: action.payload.value } };
+    case 'set_rename_draft':
+      return { ...state, ui: { ...state.ui, renameDraft: action.payload.value } };
+    case 'set_connection_draft':
+      return { ...state, ui: { ...state.ui, connectionDraft: action.payload.value } };
     case 'connect_modules': {
       const timestamp = nowIso(action.payload.nowIso);
       const withConnection = {
         ...state,
-        connections: [...state.connections, action.payload.connection]
+        connections: [...state.connections, action.payload.connection],
+        ui: {
+          ...state.ui,
+          connectionDraft: {
+            ...action.payload.connection,
+            signal: ''
+          }
+        }
       };
-      return withConnectionDependencies(withConnection, action.payload.connection, timestamp);
+      return syncDerivedUiState(withConnectionDependencies(withConnection, action.payload.connection, timestamp));
     }
     case 'update_selected_module_package':
       return applyModulePackageUpdate(state, state.selectedModuleId, action.payload.updater, nowIso(action.payload.nowIso));
@@ -397,18 +547,10 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       };
     }
     case 'load_persisted_design_state':
-      return syncModuleIdentityProjection(action.payload.state);
+      return syncDerivedUiState(action.payload.state);
     case 'replace_design_state':
-      return syncModuleIdentityProjection(action.payload.state);
+      return syncDerivedUiState(action.payload.state);
     default:
       return state;
   }
-}
-
-export function defaultConnectionDraft(moduleList: ModuleNode[]): Connection {
-  return {
-    fromModuleId: moduleList[0]?.id ?? '',
-    toModuleId: moduleList[1]?.id ?? moduleList[0]?.id ?? '',
-    signal: ''
-  };
 }

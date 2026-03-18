@@ -41,14 +41,14 @@ The MVP focuses on:
 Avoid `useState`, `useEffect`, and `useMemo` in application logic and feature implementation.
 
 Project policy:
+- Avoid `useState`, `useEffect`, and `useMemo` in application logic and feature implementation.
 - Do not introduce new `useState`, `useEffect`, or `useMemo` usage in app code unless explicitly requested.
 - Prefer centralized reducer/store-driven state updates.
-- Prefer pure helper functions and selectors over memoization hooks.
-- Prefer explicit event-driven updates over effect-driven synchronization.
+- Prefer pure selectors/helpers over memoization hooks.
+- Prefer event-driven or store-driven synchronization over effect-driven synchronization.
 - Keep derived values in selectors or pure computation helpers, not in `useMemo`.
 - Keep persistence, normalization, and domain synchronization outside React effect logic whenever practical.
-
-If existing code still uses `useState`, `useEffect`, or `useMemo`, refactor it away gradually without changing visible behavior.
+- If old hook usage exists, refactor it away gradually without changing visible behavior.
 
 When a task touches files that still use these hooks:
 - first try to remove them

@@ -40,7 +40,6 @@ function replaceDirectionPorts(modulePackage: ModulePackage, direction: 'input' 
 type ModulePackagePanelProps = {
   selectedModule?: ModuleNode;
   state: DesignState;
-  workspaceMode: WorkspaceMode;
   setWorkspaceMode: (mode: WorkspaceMode) => void;
   currentPackageContent: ModulePackage;
   transitionReadiness: TransitionReadiness | null;
@@ -64,7 +63,6 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
   const {
     selectedModule,
     state,
-    workspaceMode,
     setWorkspaceMode,
     currentPackageContent,
     transitionReadiness,
@@ -90,7 +88,7 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
           <p className="muted">Selected module: {selectedModule?.name} ({state.selectedModuleId})</p>
           <label>
             Workspace mode
-            <select value={workspaceMode} onChange={(event) => setWorkspaceMode(event.target.value as WorkspaceMode)} aria-label="Workspace mode">
+            <select value={state.ui.workspaceMode} onChange={(event) => setWorkspaceMode(event.target.value as WorkspaceMode)} aria-label="Workspace mode">
               <option value="design">design</option>
               <option value="review">review</option>
               <option value="handoff">handoff</option>
@@ -263,7 +261,7 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
             </label>
           </ModulePackageSection>
 
-          {(workspaceMode === 'review' || workspaceMode === 'handoff') && (
+          {(state.ui.workspaceMode === 'review' || state.ui.workspaceMode === 'handoff') && (
             <section className="payload-preview">
               <strong>GenerationPayloadMinimal v1 preview (derived)</strong>
               {canShowPayloadPreview && isSelectedModuleValidForReviewOrHandoff ? (
@@ -277,7 +275,7 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
             </section>
           )}
 
-          {workspaceMode === 'handoff' && (
+          {state.ui.workspaceMode === 'handoff' && (
             <section className="handoff-card">
               <h3>Handoff / Export</h3>
               <p className="muted">Approved leaf-ready modules</p>
