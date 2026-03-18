@@ -175,3 +175,43 @@ Prompt builder v1 rules:
 * add only lightweight hierarchy context such as parent module, hierarchy path, and leaf/composite role when that data is already stable
 * present the prompt in a stable sectioned format for review and downstream handoff
 * avoid provider-specific transport, orchestration, or network integration in v1
+
+## 4. Handoff Artifact Boundary v1
+
+The MVP should create one explicit handoff artifact whenever an engineer performs a leaf-module handoff.
+
+### 4.1 Purpose
+
+The handoff artifact is the first stable boundary between:
+
+* the internal planning/review state
+* the compact generation payload
+* the deterministic prompt snapshot
+* a future downstream provider adapter
+
+### 4.2 Minimal artifact contents
+
+The artifact should stay lightweight and frontend-local in v1, while capturing:
+
+* module id
+* module name
+* artifact timestamp
+* schema/version marker
+* target provider id
+* handoff status
+* generation payload snapshot
+* prompt snapshot
+
+### 4.3 MVP provider seam
+
+The MVP may route the artifact through a local mock provider adapter, but it should not call a real external provider yet.
+
+Provider integration is intentionally deferred. The purpose of the seam is only to ensure that future provider-specific transport can be added without moving prompt/payload shaping into UI code.
+
+### 4.4 Local history
+
+The frontend should keep a lightweight local history of created handoff artifacts so the engineer can:
+
+* inspect the latest artifact
+* review prior handoff events for a module
+* export a concrete handoff record when needed

@@ -69,7 +69,8 @@ describe('designPersistence', () => {
           identity: { name: 'normalized_name' }
         }
       },
-      handedOffAtByModuleId: {}
+      handedOffAtByModuleId: {},
+      handoffArtifacts: []
     };
 
     const imported = importDesignState(JSON.stringify(snapshot));
@@ -90,7 +91,8 @@ describe('designPersistence', () => {
         selectedModuleId: 'root',
         connections: [],
         packageContentByModuleId: {},
-        handedOffAtByModuleId: {}
+        handedOffAtByModuleId: {},
+        handoffArtifacts: []
       })
     );
 
@@ -128,7 +130,8 @@ describe('designPersistence', () => {
           dependencies: { relevantDependencies: [], links: [] }
         }
       },
-      handedOffAtByModuleId: { child: '2026-03-18T00:00:00.000Z' }
+      handedOffAtByModuleId: { child: '2026-03-18T00:00:00.000Z' },
+      handoffArtifacts: []
     };
 
     const storage = createStorageMock(JSON.stringify(snapshot));
@@ -166,7 +169,8 @@ describe('designPersistence', () => {
           identity: { name: 'authoritative_name' }
         }
       },
-      handedOffAtByModuleId: {}
+      handedOffAtByModuleId: {},
+      handoffArtifacts: []
     };
 
     const restored = loadDesignState(createStorageMock(JSON.stringify(snapshot)));
@@ -206,7 +210,8 @@ describe('designPersistence', () => {
           dependencies: { relevantDependencies: [], links: [] }
         }
       },
-      handedOffAtByModuleId: {}
+      handedOffAtByModuleId: {},
+      handoffArtifacts: []
     };
 
     const restored = loadDesignState(createStorageMock(JSON.stringify(snapshot)));

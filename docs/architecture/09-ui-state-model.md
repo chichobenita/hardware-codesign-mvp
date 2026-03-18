@@ -171,6 +171,8 @@ In this mode, the interface should:
 
 * highlight the remaining leaf-ready fields
 * show the future generation payload preview
+* show the prompt snapshot derived from the same normalized source
+* create and display a concrete handoff artifact record when handoff occurs
 * allow the engineer to review the final compact handoff content
 * make the handoff decision explicit
 

@@ -7,6 +7,7 @@ export type DesignAction =
   | { type: 'rename_module'; payload: { moduleId: string; name: string; nowIso?: string } }
   | { type: 'select_module'; payload: { moduleId: string } }
   | { type: 'set_workspace_mode'; payload: { mode: WorkspaceMode } }
+  | { type: 'set_selected_provider'; payload: { providerId: string } }
   | { type: 'enter_hierarchy_view'; payload: { moduleId: string } }
   | { type: 'navigate_to_parent_hierarchy'; payload: {} }
   | { type: 'set_hierarchy_view'; payload: { moduleId: string } }
