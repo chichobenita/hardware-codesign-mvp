@@ -3,6 +3,7 @@ import { AISuggestionsPanel } from './components/AISuggestionsPanel';
 import { DiagramWorkspace } from './components/DiagramWorkspace';
 import { ModulePackagePanel } from './components/ModulePackagePanel';
 import { DesignStoreProvider, useDesignStore } from './state/designStore';
+import { exportProjectSnapshot, getProjectImportErrorMessage, importProjectSnapshot, triggerProjectDownload } from './state/designTransfer';
 import {
   selectCanShowPayloadPreview,
   selectEligibleLeafReadyModules,
@@ -97,6 +98,32 @@ function AppWorkspace(): JSX.Element {
     dispatch({ type: 'mark_selected_module_handed_off', payload: {} });
   };
 
+  const exportCurrentProject = () => {
+    const exported = exportProjectSnapshot(state);
+    triggerProjectDownload(exported.filename, exported.json);
+    dispatch({ type: 'set_project_import_error', payload: { message: null } });
+  };
+
+  const importProjectFromFile = async (file: File | null) => {
+    if (!file) {
+      return;
+    }
+
+    const raw = await file.text();
+    const imported = importProjectSnapshot(raw);
+    if (!imported.ok) {
+      dispatch({ type: 'set_project_import_error', payload: { message: getProjectImportErrorMessage(imported.reason) } });
+      return;
+    }
+    if (!imported.state) {
+      dispatch({ type: 'set_project_import_error', payload: { message: getProjectImportErrorMessage('invalid_restore_state') } });
+      return;
+    }
+
+    dispatch({ type: 'replace_design_state', payload: { state: imported.state } });
+    dispatch({ type: 'set_project_import_error', payload: { message: null } });
+  };
+
   const selectedModuleHandedOffAt = state.handedOffAtByModuleId[state.selectedModuleId];
   const isSelectedModuleHandoffReady = approvedLeafReadyModules.some((moduleNode) => moduleNode.id === state.selectedModuleId)
     && isSelectedModuleValidForReviewOrHandoff;
@@ -142,6 +169,8 @@ function AppWorkspace(): JSX.Element {
           approvedLeafReadyModules={approvedLeafReadyModules}
           selectModule={(moduleId) => dispatch({ type: 'select_module', payload: { moduleId } })}
           markSelectedModuleAsHandedOff={markSelectedModuleAsHandedOff}
+          exportCurrentProject={exportCurrentProject}
+          importProjectFromFile={importProjectFromFile}
           isSelectedModuleHandoffReady={isSelectedModuleHandoffReady}
           selectedModuleHandedOffAt={selectedModuleHandedOffAt}
           moduleValidationIssues={moduleValidationIssues}

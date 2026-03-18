@@ -10,6 +10,7 @@ export type DesignAction =
   | { type: 'set_new_module_kind'; payload: { value: ModuleNode['kind'] } }
   | { type: 'set_rename_draft'; payload: { value: string } }
   | { type: 'set_connection_draft'; payload: { value: Connection } }
+  | { type: 'set_project_import_error'; payload: { message: string | null } }
   | { type: 'connect_modules'; payload: { connection: Connection; nowIso?: string } }
   | { type: 'update_selected_module_package'; payload: { updater: (current: ModulePackage) => ModulePackage; nowIso?: string } }
   | { type: 'update_module_package'; payload: { moduleId: string; updater: (current: ModulePackage) => ModulePackage; nowIso?: string } }
