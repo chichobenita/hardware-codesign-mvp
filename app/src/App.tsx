@@ -3,8 +3,9 @@ import type { ModulePackage } from '../../shared/src';
 import { AISuggestionsPanel } from './components/AISuggestionsPanel';
 import { DiagramWorkspace } from './components/DiagramWorkspace';
 import { ModulePackagePanel } from './components/ModulePackagePanel';
-import type { Connection, DesignState, ModuleNode, PersistedDesignState, SuggestionCard, WorkspaceMode } from './types';
+import type { Connection, DesignState, ModuleNode, SuggestionCard, WorkspaceMode } from './types';
 import { DesignStoreProvider, useDesignStore } from './state/designStore';
+import { loadDesignState, saveDesignState } from './state/designPersistence';
 import { defaultConnectionDraft, seedState } from './state/designReducer';
 import {
   selectCanShowPayloadPreview,
@@ -74,112 +75,6 @@ function createMockSuggestions(moduleNode: ModuleNode, modulePackage: ModulePack
       }
     }
   ];
-}
-
-const LOCAL_STORAGE_KEY = 'hardware-codesign-mvp.design-state.v1';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function isModuleNode(value: unknown): value is ModuleNode {
-  return (
-    isRecord(value)
-    && typeof value.id === 'string'
-    && typeof value.name === 'string'
-    && (value.kind === 'composite' || value.kind === 'leaf')
-  );
-}
-
-function isConnection(value: unknown): value is Connection {
-  return (
-    isRecord(value)
-    && typeof value.fromModuleId === 'string'
-    && typeof value.toModuleId === 'string'
-    && typeof value.signal === 'string'
-  );
-}
-
-function isStringMap(value: unknown): value is Record<string, string> {
-  return isRecord(value) && Object.values(value).every((item) => typeof item === 'string');
-}
-
-function isPackageMap(value: unknown): value is Record<string, ModulePackage> {
-  return isRecord(value) && Object.values(value).every((item) => isRecord(item));
-}
-
-function parsePersistedState(raw: string): PersistedDesignState | null {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!isRecord(parsed)) {
-      return null;
-    }
-
-    if (!Array.isArray(parsed.moduleList) || !parsed.moduleList.every(isModuleNode)) {
-      return null;
-    }
-    if (typeof parsed.selectedModuleId !== 'string') {
-      return null;
-    }
-    if (!Array.isArray(parsed.connections) || !parsed.connections.every(isConnection)) {
-      return null;
-    }
-    if (!isPackageMap(parsed.packageContentByModuleId)) {
-      return null;
-    }
-
-    const handedOffAtByModuleId = isStringMap(parsed.handedOffAtByModuleId) ? parsed.handedOffAtByModuleId : {};
-
-    return {
-      moduleList: parsed.moduleList,
-      selectedModuleId: parsed.selectedModuleId,
-      connections: parsed.connections,
-      packageContentByModuleId: parsed.packageContentByModuleId,
-      handedOffAtByModuleId
-    };
-  } catch {
-    return null;
-  }
-}
-
-function loadDesignState(): DesignState {
-  const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
-  if (!raw) {
-    return seedState;
-  }
-
-  const persisted = parsePersistedState(raw);
-  if (!persisted) {
-    return seedState;
-  }
-
-  const moduleIds = new Set(persisted.moduleList.map((moduleNode) => moduleNode.id));
-  const hasSelectedModule = moduleIds.has(persisted.selectedModuleId);
-  if (!hasSelectedModule || persisted.moduleList.length === 0) {
-    return seedState;
-  }
-
-  const hasPackagesForModules = persisted.moduleList.every((moduleNode) => Boolean(persisted.packageContentByModuleId[moduleNode.id]));
-  if (!hasPackagesForModules) {
-    return seedState;
-  }
-
-  return {
-    ...persisted,
-    suggestionsByModuleId: {}
-  };
-}
-
-function saveDesignState(state: DesignState): void {
-  const snapshot: PersistedDesignState = {
-    moduleList: state.moduleList,
-    selectedModuleId: state.selectedModuleId,
-    connections: state.connections,
-    packageContentByModuleId: state.packageContentByModuleId,
-    handedOffAtByModuleId: state.handedOffAtByModuleId
-  };
-
-  window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(snapshot));
 }
 
 function AppWorkspace(): JSX.Element {
