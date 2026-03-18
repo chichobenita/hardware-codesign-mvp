@@ -2,6 +2,7 @@ import { type ModulePackage } from '../../../shared/src';
 import type { DesignState, ModuleNode } from '../types';
 import type { DesignAction } from './designActions';
 import { normalizeDesignState } from './normalization/normalizeDesignState';
+import { normalizeHierarchyForPackages } from './hierarchy/hierarchyHelpers';
 import {
   baseSeedState,
   createModulePackage,
@@ -26,11 +27,6 @@ function buildUniqueModuleId(state: DesignState, parentModuleId: string | undefi
   return existingIds.has(withIndex) ? buildUniqueModuleId(state, parentModuleId, cleanName, index + 1) : withIndex;
 }
 
-function updateHierarchyPath(parentPackage: ModulePackage | undefined, cleanName: string): string[] {
-  const parentPath = parentPackage?.hierarchy?.hierarchyPath?.filter((segment) => segment.trim().length > 0) ?? [];
-  return [...parentPath, cleanName];
-}
-
 function applyModulePackageUpdate(
   state: DesignState,
   moduleId: string,
@@ -51,10 +47,10 @@ function applyModulePackageUpdate(
 
   return normalizeInteractiveState({
     ...state,
-    packageContentByModuleId: {
+    packageContentByModuleId: normalizeHierarchyForPackages(state.moduleList, {
       ...state.packageContentByModuleId,
       [moduleId]: nextPackage
-    }
+    })
   });
 }
 
@@ -74,9 +70,10 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       const parentModuleId = action.payload.parentModuleId;
       const parentPackage = parentModuleId ? state.packageContentByModuleId[parentModuleId] : undefined;
       const nextId = action.payload.nextId ?? buildUniqueModuleId(state, parentModuleId, cleanName);
+      const parentPath = parentPackage?.hierarchy?.hierarchyPath;
       const newPackage = createModulePackage(nextId, cleanName, timestamp, {
         parentModuleId,
-        hierarchyPath: parentModuleId ? updateHierarchyPath(parentPackage, cleanName) : [cleanName]
+        hierarchyPath: parentModuleId ? [...(parentPath ?? []), cleanName] : [cleanName]
       });
 
       const nextPackageContentByModuleId: DesignState['packageContentByModuleId'] = {
@@ -146,7 +143,7 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
         const nextId = buildUniqueModuleId({ ...state, moduleList: [...state.moduleList, ...nextModuleList.filter((item) => !state.moduleList.some((existing) => existing.id === item.id))] }, parentId, cleanName, newChildIds.length);
         const childPackage = createModulePackage(nextId, cleanName, timestamp, {
           parentModuleId: parentId,
-          hierarchyPath: updateHierarchyPath(parentPackage, cleanName)
+          hierarchyPath: [...(parentPackage.hierarchy?.hierarchyPath ?? []), cleanName]
         });
         nextModuleList.push(createModuleNode(action.payload.childKind, nextId, cleanName));
         nextPackageContentByModuleId[nextId] = childPackage;
@@ -195,15 +192,10 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       return applyModulePackageUpdate(
         state,
         action.payload.moduleId,
-        (current) => {
-          const currentPath = current.hierarchy?.hierarchyPath ?? [];
-          const nextPath = currentPath.length > 0 ? [...currentPath.slice(0, -1), cleanName] : [cleanName];
-          return {
-            ...current,
-            identity: { ...current.identity, name: cleanName },
-            hierarchy: { ...current.hierarchy, hierarchyPath: nextPath }
-          };
-        },
+        (current) => ({
+          ...current,
+          identity: { ...current.identity, name: cleanName }
+        }),
         nowIso(action.payload.nowIso)
       );
     }

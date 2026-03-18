@@ -44,8 +44,10 @@ export function normalizeModulePackage(moduleNode: ModuleNode, existingPackage?:
     },
     hierarchy: {
       parentModuleId: existingPackage?.hierarchy?.parentModuleId ?? '',
-      childModuleIds: isStringArray(existingPackage?.hierarchy?.childModuleIds) ? existingPackage.hierarchy.childModuleIds : [],
-      hierarchyPath: isStringArray(existingPackage?.hierarchy?.hierarchyPath) ? existingPackage.hierarchy.hierarchyPath : [moduleName]
+      childModuleIds: isStringArray(existingPackage?.hierarchy?.childModuleIds) ? [...new Set(existingPackage.hierarchy.childModuleIds.filter((item) => item.trim().length > 0))] : [],
+      hierarchyPath: isStringArray(existingPackage?.hierarchy?.hierarchyPath)
+        ? existingPackage.hierarchy.hierarchyPath.filter((item) => item.trim().length > 0)
+        : [moduleName]
     },
     interfaces: {
       ports: Array.isArray(existingPackage?.interfaces?.ports) ? existingPackage.interfaces?.ports ?? [] : []

@@ -51,6 +51,74 @@ describe('shared design normalization', () => {
     ]);
   });
 
+
+  it('keeps normalization hierarchy semantics aligned with reducer decomposition semantics', () => {
+    let reducerState = designReducer(seedState, {
+      type: 'select_module',
+      payload: { moduleId: 'root' }
+    });
+    reducerState = designReducer(reducerState, {
+      type: 'decompose_selected_module',
+      payload: { childNames: ['parser_stage'], childKind: 'leaf', nowIso: '2026-01-01T00:00:00.000Z' }
+    });
+    reducerState = designReducer(reducerState, {
+      type: 'rename_module',
+      payload: { moduleId: 'root', name: 'system_top', nowIso: '2026-01-01T00:00:01.000Z' }
+    });
+
+    const normalized = normalizeDesignState({
+      ...reducerState,
+      packageContentByModuleId: {
+        ...reducerState.packageContentByModuleId,
+        root: {
+          ...reducerState.packageContentByModuleId.root,
+          hierarchy: {
+            ...reducerState.packageContentByModuleId.root.hierarchy,
+            childModuleIds: []
+          }
+        }
+      }
+    });
+
+    const parserModule = normalized.moduleList.find((moduleNode) => moduleNode.name === 'parser_stage');
+    expect(parserModule).toBeDefined();
+    expect(normalized.packageContentByModuleId.root.hierarchy?.childModuleIds).toContain(parserModule!.id);
+    expect(normalized.packageContentByModuleId[parserModule!.id].hierarchy?.hierarchyPath).toEqual(['system_top', 'parser_stage']);
+    expect(normalized.packageContentByModuleId.root.decompositionStatus?.decompositionStatus).toBe('composite');
+  });
+
+  it('keeps hierarchy view valid after import-style restore and rename semantics', () => {
+    const restored = createRestoredDesignState({
+      moduleList: [
+        { id: 'root', name: 'stale_root', kind: 'composite' },
+        { id: 'child', name: 'stale_child', kind: 'leaf' }
+      ],
+      selectedModuleId: 'child',
+      connections: [],
+      packageContentByModuleId: {
+        root: {
+          ...seedState.packageContentByModuleId.root,
+          moduleId: 'root',
+          packageId: 'pkg_root',
+          identity: { name: 'fabric_top' },
+          hierarchy: { parentModuleId: '', childModuleIds: ['child'], hierarchyPath: ['fabric_top'] }
+        },
+        child: {
+          ...seedState.packageContentByModuleId.child_a,
+          moduleId: 'child',
+          packageId: 'pkg_child',
+          identity: { name: 'decode_stage' },
+          hierarchy: { parentModuleId: 'root', childModuleIds: [], hierarchyPath: ['fabric_top', 'decode_stage'] }
+        }
+      },
+      handedOffAtByModuleId: {}
+    });
+
+    expect(restored.ui.currentHierarchyModuleId).toBe('root');
+    expect(restored.selectedModuleId).toBe('child');
+    expect(restored.packageContentByModuleId.child.hierarchy?.hierarchyPath).toEqual(['fabric_top', 'decode_stage']);
+  });
+
   it('keeps restore output semantically consistent with reducer-driven updates for equivalent inputs', () => {
     let reducerState = designReducer(seedState, {
       type: 'rename_module',

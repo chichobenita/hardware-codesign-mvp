@@ -1,6 +1,7 @@
 import { getAuthoritativeModuleName, type ModulePackage } from '../../../../shared/src';
 import type { Connection, DesignState, ModuleNode } from '../../types';
 import { createMockSuggestions } from '../reducerHelpers/suggestionSync';
+import { normalizeHierarchyForPackages, selectHierarchyModuleId, selectVisibleHierarchyModuleIds } from '../hierarchy/hierarchyHelpers';
 import { defaultConnectionDraft } from '../reducerHelpers/seedState';
 import { normalizeDependencies } from './normalizeDependencies';
 import { normalizeModulePackage } from './normalizeModulePackage';
@@ -34,22 +35,10 @@ function normalizePackageMap(
   ) as Record<string, ModulePackage>;
 }
 
-function visibleModuleIdsForHierarchy(state: DesignState, hierarchyModuleId: string): Set<string> {
-  const hierarchyPackage = state.packageContentByModuleId[hierarchyModuleId];
-  const childIds = hierarchyPackage?.hierarchy?.childModuleIds ?? [];
-  const inferredChildIds = state.moduleList
-    .filter((moduleNode) => state.packageContentByModuleId[moduleNode.id]?.hierarchy?.parentModuleId === hierarchyModuleId)
-    .map((moduleNode) => moduleNode.id);
-  return new Set([hierarchyModuleId, ...childIds, ...inferredChildIds]);
-}
-
 function normalizeUiState(state: DesignState): DesignState {
   const moduleIds = new Set(state.moduleList.map((moduleNode) => moduleNode.id));
-  const fallbackHierarchyId = state.moduleList.find((moduleNode) => moduleNode.kind === 'composite')?.id ?? state.moduleList[0]?.id ?? '';
-  const currentHierarchyModuleId = moduleIds.has(state.ui.currentHierarchyModuleId)
-    ? state.ui.currentHierarchyModuleId
-    : fallbackHierarchyId;
-  const visibleIds = visibleModuleIdsForHierarchy(state, currentHierarchyModuleId);
+  const currentHierarchyModuleId = selectHierarchyModuleId(state, state.ui.currentHierarchyModuleId);
+  const visibleIds = selectVisibleHierarchyModuleIds(state, currentHierarchyModuleId);
   const selectedModuleId = visibleIds.has(state.selectedModuleId)
     ? state.selectedModuleId
     : currentHierarchyModuleId;
@@ -105,7 +94,10 @@ export function normalizeDesignState(
 ): DesignState {
   const fallbackUpdatedBy = options.fallbackUpdatedBy ?? 'mock_user';
   const normalizedModuleList = normalizeModuleList(state.moduleList, state.packageContentByModuleId);
-  const normalizedPackages = normalizePackageMap(normalizedModuleList, state.packageContentByModuleId, fallbackUpdatedBy);
+  const normalizedPackages = normalizeHierarchyForPackages(
+    normalizedModuleList,
+    normalizePackageMap(normalizedModuleList, state.packageContentByModuleId, fallbackUpdatedBy)
+  );
   const normalizedConnections: Connection[] = state.connections.filter(
     (connection) => normalizedPackages[connection.fromModuleId] && normalizedPackages[connection.toModuleId]
   );
@@ -136,14 +128,21 @@ export function createRestoredDesignState(
   fallbackUpdatedBy = 'restored_snapshot'
 ): DesignState {
   const normalizedModuleList = normalizeModuleList(persistedState.moduleList, persistedState.packageContentByModuleId);
-  const selectedPackage = persistedState.packageContentByModuleId[persistedState.selectedModuleId];
-  const selectedHasHierarchyAnchor = Boolean(
-    selectedPackage?.hierarchy?.parentModuleId
-    || (selectedPackage?.hierarchy?.childModuleIds?.length ?? 0) > 0
-  );
-  const defaultHierarchyId = selectedHasHierarchyAnchor
-    ? normalizedModuleList.find((moduleNode) => moduleNode.kind === 'composite')?.id ?? persistedState.selectedModuleId
-    : persistedState.selectedModuleId;
+  const defaultHierarchyId = selectHierarchyModuleId({
+    ...persistedState,
+    moduleList: normalizedModuleList,
+    suggestionsByModuleId: {},
+    ui: {
+      workspaceMode: 'design',
+      currentHierarchyModuleId: persistedState.selectedModuleId,
+      newModuleName: '',
+      newModuleKind: 'leaf',
+      renameDraft: '',
+      connectionDraft: defaultConnectionDraft(normalizedModuleList),
+      decompositionDraft: { namesText: '', childKind: 'leaf' },
+      projectImportError: null
+    }
+  } as DesignState, persistedState.selectedModuleId);
 
   return normalizeDesignState(
     {
