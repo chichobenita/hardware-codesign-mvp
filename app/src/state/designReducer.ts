@@ -1,6 +1,6 @@
-import { type ModulePackage } from '../../../shared/src';
+import { type ModuleKind, type ModuleNode, type ModulePackage } from '../../../shared/src';
 import { createHandoffArtifactFromState } from '../ai/handoffArtifacts';
-import type { DesignState, ModuleNode } from '../types';
+import type { DesignState } from '../types';
 import type { DesignAction } from './designActions';
 import { normalizeDesignState } from './normalization/normalizeDesignState';
 import { normalizeHierarchyForPackages } from './hierarchy/hierarchyHelpers';
@@ -55,7 +55,7 @@ function applyModulePackageUpdate(
   });
 }
 
-function createModuleNode(kind: ModuleNode['kind'], nextId: string, cleanName: string): ModuleNode {
+function createModuleNode(kind: ModuleKind, nextId: string, cleanName: string): ModuleNode {
   return { id: nextId, name: cleanName, kind };
 }
 

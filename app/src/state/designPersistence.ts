@@ -1,6 +1,7 @@
 import { type ModulePackage } from '../../../shared/src';
 import { isHandoffArtifactRecord } from '../ai/handoffArtifacts';
-import type { Connection, DesignState, ModuleNode } from '../types';
+import type { ModuleNode } from '../../../shared/src';
+import type { Connection, DesignState } from '../types';
 import { seedState } from './designReducer';
 import { createRestoredDesignState } from './normalization/normalizeDesignState';
 
