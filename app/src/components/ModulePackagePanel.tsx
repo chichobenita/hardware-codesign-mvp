@@ -1,4 +1,5 @@
 import type { GenerationPayloadMinimal, ModulePackage, SemanticValidationIssue } from '../../../shared/src';
+import type { PromptBuildResult } from '../ai/promptTypes';
 import { getTransitionActionLabel, type TransitionReadiness } from '../packageLifecycle';
 import type { Connection, DesignState, ModuleNode, PackageSectionStatus, SectionKey, WorkspaceMode } from '../types';
 
@@ -49,6 +50,7 @@ type ModulePackagePanelProps = {
   moduleConnections: Connection[];
   canShowPayloadPreview: boolean;
   generatedPayload: GenerationPayloadMinimal;
+  generatedPrompt: PromptBuildResult | null;
   approvedLeafReadyModules: ModuleNode[];
   selectModule: (moduleId: string) => void;
   markSelectedModuleAsHandedOff: () => void;
@@ -80,6 +82,7 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
     moduleConnections,
     canShowPayloadPreview,
     generatedPayload,
+    generatedPrompt,
     approvedLeafReadyModules,
     selectModule,
     markSelectedModuleAsHandedOff,
@@ -323,17 +326,31 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
           </ModulePackageSection>
 
           {(state.ui.workspaceMode === 'review' || state.ui.workspaceMode === 'handoff') && (
-            <section className="payload-preview">
-              <strong>GenerationPayloadMinimal v1 preview (derived)</strong>
-              {canShowPayloadPreview && isSelectedModuleValidForReviewOrHandoff ? (
-                <pre>{JSON.stringify(generatedPayload, null, 2)}</pre>
-              ) : (
-                <p className="muted">
-                  Payload preview is available only for semantically valid approved leaf-ready modules.
-                  Resolve semantic errors, ensure this module is a leaf, set decomposition to approved_leaf, and transition package status to leaf_ready.
-                </p>
-              )}
-            </section>
+            <>
+              <section className="payload-preview">
+                <strong>GenerationPayloadMinimal v1 preview (derived)</strong>
+                {canShowPayloadPreview && isSelectedModuleValidForReviewOrHandoff ? (
+                  <pre>{JSON.stringify(generatedPayload, null, 2)}</pre>
+                ) : (
+                  <p className="muted">
+                    Payload preview is available only for semantically valid approved leaf-ready modules.
+                    Resolve semantic errors, ensure this module is a leaf, set decomposition to approved_leaf, and transition package status to leaf_ready.
+                  </p>
+                )}
+              </section>
+
+              <section className="payload-preview">
+                <strong>HDL generation prompt preview (derived)</strong>
+                <p className="muted">Structured handoff prompt for a downstream AI code engine.</p>
+                {canShowPayloadPreview && isSelectedModuleValidForReviewOrHandoff && generatedPrompt ? (
+                  <pre>{generatedPrompt.promptText}</pre>
+                ) : (
+                  <p className="muted">
+                    Prompt preview follows the same readiness gate as the payload preview so review and handoff stay aligned.
+                  </p>
+                )}
+              </section>
+            </>
           )}
 
           {state.ui.workspaceMode === 'handoff' && (
