@@ -1,14 +1,7 @@
-import {
-  dependencyLink,
-  getAuthoritativeModuleName,
-  mergeDependencyLinks,
-  syncDependencyDisplayEntries,
-  type ModuleDependencyLink,
-  type ModulePackage,
-  type PackageStatus
-} from '../../../shared/src';
+import { type ModulePackage } from '../../../shared/src';
 import type { Connection, DesignState, ModuleNode } from '../types';
-import { defaultConnectionDraft, seedState } from './designReducer';
+import { seedState } from './designReducer';
+import { createRestoredDesignState } from './normalization/normalizeDesignState';
 
 export const LOCAL_STORAGE_KEY = 'hardware-codesign-mvp.design-state.v1';
 export const PERSISTED_DESIGN_SCHEMA_VERSION = 1;
@@ -36,10 +29,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string');
-}
-
 function isModuleNode(value: unknown): value is ModuleNode {
   return (
     isRecord(value)
@@ -60,26 +49,6 @@ function isConnection(value: unknown): value is Connection {
 
 function isStringMap(value: unknown): value is Record<string, string> {
   return isRecord(value) && Object.values(value).every((item) => typeof item === 'string');
-}
-
-function isModuleDependencyLink(value: unknown): value is ModuleDependencyLink {
-  return (
-    isRecord(value)
-    && (value.direction === 'upstream' || value.direction === 'downstream')
-    && typeof value.moduleId === 'string'
-    && (value.signal === undefined || typeof value.signal === 'string')
-  );
-}
-
-function normalizePackageStatus(value: unknown): PackageStatus {
-  return value === 'draft'
-    || value === 'partially_defined'
-    || value === 'under_review'
-    || value === 'approved'
-    || value === 'leaf_ready'
-    || value === 'handed_off'
-    ? value
-    : 'draft';
 }
 
 function isPackageMap(value: unknown): value is Record<string, ModulePackage> {
@@ -126,104 +95,6 @@ function parseSnapshot(raw: string): ParsedSnapshot | null {
   }
 }
 
-function createDefaultModulePackage(moduleNode: ModuleNode, existingPackage?: ModulePackage): ModulePackage {
-  const moduleName = getAuthoritativeModuleName(moduleNode.id, existingPackage, moduleNode.name);
-
-  return {
-    packageId: existingPackage?.packageId ?? `pkg_${moduleNode.id}`,
-    moduleId: moduleNode.id,
-    packageVersion: existingPackage?.packageVersion ?? '0.1.0',
-    packageStatus: normalizePackageStatus(existingPackage?.packageStatus),
-    lastUpdatedAt: existingPackage?.lastUpdatedAt ?? '',
-    lastUpdatedBy: existingPackage?.lastUpdatedBy ?? 'restored_snapshot',
-    identity: {
-      ...existingPackage?.identity,
-      name: moduleName
-    },
-    hierarchy: {
-      parentModuleId: existingPackage?.hierarchy?.parentModuleId ?? '',
-      childModuleIds: isStringArray(existingPackage?.hierarchy?.childModuleIds) ? existingPackage?.hierarchy?.childModuleIds : [],
-      hierarchyPath: isStringArray(existingPackage?.hierarchy?.hierarchyPath) ? existingPackage?.hierarchy?.hierarchyPath : [moduleName]
-    },
-    interfaces: {
-      ports: Array.isArray(existingPackage?.interfaces?.ports) ? existingPackage.interfaces?.ports ?? [] : []
-    },
-    purpose: {
-      summary: existingPackage?.purpose?.summary ?? ''
-    },
-    constraints: {
-      basicConstraints: isStringArray(existingPackage?.constraints?.basicConstraints) ? existingPackage?.constraints?.basicConstraints : []
-    },
-    dependencies: {
-      links: Array.isArray(existingPackage?.dependencies?.links)
-        ? existingPackage.dependencies.links.filter(isModuleDependencyLink)
-        : [],
-      relevantDependencies: isStringArray(existingPackage?.dependencies?.relevantDependencies)
-        ? existingPackage.dependencies.relevantDependencies
-        : []
-    },
-    behavior: {
-      behaviorSummary: existingPackage?.behavior?.behaviorSummary ?? '',
-      operationalDescription: existingPackage?.behavior?.operationalDescription ?? '',
-      behaviorRules: isStringArray(existingPackage?.behavior?.behaviorRules) ? existingPackage?.behavior?.behaviorRules : [],
-      clockResetNotes: existingPackage?.behavior?.clockResetNotes ?? ''
-    },
-    decompositionStatus: existingPackage?.decompositionStatus
-      ? {
-          decompositionStatus: existingPackage.decompositionStatus.decompositionStatus,
-          decompositionRationale: existingPackage.decompositionStatus.decompositionRationale ?? '',
-          stopReason: existingPackage.decompositionStatus.stopReason,
-          stopRecommendedBy: existingPackage.decompositionStatus.stopRecommendedBy,
-          furtherDecompositionNotes: existingPackage.decompositionStatus.furtherDecompositionNotes
-        }
-      : { decompositionStatus: 'under_decomposition', decompositionRationale: '' }
-  };
-}
-
-function normalizeDependencies(
-  packageContentByModuleId: Record<string, ModulePackage>,
-  connections: Connection[]
-): Record<string, ModulePackage> {
-  const nextPackages = { ...packageContentByModuleId };
-
-  for (const connection of connections) {
-    const sourcePackage = nextPackages[connection.fromModuleId];
-    const targetPackage = nextPackages[connection.toModuleId];
-
-    if (!sourcePackage || !targetPackage) {
-      continue;
-    }
-
-    nextPackages[connection.fromModuleId] = {
-      ...sourcePackage,
-      dependencies: {
-        ...sourcePackage.dependencies,
-        links: mergeDependencyLinks(
-          sourcePackage.dependencies?.links ?? [],
-          dependencyLink('downstream', connection.toModuleId, connection.signal)
-        )
-      }
-    };
-
-    nextPackages[connection.toModuleId] = {
-      ...targetPackage,
-      dependencies: {
-        ...targetPackage.dependencies,
-        links: mergeDependencyLinks(
-          targetPackage.dependencies?.links ?? [],
-          dependencyLink('upstream', connection.fromModuleId, connection.signal)
-        )
-      }
-    };
-  }
-
-  for (const moduleId of Object.keys(nextPackages)) {
-    nextPackages[moduleId] = syncDependencyDisplayEntries(nextPackages[moduleId], nextPackages);
-  }
-
-  return nextPackages;
-}
-
 function normalizeRestoredState(snapshot: ParsedSnapshot): DesignState | null {
   if (snapshot.moduleList.length === 0) {
     return null;
@@ -234,52 +105,17 @@ function normalizeRestoredState(snapshot: ParsedSnapshot): DesignState | null {
     return null;
   }
 
-  const validConnections = snapshot.connections.filter(
-    (connection) => moduleIds.has(connection.fromModuleId) && moduleIds.has(connection.toModuleId)
-  );
-
-  const normalizedModuleList = snapshot.moduleList.map((moduleNode) => {
-    const modulePackage = snapshot.packageContentByModuleId[moduleNode.id];
-    if (!modulePackage) {
-      return null;
-    }
-
-    const moduleName = getAuthoritativeModuleName(moduleNode.id, modulePackage, moduleNode.name);
-    return {
-      ...moduleNode,
-      name: moduleName
-    };
-  });
-
-  if (normalizedModuleList.some((moduleNode) => moduleNode === null)) {
-    return null;
-  }
-
-  const moduleList = normalizedModuleList as ModuleNode[];
-  const normalizedPackages = Object.fromEntries(
-    moduleList.map((moduleNode) => [
-      moduleNode.id,
-      createDefaultModulePackage(moduleNode, snapshot.packageContentByModuleId[moduleNode.id])
-    ])
-  ) as Record<string, ModulePackage>;
-
-  return {
-    moduleList,
+  return createRestoredDesignState({
+    moduleList: snapshot.moduleList,
     selectedModuleId: snapshot.selectedModuleId,
-    connections: validConnections,
-    packageContentByModuleId: normalizeDependencies(normalizedPackages, validConnections),
+    connections: snapshot.connections.filter(
+      (connection) => moduleIds.has(connection.fromModuleId) && moduleIds.has(connection.toModuleId)
+    ),
+    packageContentByModuleId: snapshot.packageContentByModuleId,
     handedOffAtByModuleId: Object.fromEntries(
       Object.entries(snapshot.handedOffAtByModuleId).filter(([moduleId]) => moduleIds.has(moduleId))
-    ),
-    suggestionsByModuleId: {},
-    ui: {
-      workspaceMode: 'design',
-      newModuleName: '',
-      newModuleKind: 'leaf',
-      renameDraft: moduleList.find((moduleNode) => moduleNode.id === snapshot.selectedModuleId)?.name ?? '',
-      connectionDraft: defaultConnectionDraft(moduleList)
-    }
-  };
+    )
+  });
 }
 
 export function loadDesignState(storage: StorageLike = window.localStorage): DesignState {

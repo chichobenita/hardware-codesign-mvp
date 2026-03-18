@@ -1,14 +1,7 @@
-import {
-  syncDependencyDisplayEntries,
-  type ModulePackage
-} from '../../../shared/src';
+import { type ModulePackage } from '../../../shared/src';
 import type { DesignState } from '../types';
 import type { DesignAction } from './designActions';
-import {
-  syncAllDependencyDisplayEntries,
-  withConnectionDependencies
-} from './reducerHelpers/dependencySync';
-import { syncModuleIdentityProjection } from './reducerHelpers/identitySync';
+import { normalizeDesignState } from './normalization/normalizeDesignState';
 import {
   baseSeedState,
   createModulePackage,
@@ -16,22 +9,11 @@ import {
   nowIso
 } from './reducerHelpers/seedState';
 import {
-  applyAcceptedSuggestion,
-  ensureSelectedModuleSuggestions
+  applyAcceptedSuggestion
 } from './reducerHelpers/suggestionSync';
-import {
-  syncConnectionDraftOptions,
-  syncRenameDraft
-} from './reducerHelpers/uiSync';
 
-function syncDerivedUiState(state: DesignState): DesignState {
-  return ensureSelectedModuleSuggestions(
-    syncConnectionDraftOptions(
-      syncRenameDraft(
-        syncModuleIdentityProjection(state)
-      )
-    )
-  );
+function normalizeInteractiveState(state: DesignState): DesignState {
+  return normalizeDesignState(state, { ensureUi: true, ensureSuggestions: true });
 }
 
 function applyModulePackageUpdate(
@@ -45,30 +27,25 @@ function applyModulePackageUpdate(
     return state;
   }
 
-  const nextPackage = syncDependencyDisplayEntries(
-    {
-      ...updater(currentPackage),
-      moduleId,
-      lastUpdatedAt: timestamp,
-      lastUpdatedBy: 'mock_user'
-    },
-    state.packageContentByModuleId
-  );
+  const nextPackage = {
+    ...updater(currentPackage),
+    moduleId,
+    lastUpdatedAt: timestamp,
+    lastUpdatedBy: 'mock_user'
+  };
 
-  return syncDerivedUiState(
-    syncAllDependencyDisplayEntries({
-      ...state,
-      packageContentByModuleId: {
-        ...state.packageContentByModuleId,
-        [moduleId]: nextPackage
-      }
-    })
-  );
+  return normalizeInteractiveState({
+    ...state,
+    packageContentByModuleId: {
+      ...state.packageContentByModuleId,
+      [moduleId]: nextPackage
+    }
+  });
 }
 
 export { defaultConnectionDraft };
 
-export const seedState: DesignState = syncDerivedUiState(baseSeedState);
+export const seedState: DesignState = normalizeInteractiveState(baseSeedState);
 
 export function designReducer(state: DesignState, action: DesignAction): DesignState {
   switch (action.type) {
@@ -78,7 +55,7 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       const nextId = action.payload.nextId ?? `${cleanName.replace(/\s+/g, '_')}_${Date.now().toString(36)}`;
       const newPackage = createModulePackage(nextId, cleanName, timestamp);
 
-      return syncDerivedUiState({
+      return normalizeInteractiveState({
         ...state,
         moduleList: [...state.moduleList, { id: nextId, name: cleanName, kind: action.payload.kind }],
         selectedModuleId: nextId,
@@ -108,7 +85,7 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       );
     }
     case 'select_module':
-      return syncDerivedUiState({ ...state, selectedModuleId: action.payload.moduleId });
+      return normalizeInteractiveState({ ...state, selectedModuleId: action.payload.moduleId });
     case 'set_workspace_mode':
       return { ...state, ui: { ...state.ui, workspaceMode: action.payload.mode } };
     case 'set_new_module_name':
@@ -120,7 +97,6 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
     case 'set_connection_draft':
       return { ...state, ui: { ...state.ui, connectionDraft: action.payload.value } };
     case 'connect_modules': {
-      const timestamp = nowIso(action.payload.nowIso);
       const withConnection = {
         ...state,
         connections: [...state.connections, action.payload.connection],
@@ -133,7 +109,7 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
         }
       };
 
-      return syncDerivedUiState(withConnectionDependencies(withConnection, action.payload.connection, timestamp));
+      return normalizeInteractiveState(withConnection);
     }
     case 'update_selected_module_package':
       return applyModulePackageUpdate(state, state.selectedModuleId, action.payload.updater, nowIso(action.payload.nowIso));
@@ -224,9 +200,9 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       };
     }
     case 'load_persisted_design_state':
-      return syncDerivedUiState(action.payload.state);
+      return normalizeInteractiveState(action.payload.state);
     case 'replace_design_state':
-      return syncDerivedUiState(action.payload.state);
+      return normalizeInteractiveState(action.payload.state);
     default:
       return state;
   }
