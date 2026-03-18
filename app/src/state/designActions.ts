@@ -1,8 +1,5 @@
 import type { ModuleKind, ModulePackage } from '../../../shared/src';
 import type { Connection, DesignState, SuggestionCard, WorkspaceMode } from '../types';
-import type { HandoffArtifact } from '../ai/handoffTypes';
-import type { ProviderExecutionFailure, ProviderHandoffResult } from '../ai/providers/providerTypes';
-import type { ProviderJob } from '../ai/providerJobTypes';
 
 export type DesignAction =
   | { type: 'create_module'; payload: { name: string; kind: ModuleKind; parentModuleId?: string; nextId?: string; nowIso?: string } }

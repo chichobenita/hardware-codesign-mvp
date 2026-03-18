@@ -9,7 +9,6 @@ import {
   selectHandoffArtifactsForModule,
   selectHierarchyBreadcrumbs,
   selectLatestHandoffArtifactForModule,
-  selectLatestProviderJobForArtifact,
   selectModuleIsValidForReviewOrHandoff,
   selectParentHierarchyModuleId,
   selectSectionStatuses,
@@ -50,7 +49,6 @@ export function buildAppWorkspaceViewModel(state: DesignState) {
   const designHasValidationIssues = selectDesignHasValidationIssues(state);
   const isSelectedModuleValidForReviewOrHandoff = selectModuleIsValidForReviewOrHandoff(state, state.selectedModuleId);
   const selectedSuggestions = state.suggestionsByModuleId[state.selectedModuleId] ?? [];
-  const currentProviderJob = latestHandoffArtifact ? selectLatestProviderJobForArtifact(state, latestHandoffArtifact.artifactId) : null;
   const hasCurrentSelectedArtifact = latestHandoffArtifact?.handoffStatus === 'handed_off';
   const isSelectedModuleHandoffReady = approvedLeafReadyModules.some((moduleNode) => moduleNode.id === state.selectedModuleId)
     && isSelectedModuleValidForReviewOrHandoff;
@@ -78,7 +76,6 @@ export function buildAppWorkspaceViewModel(state: DesignState) {
     designHasValidationIssues,
     isSelectedModuleValidForReviewOrHandoff,
     selectedSuggestions,
-    currentProviderJob,
     hasCurrentSelectedArtifact,
     isSelectedModuleHandoffReady
   };

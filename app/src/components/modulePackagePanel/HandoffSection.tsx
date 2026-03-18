@@ -1,13 +1,10 @@
 import type { HandoffArtifact } from '../../ai/handoffTypes';
-import type { ProviderJob } from '../../ai/providerJobTypes';
-import type { ModuleNode } from '../../../../shared/src';
-import type { DesignState } from '../../types';
+import type { DesignState, ModuleNode } from '../../types';
 
 type HandoffSectionProps = {
   state: DesignState;
   approvedLeafReadyModules: ModuleNode[];
   latestHandoffArtifact: HandoffArtifact | null;
-  currentProviderJob: ProviderJob | null;
   isSelectedModuleHandoffReady: boolean;
   hasCurrentSelectedArtifact: boolean;
   selectModule: (moduleId: string) => void;
@@ -19,16 +16,12 @@ export function HandoffSection({
   state,
   approvedLeafReadyModules,
   latestHandoffArtifact,
-  currentProviderJob,
   isSelectedModuleHandoffReady,
   hasCurrentSelectedArtifact,
   selectModule,
   markSelectedModuleAsHandedOff,
   exportLatestHandoffArtifact
 }: HandoffSectionProps): JSX.Element {
-  const isPending = currentProviderJob?.status === 'pending';
-  const hasFailedJob = currentProviderJob?.status === 'failure';
-
   return (
     <section className="handoff-card">
       <h3>Handoff / Export</h3>
@@ -60,26 +53,13 @@ export function HandoffSection({
         </ul>
       )}
 
-      <button type="button" onClick={() => { void markSelectedModuleAsHandedOff(); }} disabled={!isSelectedModuleHandoffReady || hasCurrentSelectedArtifact || isPending}>
+      <button type="button" onClick={markSelectedModuleAsHandedOff} disabled={!isSelectedModuleHandoffReady || hasCurrentSelectedArtifact}>
         {hasCurrentSelectedArtifact
           ? 'Already handed off'
-          : isPending
-            ? 'Submitting to provider...'
-            : hasFailedJob
-              ? 'Retry handoff execution'
-              : latestHandoffArtifact?.handoffStatus === 'stale'
-                ? 'Create refreshed handoff artifact'
-                : 'Mark selected module as handed_off'}
+          : latestHandoffArtifact?.handoffStatus === 'stale'
+            ? 'Create refreshed handoff artifact'
+            : 'Mark selected module as handed_off'}
       </button>
-
-      {currentProviderJob ? (
-        <div className="handoff-job-status">
-          <p className="muted">Latest provider job: <strong>{currentProviderJob.status}</strong></p>
-          {currentProviderJob.status === 'failure' && currentProviderJob.error ? (
-            <p className="muted">{currentProviderJob.error.errorMessage}</p>
-          ) : null}
-        </div>
-      ) : null}
 
       <section className="payload-preview">
         <strong>Handoff artifact preview</strong>
