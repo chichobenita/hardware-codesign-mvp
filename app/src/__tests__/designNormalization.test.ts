@@ -111,7 +111,8 @@ describe('shared design normalization', () => {
           hierarchy: { parentModuleId: 'root', childModuleIds: [], hierarchyPath: ['fabric_top', 'decode_stage'] }
         }
       },
-      handedOffAtByModuleId: {}
+      handedOffAtByModuleId: {},
+      handoffArtifacts: []
     });
 
     expect(restored.ui.currentHierarchyModuleId).toBe('root');
@@ -139,7 +140,8 @@ describe('shared design normalization', () => {
       selectedModuleId: reducerState.selectedModuleId,
       connections: reducerState.connections,
       packageContentByModuleId: reducerState.packageContentByModuleId,
-      handedOffAtByModuleId: reducerState.handedOffAtByModuleId
+      handedOffAtByModuleId: reducerState.handedOffAtByModuleId,
+      handoffArtifacts: reducerState.handoffArtifacts
     });
 
     expect(restoredState.moduleList).toEqual(reducerState.moduleList);

@@ -1,4 +1,5 @@
 import type { ModulePackage } from '../../../../shared/src';
+import { DEFAULT_PROVIDER_ID } from '../../ai/providers/providerRegistry';
 import type { Connection, DesignState, ModuleNode } from '../../types';
 
 export function nowIso(value?: string): string {
@@ -127,9 +128,11 @@ export const baseSeedState: DesignState = {
     }
   },
   handedOffAtByModuleId: {},
+  handoffArtifacts: [],
   suggestionsByModuleId: {},
   ui: {
     workspaceMode: 'design',
+    selectedProviderId: DEFAULT_PROVIDER_ID,
     currentHierarchyModuleId: 'root',
     newModuleName: '',
     newModuleKind: 'leaf',

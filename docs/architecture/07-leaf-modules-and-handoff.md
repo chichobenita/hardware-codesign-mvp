@@ -175,3 +175,65 @@ Prompt builder v1 rules:
 * add only lightweight hierarchy context such as parent module, hierarchy path, and leaf/composite role when that data is already stable
 * present the prompt in a stable sectioned format for review and downstream handoff
 * avoid provider-specific transport, orchestration, or network integration in v1
+
+## 4. Handoff Artifact Boundary v1
+
+The MVP should create one explicit handoff artifact whenever an engineer performs a leaf-module handoff.
+
+### 4.1 Purpose
+
+The handoff artifact is the first stable boundary between:
+
+* the internal planning/review state
+* the compact generation payload
+* the deterministic prompt snapshot
+* a future downstream provider adapter
+
+### 4.2 Minimal artifact contents
+
+The artifact should stay lightweight and frontend-local in v1, while capturing:
+
+* module id
+* module name
+* artifact timestamp
+* schema/version marker
+* target provider id
+* handoff status
+* consistency marker derived from handoff semantics
+* generation payload snapshot
+* prompt snapshot
+
+### 4.2.1 Minimal lifecycle states
+
+The MVP handoff artifact lifecycle should stay intentionally small:
+
+* `prepared` — a local artifact has been assembled but has not yet been treated as the current handoff record
+* `handed_off` — the artifact matches current module handoff semantics and is the current local handoff record
+* `stale` — the module changed after artifact creation such that the artifact no longer matches the current handoff semantics
+
+### 4.2.2 Consistency marker
+
+Each artifact should include one deterministic local consistency marker derived from the same normalized handoff inputs used to build the payload and prompt.
+
+For MVP purposes, this marker may be based on the compact generation payload plus deterministic prompt snapshot. It should remain:
+
+* local-only
+* deterministic
+* inexpensive to recompute
+* sufficient to tell whether a prior artifact still matches the current module handoff view
+
+### 4.3 MVP provider seam
+
+The MVP may route the artifact through a local mock provider adapter, but it should not call a real external provider yet.
+
+Provider integration is intentionally deferred. The purpose of the seam is only to ensure that future provider-specific transport can be added without moving prompt/payload shaping into UI code.
+
+### 4.4 Local history
+
+The frontend should keep a lightweight local history of created handoff artifacts so the engineer can:
+
+* inspect the latest artifact
+* review prior handoff events for a module
+* export a concrete handoff record when needed
+
+When the current module handoff inputs no longer match an older artifact's consistency marker, that artifact should be shown as stale rather than silently treated as current.
