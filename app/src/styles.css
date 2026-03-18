@@ -135,33 +135,6 @@ body {
   gap: 8px;
 }
 
-.module-list {
-  list-style: none;
-  padding: 0;
-  margin: 10px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.module-button {
-  width: 100%;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  border-radius: 6px;
-  padding: 8px;
-  text-align: left;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-}
-
-.module-button.selected {
-  border-color: #2563eb;
-  background: #eff6ff;
-}
-
 .status-row {
   display: flex;
   flex-wrap: wrap;
@@ -216,7 +189,9 @@ button {
 }
 
 .connection-list,
-.connection-builder {
+.connection-builder,
+.diagram-tool-card,
+.diagram-surface-card {
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   padding: 8px;
@@ -235,6 +210,10 @@ button {
   margin-bottom: 10px;
 }
 
+.inline-form-tight {
+  margin-bottom: 0;
+}
+
 .payload-preview {
   border: 1px solid #e5e7eb;
   border-radius: 6px;
@@ -249,7 +228,6 @@ button {
   background: #f9fafb;
   overflow-x: auto;
 }
-
 
 .right-panel {
   max-height: calc(100vh - 92px);
@@ -280,15 +258,10 @@ button {
   border-color: #fca5a5;
 }
 
-.lifecycle-card {
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 10px;
-  margin-bottom: 10px;
-  background: #f9fafb;
-}
-
-.handoff-card {
+.lifecycle-card,
+.handoff-card,
+.project-transfer-card,
+.validation-card {
   border: 1px solid #d1d5db;
   border-radius: 6px;
   padding: 10px;
@@ -319,92 +292,134 @@ button {
   background: #ecfdf5;
 }
 
-.missing-list {
-  font-size: 13px;
-  margin-bottom: 8px;
+.diagram-header-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
 }
 
-.missing-list ul {
-  margin: 6px 0;
-  padding-left: 18px;
+.diagram-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.ready-message {
-  color: #065f46;
-  font-size: 13px;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.validation-card {
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 10px;
-  margin-bottom: 10px;
-  background: #f9fafb;
-}
-
-.validation-list {
-  margin: 8px 0 0;
-  padding-left: 18px;
-}
-
-.validation-issue {
-  margin-bottom: 6px;
+.diagram-stats span {
   font-size: 12px;
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  padding: 4px 8px;
 }
 
-.validation-error {
-  color: #991b1b;
+.diagram-surface-card {
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
 }
 
-.validation-warning {
-  color: #92400e;
+.diagram-surface {
+  width: 100%;
+  height: auto;
+  min-height: 360px;
+  display: block;
 }
 
-
-.project-transfer-card {
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 10px;
-  margin-bottom: 10px;
-  background: #f9fafb;
+.diagram-arrow-head {
+  fill: #94a3b8;
 }
 
-.project-transfer-card h3 {
-  margin-top: 0;
+.diagram-edge {
+  stroke: #94a3b8;
+  stroke-width: 2;
+}
+
+.diagram-edge-label {
+  fill: #475569;
+  font-size: 11px;
+}
+
+.diagram-node-rect {
+  fill: #ffffff;
+  stroke: #94a3b8;
+  stroke-width: 2;
+  cursor: pointer;
+}
+
+.diagram-node-selected {
+  fill: #dbeafe;
+  stroke: #2563eb;
+}
+
+.diagram-node-level,
+.diagram-node-badge {
+  fill: #4338ca;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.diagram-node-title {
+  fill: #111827;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.diagram-node-subtitle,
+.diagram-node-meta {
+  fill: #475569;
+  font-size: 11px;
+}
+
+.diagram-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.diagram-toolbar-grid {
+  display: grid;
+  gap: 10px;
 }
 
 .project-transfer-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
-.button-like {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  margin-top: 4px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  padding: 8px;
-  font: inherit;
+.button-like.file-upload-button {
+  display: inline-block;
   background: #111827;
   color: #fff;
+  text-align: center;
+  padding: 8px;
+  border-radius: 6px;
   cursor: pointer;
 }
 
-.file-upload-button input {
+.button-like.file-upload-button input {
   display: none;
 }
 
-.import-error {
-  margin: 8px 0 0;
+.import-error,
+.validation-error {
   color: #991b1b;
-  font-size: 12px;
+}
+
+.ready-message {
+  color: #065f46;
+}
+
+.validation-list,
+.missing-list ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.validation-issue.validation-error {
+  color: #991b1b;
+}
+
+.validation-issue.validation-warning {
+  color: #9a3412;
 }

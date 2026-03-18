@@ -41,10 +41,11 @@ The main visual canvas for the hardware hierarchy.
 
 Functions:
 
-* Show blocks and sub-blocks
-* Show hierarchy relationships
-* Show connections between modules
-* Allow selection of a module
+* Show blocks and sub-blocks on a lightweight SVG diagram surface
+* Use deterministic hierarchy-depth columns for readable stable layout
+* Show connections between modules from the normalized semantic connection state
+* Allow selection of a module with synchronized highlighting across panels
+* Surface lightweight hierarchy cues such as parent/child badges and hierarchy labels
 * Allow basic structural edits such as add block, connect, split block, and delete block
 
 #### B. Right Panel — Module Package Panel
