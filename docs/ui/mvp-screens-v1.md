@@ -46,7 +46,9 @@ Functions:
 * Show connections between modules from the normalized semantic connection state
 * Allow selection of a module with synchronized highlighting across panels
 * Surface lightweight hierarchy cues such as parent/child badges and hierarchy labels
+* Show lightweight breadcrumb navigation and current hierarchy scope controls
 * Allow basic structural edits such as add block, connect, split block, and delete block
+* Allow entering a composite block scope to inspect and refine its direct child modules
 
 #### B. Right Panel — Module Package Panel
 

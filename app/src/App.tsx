@@ -6,23 +6,40 @@ import { DesignStoreProvider, useDesignStore } from './state/designStore';
 import { exportProjectSnapshot, getProjectImportErrorMessage, importProjectSnapshot, triggerProjectDownload } from './state/designTransfer';
 import {
   selectCanShowPayloadPreview,
+  selectCurrentHierarchyModule,
+  selectDesignHasValidationIssues,
   selectEligibleLeafReadyModules,
   selectGenerationPayloadSource,
+  selectHierarchyBreadcrumbs,
+  selectParentHierarchyModuleId,
   selectSectionStatuses,
   selectSelectedModule,
   selectSelectedModulePackage,
   selectTransitionReadiness,
   selectValidationIssues,
   selectValidationIssuesForModule,
-  selectDesignHasValidationIssues,
+  selectVisibleConnections,
+  selectVisibleModules,
   selectModuleIsValidForReviewOrHandoff
 } from './state/designSelectors';
 import type { SuggestionCard } from './types';
+
+function parseDecompositionNames(value: string): string[] {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
 
 export function AppWorkspace(): JSX.Element {
   const { state, dispatch } = useDesignStore();
 
   const selectedModule = selectSelectedModule(state);
+  const currentHierarchyModule = selectCurrentHierarchyModule(state);
+  const currentHierarchyBreadcrumbs = selectHierarchyBreadcrumbs(state);
+  const parentHierarchyModuleId = selectParentHierarchyModuleId(state);
+  const visibleModules = selectVisibleModules(state);
+  const visibleConnections = selectVisibleConnections(state);
   const currentPackageContent = selectSelectedModulePackage(state);
   const currentSectionStatuses = selectSectionStatuses(currentPackageContent);
   const moduleConnections = state.connections.filter((connection) => connection.fromModuleId === state.selectedModuleId || connection.toModuleId === state.selectedModuleId);
@@ -76,9 +93,14 @@ export function AppWorkspace(): JSX.Element {
   };
 
   const createModule = () => {
-    const cleanName = state.ui.newModuleName.trim() || 'unnamed_module';
-    const nextId = `${cleanName.replace(/\s+/g, '_')}_${Date.now().toString(36)}`;
-    dispatch({ type: 'create_module', payload: { name: state.ui.newModuleName, kind: state.ui.newModuleKind, nextId } });
+    dispatch({
+      type: 'create_module',
+      payload: {
+        name: state.ui.newModuleName,
+        kind: state.ui.newModuleKind,
+        parentModuleId: state.ui.currentHierarchyModuleId
+      }
+    });
   };
 
   const renameSelectedModule = () => {
@@ -124,6 +146,29 @@ export function AppWorkspace(): JSX.Element {
     dispatch({ type: 'set_project_import_error', payload: { message: null } });
   };
 
+  const decomposeSelectedModule = () => {
+    const childNames = parseDecompositionNames(state.ui.decompositionDraft.namesText);
+    if (childNames.length === 0) {
+      return;
+    }
+
+    dispatch({
+      type: 'decompose_selected_module',
+      payload: {
+        childNames,
+        childKind: state.ui.decompositionDraft.childKind
+      }
+    });
+  };
+
+  const enterSelectedComposite = () => {
+    if (selectedModule?.kind !== 'composite') {
+      return;
+    }
+
+    dispatch({ type: 'enter_hierarchy_view', payload: { moduleId: selectedModule.id } });
+  };
+
   const selectedModuleHandedOffAt = state.handedOffAtByModuleId[state.selectedModuleId];
   const isSelectedModuleHandoffReady = approvedLeafReadyModules.some((moduleNode) => moduleNode.id === state.selectedModuleId)
     && isSelectedModuleValidForReviewOrHandoff;
@@ -143,6 +188,13 @@ export function AppWorkspace(): JSX.Element {
 
         <DiagramWorkspace
           state={state}
+          visibleModules={visibleModules}
+          visibleConnections={visibleConnections}
+          currentHierarchyModule={currentHierarchyModule}
+          currentHierarchyBreadcrumbs={currentHierarchyBreadcrumbs}
+          parentHierarchyModuleId={parentHierarchyModuleId}
+          setHierarchyView={(moduleId) => dispatch({ type: 'set_hierarchy_view', payload: { moduleId } })}
+          navigateToParentHierarchy={() => dispatch({ type: 'navigate_to_parent_hierarchy', payload: {} })}
           setNewModuleName={(value) => dispatch({ type: 'set_new_module_name', payload: { value } })}
           setNewModuleKind={(value) => dispatch({ type: 'set_new_module_kind', payload: { value } })}
           createModule={createModule}
@@ -150,6 +202,7 @@ export function AppWorkspace(): JSX.Element {
           setRenameDraft={(value) => dispatch({ type: 'set_rename_draft', payload: { value } })}
           selectedModule={selectedModule}
           renameSelectedModule={renameSelectedModule}
+          enterSelectedComposite={enterSelectedComposite}
           setConnectionDraft={(value) => dispatch({ type: 'set_connection_draft', payload: { value } })}
           addConnection={addConnection}
         />
@@ -176,6 +229,12 @@ export function AppWorkspace(): JSX.Element {
           moduleValidationIssues={moduleValidationIssues}
           designHasValidationIssues={designHasValidationIssues || validationIssues.length > 0}
           isSelectedModuleValidForReviewOrHandoff={isSelectedModuleValidForReviewOrHandoff}
+          currentHierarchyModule={currentHierarchyModule}
+          decompositionDraftNamesText={state.ui.decompositionDraft.namesText}
+          decompositionDraftChildKind={state.ui.decompositionDraft.childKind}
+          setDecompositionNamesText={(value) => dispatch({ type: 'set_decomposition_names_text', payload: { value } })}
+          setDecompositionChildKind={(value) => dispatch({ type: 'set_decomposition_child_kind', payload: { value } })}
+          decomposeSelectedModule={decomposeSelectedModule}
         />
       </main>
     </div>

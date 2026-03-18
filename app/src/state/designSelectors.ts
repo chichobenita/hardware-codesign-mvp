@@ -6,7 +6,15 @@ import {
   type SemanticValidationIssue
 } from '../../../shared/src';
 import { getTransitionReadiness, type TransitionReadiness } from '../packageLifecycle';
-import type { DesignState, ModuleNode, PackageSectionStatus, SectionKey, WorkspaceMode } from '../types';
+import type {
+  Connection,
+  DesignState,
+  HierarchyBreadcrumbItem,
+  ModuleNode,
+  PackageSectionStatus,
+  SectionKey,
+  WorkspaceMode
+} from '../types';
 
 function listStatus(values: string[]): Exclude<PackageSectionStatus, 'needs_review'> {
   if (values.length === 0) {
@@ -36,6 +44,78 @@ export function selectSelectedModule(state: DesignState): ModuleNode | undefined
 
 export function selectSelectedModulePackage(state: DesignState): ModulePackage {
   return state.packageContentByModuleId[state.selectedModuleId];
+}
+
+export function selectCurrentHierarchyModule(state: DesignState): ModuleNode | undefined {
+  return state.moduleList.find((moduleNode) => moduleNode.id === state.ui.currentHierarchyModuleId) ?? state.moduleList[0];
+}
+
+export function selectCurrentHierarchyPackage(state: DesignState): ModulePackage | undefined {
+  const currentHierarchyModule = selectCurrentHierarchyModule(state);
+  return currentHierarchyModule ? state.packageContentByModuleId[currentHierarchyModule.id] : undefined;
+}
+
+export function selectHierarchyBreadcrumbs(state: DesignState): HierarchyBreadcrumbItem[] {
+  const currentHierarchyModule = selectCurrentHierarchyModule(state);
+  if (!currentHierarchyModule) {
+    return [];
+  }
+
+  const hierarchyPath = state.packageContentByModuleId[currentHierarchyModule.id]?.hierarchy?.hierarchyPath ?? [currentHierarchyModule.name];
+  const breadcrumbs: HierarchyBreadcrumbItem[] = [];
+
+  hierarchyPath.forEach((label, index) => {
+    const moduleId = index === 0
+      ? currentHierarchyModule.id
+      : breadcrumbs[index - 1]?.moduleId ?? currentHierarchyModule.id;
+    breadcrumbs.push({
+      moduleId,
+      label
+    });
+  });
+
+  let cursorId = currentHierarchyModule.id;
+  for (let index = breadcrumbs.length - 1; index >= 0; index -= 1) {
+    breadcrumbs[index] = {
+      ...breadcrumbs[index],
+      moduleId: cursorId
+    };
+    const parentId = state.packageContentByModuleId[cursorId]?.hierarchy?.parentModuleId?.trim();
+    if (parentId) {
+      cursorId = parentId;
+    }
+  }
+
+  return breadcrumbs;
+}
+
+export function selectVisibleModules(state: DesignState): ModuleNode[] {
+  const currentHierarchyModule = selectCurrentHierarchyModule(state);
+  if (!currentHierarchyModule) {
+    return state.moduleList;
+  }
+
+  const childIds = state.packageContentByModuleId[currentHierarchyModule.id]?.hierarchy?.childModuleIds ?? [];
+  const inferredChildIds = state.moduleList
+    .filter((moduleNode) => state.packageContentByModuleId[moduleNode.id]?.hierarchy?.parentModuleId === currentHierarchyModule.id)
+    .map((moduleNode) => moduleNode.id);
+  const visibleIds = new Set<string>([currentHierarchyModule.id, ...childIds, ...inferredChildIds]);
+  return state.moduleList.filter((moduleNode) => visibleIds.has(moduleNode.id));
+}
+
+export function selectVisibleConnections(state: DesignState): Connection[] {
+  const visibleIds = new Set(selectVisibleModules(state).map((moduleNode) => moduleNode.id));
+  return state.connections.filter((connection) => visibleIds.has(connection.fromModuleId) && visibleIds.has(connection.toModuleId));
+}
+
+export function selectIsModuleVisibleInHierarchy(state: DesignState, moduleId: string): boolean {
+  return selectVisibleModules(state).some((moduleNode) => moduleNode.id === moduleId);
+}
+
+export function selectParentHierarchyModuleId(state: DesignState): string | null {
+  const currentHierarchyPackage = selectCurrentHierarchyPackage(state);
+  const parentId = currentHierarchyPackage?.hierarchy?.parentModuleId?.trim();
+  return parentId ? parentId : null;
 }
 
 export function selectSectionStatuses(modulePackage: ModulePackage): Record<SectionKey, PackageSectionStatus> {
@@ -99,8 +179,6 @@ export function selectEligibleLeafReadyModules(state: DesignState): ModuleNode[]
   });
 }
 
-
-
 export function selectValidationIssues(state: DesignState): SemanticValidationIssue[] {
   return validateSemanticDesign({
     moduleIds: state.moduleList.map((moduleNode) => moduleNode.id),
@@ -124,6 +202,7 @@ export function selectDesignHasValidationIssues(state: DesignState): boolean {
 export function selectModuleIsValidForReviewOrHandoff(state: DesignState, moduleId: string): boolean {
   return !selectModuleHasBlockingValidationErrors(state, moduleId);
 }
+
 export function selectCanShowPayloadPreview(mode: WorkspaceMode, selectedModule: ModuleNode | undefined, modulePackage: ModulePackage): boolean {
   const isReviewOrHandoffMode = mode === 'review' || mode === 'handoff';
   const isLeafReadyPackage = modulePackage.packageStatus === 'leaf_ready' || modulePackage.packageStatus === 'handed_off';

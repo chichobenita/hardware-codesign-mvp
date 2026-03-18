@@ -34,22 +34,45 @@ function normalizePackageMap(
   ) as Record<string, ModulePackage>;
 }
 
+function visibleModuleIdsForHierarchy(state: DesignState, hierarchyModuleId: string): Set<string> {
+  const hierarchyPackage = state.packageContentByModuleId[hierarchyModuleId];
+  const childIds = hierarchyPackage?.hierarchy?.childModuleIds ?? [];
+  const inferredChildIds = state.moduleList
+    .filter((moduleNode) => state.packageContentByModuleId[moduleNode.id]?.hierarchy?.parentModuleId === hierarchyModuleId)
+    .map((moduleNode) => moduleNode.id);
+  return new Set([hierarchyModuleId, ...childIds, ...inferredChildIds]);
+}
+
 function normalizeUiState(state: DesignState): DesignState {
-  const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === state.selectedModuleId);
   const moduleIds = new Set(state.moduleList.map((moduleNode) => moduleNode.id));
+  const fallbackHierarchyId = state.moduleList.find((moduleNode) => moduleNode.kind === 'composite')?.id ?? state.moduleList[0]?.id ?? '';
+  const currentHierarchyModuleId = moduleIds.has(state.ui.currentHierarchyModuleId)
+    ? state.ui.currentHierarchyModuleId
+    : fallbackHierarchyId;
+  const visibleIds = visibleModuleIdsForHierarchy(state, currentHierarchyModuleId);
+  const selectedModuleId = visibleIds.has(state.selectedModuleId)
+    ? state.selectedModuleId
+    : currentHierarchyModuleId;
+  const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === selectedModuleId);
   const fallbackFromId = state.moduleList[0]?.id ?? '';
   const fallbackToId = state.moduleList[1]?.id ?? fallbackFromId;
   const currentDraft = state.ui.connectionDraft;
 
   return {
     ...state,
+    selectedModuleId,
     ui: {
       ...state.ui,
+      currentHierarchyModuleId,
       renameDraft: selectedModule?.name ?? '',
       connectionDraft: {
         ...currentDraft,
         fromModuleId: moduleIds.has(currentDraft.fromModuleId) ? currentDraft.fromModuleId : fallbackFromId,
         toModuleId: moduleIds.has(currentDraft.toModuleId) ? currentDraft.toModuleId : fallbackToId
+      },
+      decompositionDraft: {
+        namesText: state.ui.decompositionDraft?.namesText ?? '',
+        childKind: state.ui.decompositionDraft?.childKind ?? 'leaf'
       },
       projectImportError: state.ui.projectImportError
     }
@@ -113,6 +136,14 @@ export function createRestoredDesignState(
   fallbackUpdatedBy = 'restored_snapshot'
 ): DesignState {
   const normalizedModuleList = normalizeModuleList(persistedState.moduleList, persistedState.packageContentByModuleId);
+  const selectedPackage = persistedState.packageContentByModuleId[persistedState.selectedModuleId];
+  const selectedHasHierarchyAnchor = Boolean(
+    selectedPackage?.hierarchy?.parentModuleId
+    || (selectedPackage?.hierarchy?.childModuleIds?.length ?? 0) > 0
+  );
+  const defaultHierarchyId = selectedHasHierarchyAnchor
+    ? normalizedModuleList.find((moduleNode) => moduleNode.kind === 'composite')?.id ?? persistedState.selectedModuleId
+    : persistedState.selectedModuleId;
 
   return normalizeDesignState(
     {
@@ -124,10 +155,15 @@ export function createRestoredDesignState(
       suggestionsByModuleId: {},
       ui: {
         workspaceMode: 'design',
+        currentHierarchyModuleId: defaultHierarchyId,
         newModuleName: '',
         newModuleKind: 'leaf',
         renameDraft: normalizedModuleList.find((moduleNode) => moduleNode.id === persistedState.selectedModuleId)?.name ?? '',
         connectionDraft: defaultConnectionDraft(normalizedModuleList),
+        decompositionDraft: {
+          namesText: '',
+          childKind: 'leaf'
+        },
         projectImportError: null
       }
     },

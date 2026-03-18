@@ -423,3 +423,70 @@ button {
 .validation-issue.validation-warning {
   color: #9a3412;
 }
+
+.hierarchy-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #f8fbff;
+}
+
+.hierarchy-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.breadcrumb-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.breadcrumb-item-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.breadcrumb-item {
+  width: auto;
+  margin-top: 0;
+  padding: 6px 10px;
+  background: #eef2ff;
+  color: #312e81;
+  border: 1px solid #c7d2fe;
+}
+
+.breadcrumb-item.current {
+  background: #111827;
+  color: #fff;
+}
+
+.breadcrumb-separator {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.diagram-node-composite {
+  fill: #eef6ff;
+  stroke: #2563eb;
+}
+
+.diagram-node-leaf {
+  fill: #ffffff;
+  stroke: #94a3b8;
+}
+
+.hierarchy-decompose-form {
+  margin-top: 8px;
+}
+
+.module-button.selected {
+  border-color: #2563eb;
+}

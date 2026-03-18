@@ -5,6 +5,14 @@ export function nowIso(value?: string): string {
   return value ?? new Date().toISOString();
 }
 
+export function sanitizeModuleIdSegment(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'module';
+}
+
 export function defaultConnectionDraft(moduleList: ModuleNode[]): Connection {
   return {
     fromModuleId: moduleList[0]?.id ?? '',
@@ -13,7 +21,10 @@ export function defaultConnectionDraft(moduleList: ModuleNode[]): Connection {
   };
 }
 
-export function createModulePackage(nextId: string, cleanName: string, timestamp: string): ModulePackage {
+export function createModulePackage(nextId: string, cleanName: string, timestamp: string, hierarchy?: {
+  parentModuleId?: string;
+  hierarchyPath?: string[];
+}): ModulePackage {
   return {
     packageId: `pkg_${nextId}`,
     moduleId: nextId,
@@ -22,7 +33,11 @@ export function createModulePackage(nextId: string, cleanName: string, timestamp
     lastUpdatedAt: timestamp,
     lastUpdatedBy: 'mock_user',
     identity: { name: cleanName },
-    hierarchy: { parentModuleId: '', childModuleIds: [], hierarchyPath: [cleanName] },
+    hierarchy: {
+      parentModuleId: hierarchy?.parentModuleId ?? '',
+      childModuleIds: [],
+      hierarchyPath: hierarchy?.hierarchyPath ?? [cleanName]
+    },
     interfaces: { ports: [] },
     purpose: { summary: '' },
     constraints: { basicConstraints: [] },
@@ -54,7 +69,7 @@ export const baseSeedState: DesignState = {
       lastUpdatedAt: new Date().toISOString(),
       lastUpdatedBy: 'mock_user',
       identity: { name: 'top_controller', description: 'Top-level orchestrator for subsystem coordination.' },
-      hierarchy: { parentModuleId: '', childModuleIds: ['child_a', 'child_b'], hierarchyPath: ['top_controller'] },
+      hierarchy: { parentModuleId: '', childModuleIds: ['child_a', 'child_b', 'example_uart_rx'], hierarchyPath: ['top_controller'] },
       interfaces: { ports: [{ id: 'cfg_bus', name: 'cfg_bus', direction: 'input', width: '32' }, { id: 'data_out', name: 'data_out', direction: 'output', width: '32' }] },
       purpose: { summary: 'Coordinates data flow and control decisions.' },
       decompositionStatus: { decompositionStatus: 'under_decomposition', decompositionRationale: 'Still splitting control and data scheduling.', furtherDecompositionNotes: 'Need one more refinement pass.' }
@@ -67,6 +82,7 @@ export const baseSeedState: DesignState = {
       lastUpdatedAt: new Date().toISOString(),
       lastUpdatedBy: 'mock_user',
       identity: { name: 'input_fifo' },
+      hierarchy: { parentModuleId: 'root', childModuleIds: [], hierarchyPath: ['top_controller', 'input_fifo'] },
       interfaces: { ports: [{ id: 'data_in', name: 'data_in', direction: 'input' }, { id: 'fifo_out', name: 'fifo_out', direction: 'output' }] },
       purpose: { summary: '' }
     },
@@ -78,6 +94,7 @@ export const baseSeedState: DesignState = {
       lastUpdatedAt: new Date().toISOString(),
       lastUpdatedBy: 'mock_user',
       identity: { name: 'scheduler' },
+      hierarchy: { parentModuleId: 'root', childModuleIds: [], hierarchyPath: ['top_controller', 'scheduler'] },
       interfaces: { ports: [] },
       purpose: { summary: '' }
     },
@@ -113,10 +130,15 @@ export const baseSeedState: DesignState = {
   suggestionsByModuleId: {},
   ui: {
     workspaceMode: 'design',
+    currentHierarchyModuleId: 'root',
     newModuleName: '',
     newModuleKind: 'leaf',
     renameDraft: '',
     connectionDraft: { fromModuleId: '', toModuleId: '', signal: '' },
+    decompositionDraft: {
+      namesText: '',
+      childKind: 'leaf'
+    },
     projectImportError: null
   }
 };

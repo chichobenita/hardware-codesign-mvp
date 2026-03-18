@@ -10,12 +10,14 @@ describe('designReducer', () => {
   it('creates a module and selects it', () => {
     const state = designReducer(seedState, {
       type: 'create_module',
-      payload: { name: 'new_unit', kind: 'leaf', nextId: 'new_unit_1', nowIso: '2026-01-01T00:00:00.000Z' }
+      payload: { name: 'new_unit', kind: 'leaf', parentModuleId: 'root', nextId: 'new_unit_1', nowIso: '2026-01-01T00:00:00.000Z' }
     });
 
     expect(state.moduleList.some((moduleNode) => moduleNode.id === 'new_unit_1')).toBe(true);
     expect(state.selectedModuleId).toBe('new_unit_1');
     expect(state.packageContentByModuleId.new_unit_1.identity?.name).toBe('new_unit');
+    expect(state.packageContentByModuleId.new_unit_1.hierarchy?.parentModuleId).toBe('root');
+    expect(state.packageContentByModuleId.root.hierarchy?.childModuleIds).toContain('new_unit_1');
   });
 
   it('renames a module and keeps package identity synchronized as source of truth', () => {
@@ -26,6 +28,7 @@ describe('designReducer', () => {
 
     expect(state.moduleList.find((moduleNode) => moduleNode.id === 'child_a')?.name).toBe('input_buffer');
     expect(state.packageContentByModuleId.child_a.identity?.name).toBe('input_buffer');
+    expect(state.packageContentByModuleId.child_a.hierarchy?.hierarchyPath).toEqual(['top_controller', 'input_buffer']);
   });
 
   it('keeps module list projection synchronized when package identity changes directly', () => {
@@ -70,6 +73,36 @@ describe('designReducer', () => {
     expect(state.ui.workspaceMode).toBe('handoff');
   });
 
+  it('updates hierarchy navigation state through reducer actions', () => {
+    const entered = designReducer(seedState, {
+      type: 'enter_hierarchy_view',
+      payload: { moduleId: 'root' }
+    });
+
+    expect(entered.ui.currentHierarchyModuleId).toBe('root');
+    expect(entered.selectedModuleId).toBe('root');
+
+    const decomposed = designReducer(entered, {
+      type: 'decompose_selected_module',
+      payload: { childNames: ['control_slice'], childKind: 'composite', nowIso: '2026-01-01T00:00:00.000Z' }
+    });
+    const controlSlice = decomposed.moduleList.find((moduleNode) => moduleNode.name === 'control_slice');
+    expect(controlSlice).toBeDefined();
+
+    const nested = designReducer({ ...decomposed, selectedModuleId: controlSlice!.id }, {
+      type: 'enter_hierarchy_view',
+      payload: { moduleId: controlSlice!.id }
+    });
+    expect(nested.ui.currentHierarchyModuleId).toBe(controlSlice!.id);
+
+    const backedUp = designReducer(nested, {
+      type: 'navigate_to_parent_hierarchy',
+      payload: {}
+    });
+    expect(backedUp.ui.currentHierarchyModuleId).toBe('root');
+    expect(backedUp.selectedModuleId).toBe('root');
+  });
+
   it('updates the new module draft fields without affecting existing module data', () => {
     let state = cloneSeedState();
 
@@ -85,6 +118,15 @@ describe('designReducer', () => {
     expect(state.ui.newModuleName).toBe('dma_engine');
     expect(state.ui.newModuleKind).toBe('composite');
     expect(state.packageContentByModuleId.example_uart_rx.identity?.name).toBe('uart_rx');
+  });
+
+  it('updates decomposition draft fields through the reducer-owned UI slice', () => {
+    let state = cloneSeedState();
+    state = designReducer(state, { type: 'set_decomposition_names_text', payload: { value: 'parser, arbiter' } });
+    state = designReducer(state, { type: 'set_decomposition_child_kind', payload: { value: 'composite' } });
+
+    expect(state.ui.decompositionDraft.namesText).toBe('parser, arbiter');
+    expect(state.ui.decompositionDraft.childKind).toBe('composite');
   });
 
   it('updates the rename draft directly through the reducer-owned UI slice', () => {
@@ -163,13 +205,42 @@ describe('designReducer', () => {
 
     const created = designReducer(seedState, {
       type: 'create_module',
-      payload: { name: 'packet_parser', kind: 'leaf', nextId: 'packet_parser', nowIso: '2026-01-01T00:00:00.000Z' }
+      payload: { name: 'packet_parser', kind: 'leaf', parentModuleId: 'root', nextId: 'packet_parser', nowIso: '2026-01-01T00:00:00.000Z' }
     });
 
     const createdSuggestions = created.suggestionsByModuleId.packet_parser ?? [];
     expect(createdSuggestions).toHaveLength(4);
     expect(createdSuggestions.every((suggestion) => suggestion.status === 'pending')).toBe(true);
     expect(createdSuggestions[0]?.draft.summaryText).toContain('packet_parser');
+  });
+
+  it('supports structured decomposition by creating child modules and packages through the store', () => {
+    const selectedRoot = designReducer(seedState, {
+      type: 'select_module',
+      payload: { moduleId: 'root' }
+    });
+    const decomposed = designReducer(selectedRoot, {
+      type: 'decompose_selected_module',
+      payload: {
+        childNames: ['parser_stage', 'output_stage'],
+        childKind: 'leaf',
+        nowIso: '2026-01-01T00:00:00.000Z'
+      }
+    });
+
+    const parserModule = decomposed.moduleList.find((moduleNode) => moduleNode.name === 'parser_stage');
+    const outputModule = decomposed.moduleList.find((moduleNode) => moduleNode.name === 'output_stage');
+
+    expect(parserModule).toBeDefined();
+    expect(outputModule).toBeDefined();
+    expect(decomposed.packageContentByModuleId[parserModule!.id].hierarchy?.parentModuleId).toBe('root');
+    expect(decomposed.packageContentByModuleId[outputModule!.id].hierarchy?.parentModuleId).toBe('root');
+    expect(decomposed.packageContentByModuleId.root.hierarchy?.childModuleIds).toEqual(
+      expect.arrayContaining([parserModule!.id, outputModule!.id])
+    );
+    expect(decomposed.packageContentByModuleId.root.decompositionStatus?.decompositionStatus).toBe('composite');
+    expect(decomposed.moduleList.find((moduleNode) => moduleNode.id === 'root')?.kind).toBe('composite');
+    expect(decomposed.ui.currentHierarchyModuleId).toBe('root');
   });
 
   it('keeps suggestion state module-scoped across selection changes and supports reducer-driven refresh', () => {
