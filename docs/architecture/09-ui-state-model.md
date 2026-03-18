@@ -58,6 +58,18 @@ Main behaviors:
 * request clarification questions when the package remains ambiguous
 * accept, reject, or edit AI suggestions before committing them
 
+
+### 1.2.1 Hierarchy View Context
+
+The workspace should keep one explicit hierarchy view context in reducer-owned UI state.
+
+MVP behavior:
+
+* one current composite module defines the visible diagram scope
+* the diagram shows that composite module plus its direct children
+* breadcrumb navigation allows moving back up the hierarchy deterministically
+* selection remains synchronized through the same store state used by the package panel and AI panel
+
 ### 1.3 Incremental Filling States
 
 The UI should represent package completeness at the section level, not only at the full-package level.

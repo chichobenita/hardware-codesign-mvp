@@ -1,8 +1,15 @@
-import type { Connection, DesignState, ModuleNode } from '../types';
+import type { Connection, DesignState, HierarchyBreadcrumbItem, ModuleNode } from '../types';
 import { createDiagramLayout } from './diagram/layout';
 
 type DiagramWorkspaceProps = {
   state: DesignState;
+  visibleModules: ModuleNode[];
+  visibleConnections: Connection[];
+  currentHierarchyModule?: ModuleNode;
+  currentHierarchyBreadcrumbs: HierarchyBreadcrumbItem[];
+  parentHierarchyModuleId: string | null;
+  setHierarchyView: (moduleId: string) => void;
+  navigateToParentHierarchy: () => void;
   setNewModuleName: (value: string) => void;
   setNewModuleKind: (value: ModuleNode['kind']) => void;
   createModule: () => void;
@@ -10,12 +17,20 @@ type DiagramWorkspaceProps = {
   setRenameDraft: (value: string) => void;
   selectedModule?: ModuleNode;
   renameSelectedModule: () => void;
+  enterSelectedComposite: () => void;
   setConnectionDraft: (next: Connection) => void;
   addConnection: () => void;
 };
 
 export function DiagramWorkspace({
   state,
+  visibleModules,
+  visibleConnections,
+  currentHierarchyModule,
+  currentHierarchyBreadcrumbs,
+  parentHierarchyModuleId,
+  setHierarchyView,
+  navigateToParentHierarchy,
   setNewModuleName,
   setNewModuleKind,
   createModule,
@@ -23,10 +38,12 @@ export function DiagramWorkspace({
   setRenameDraft,
   selectedModule,
   renameSelectedModule,
+  enterSelectedComposite,
   setConnectionDraft,
   addConnection
 }: DiagramWorkspaceProps): JSX.Element {
-  const layout = createDiagramLayout(state.moduleList, state.packageContentByModuleId, state.connections);
+  const layout = createDiagramLayout(visibleModules, state.packageContentByModuleId, visibleConnections);
+  const selectedIsComposite = selectedModule?.kind === 'composite';
 
   return (
     <section className="panel center-panel">
@@ -40,6 +57,40 @@ export function DiagramWorkspace({
           <span>{layout.edges.length} connections</span>
         </div>
       </div>
+
+      <div className="hierarchy-toolbar" aria-label="Hierarchy navigation">
+        <div>
+          <strong>Current scope</strong>
+          <p className="muted">{currentHierarchyModule?.name ?? 'workspace'} child-level view</p>
+        </div>
+        <div className="hierarchy-actions">
+          <button type="button" onClick={navigateToParentHierarchy} disabled={!parentHierarchyModuleId}>
+            Back to parent
+          </button>
+          <button type="button" onClick={enterSelectedComposite} disabled={!selectedIsComposite}>
+            Enter selected composite
+          </button>
+        </div>
+      </div>
+
+      <nav className="breadcrumb-row" aria-label="Hierarchy breadcrumb">
+        {currentHierarchyBreadcrumbs.map((item, index) => {
+          const isCurrent = index === currentHierarchyBreadcrumbs.length - 1;
+          return (
+            <span key={`${item.moduleId}-${index}`} className="breadcrumb-item-wrap">
+              <button
+                type="button"
+                className={isCurrent ? 'breadcrumb-item current' : 'breadcrumb-item'}
+                onClick={() => setHierarchyView(item.moduleId)}
+                disabled={isCurrent}
+              >
+                {item.label}
+              </button>
+              {!isCurrent ? <span className="breadcrumb-separator">/</span> : null}
+            </span>
+          );
+        })}
+      </nav>
 
       <div className="diagram-surface-card">
         <svg
@@ -79,6 +130,11 @@ export function DiagramWorkspace({
           <g aria-label="Diagram nodes">
             {layout.nodes.map((node) => {
               const isSelected = node.module.id === state.selectedModuleId;
+              const rectClassName = [
+                'diagram-node-rect',
+                isSelected ? 'diagram-node-selected' : '',
+                node.module.kind === 'composite' ? 'diagram-node-composite' : 'diagram-node-leaf'
+              ].filter(Boolean).join(' ');
               return (
                 <g
                   key={node.module.id}
@@ -89,7 +145,7 @@ export function DiagramWorkspace({
                     width={node.width}
                     height={node.height}
                     rx="14"
-                    className={isSelected ? 'diagram-node-rect diagram-node-selected' : 'diagram-node-rect'}
+                    className={rectClassName}
                     onClick={() => selectModule(node.module.id)}
                   />
                   <text x="16" y="24" className="diagram-node-level">{node.depthLabel}</text>
@@ -105,12 +161,13 @@ export function DiagramWorkspace({
         <div className="diagram-legend muted">
           <span><strong>Lx</strong> = deterministic hierarchy depth column</span>
           <span><strong>Badge</strong> = parent/child/top cue</span>
+          <span><strong>Scope</strong> = selected composite and direct children</span>
         </div>
       </div>
 
       <div className="diagram-toolbar-grid">
         <div className="diagram-tool-card">
-          <strong>Create module</strong>
+          <strong>Create module in current scope</strong>
           <div className="inline-form inline-form-tight">
             <input value={state.ui.newModuleName} onChange={(event) => setNewModuleName(event.target.value)} placeholder="new block name" />
             <select value={state.ui.newModuleKind} onChange={(event) => setNewModuleKind(event.target.value as ModuleNode['kind'])} aria-label="Block kind">
@@ -134,15 +191,15 @@ export function DiagramWorkspace({
         </div>
 
         <div className="diagram-tool-card">
-          <strong>Connect blocks</strong>
+          <strong>Connect visible blocks</strong>
           <div className="inline-form inline-form-tight">
             <select value={state.ui.connectionDraft.fromModuleId} onChange={(event) => setConnectionDraft({ ...state.ui.connectionDraft, fromModuleId: event.target.value })} aria-label="Connection source">
-              {state.moduleList.map((moduleNode) => (
+              {visibleModules.map((moduleNode) => (
                 <option key={`from-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
               ))}
             </select>
             <select value={state.ui.connectionDraft.toModuleId} onChange={(event) => setConnectionDraft({ ...state.ui.connectionDraft, toModuleId: event.target.value })} aria-label="Connection target">
-              {state.moduleList.map((moduleNode) => (
+              {visibleModules.map((moduleNode) => (
                 <option key={`to-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
               ))}
             </select>

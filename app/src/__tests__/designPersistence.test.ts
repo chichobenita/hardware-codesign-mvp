@@ -79,6 +79,7 @@ describe('designPersistence', () => {
     expect(imported.state).toEqual(restored);
     expect(imported.state?.moduleList[0]?.name).toBe('normalized_name');
     expect(imported.state?.suggestionsByModuleId).toEqual({});
+    expect(imported.state?.ui.currentHierarchyModuleId).toBe('child');
   });
 
   it('fails safely for unsupported snapshot versions', () => {

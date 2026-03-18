@@ -43,12 +43,24 @@ export type SuggestionCard = {
   };
 };
 
+export type HierarchyBreadcrumbItem = {
+  moduleId: string;
+  label: string;
+};
+
+export type HierarchyDecompositionDraft = {
+  namesText: string;
+  childKind: ModuleNode['kind'];
+};
+
 export type DesignUiState = {
   workspaceMode: WorkspaceMode;
+  currentHierarchyModuleId: string;
   newModuleName: string;
   newModuleKind: ModuleNode['kind'];
   renameDraft: string;
   connectionDraft: Connection;
+  decompositionDraft: HierarchyDecompositionDraft;
   projectImportError: string | null;
 };
 

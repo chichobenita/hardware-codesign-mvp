@@ -59,6 +59,12 @@ type ModulePackagePanelProps = {
   moduleValidationIssues: SemanticValidationIssue[];
   designHasValidationIssues: boolean;
   isSelectedModuleValidForReviewOrHandoff: boolean;
+  currentHierarchyModule?: ModuleNode;
+  decompositionDraftNamesText: string;
+  decompositionDraftChildKind: ModuleNode['kind'];
+  setDecompositionNamesText: (value: string) => void;
+  setDecompositionChildKind: (value: ModuleNode['kind']) => void;
+  decomposeSelectedModule: () => void;
 };
 
 export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element {
@@ -83,7 +89,13 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
     selectedModuleHandedOffAt,
     moduleValidationIssues,
     designHasValidationIssues,
-    isSelectedModuleValidForReviewOrHandoff
+    isSelectedModuleValidForReviewOrHandoff,
+    currentHierarchyModule,
+    decompositionDraftNamesText,
+    decompositionDraftChildKind,
+    setDecompositionNamesText,
+    setDecompositionChildKind,
+    decomposeSelectedModule
   } = props;
 
   return (
@@ -148,6 +160,30 @@ export function ModulePackagePanel(props: ModulePackagePanelProps): JSX.Element 
           </section>
 
 
+
+
+          <section className="lifecycle-card">
+            <h3>Hierarchy workflow</h3>
+            <p className="muted">Current view scope: <strong>{currentHierarchyModule?.name ?? 'workspace'}</strong></p>
+            <p className="muted">Selected module stays store-synchronized with the active hierarchy scope.</p>
+            <div className="inline-form hierarchy-decompose-form">
+              <textarea
+                value={decompositionDraftNamesText}
+                onChange={(event) => setDecompositionNamesText(event.target.value)}
+                rows={2}
+                placeholder="child names, comma-separated"
+              />
+              <select
+                value={decompositionDraftChildKind}
+                onChange={(event) => setDecompositionChildKind(event.target.value as ModuleNode['kind'])}
+                aria-label="Decomposition child kind"
+              >
+                <option value="leaf">leaf children</option>
+                <option value="composite">composite children</option>
+              </select>
+              <button type="button" onClick={decomposeSelectedModule}>Decompose selected module</button>
+            </div>
+          </section>
 
           <section className="validation-card">
             <h3>Semantic validation</h3>
