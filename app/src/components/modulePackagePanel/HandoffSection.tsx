@@ -1,6 +1,5 @@
 import type { HandoffArtifact } from '../../ai/handoffTypes';
-import type { ModuleNode } from '../../../../shared/src';
-import type { DesignState } from '../../types';
+import type { DesignState, ModuleNode } from '../../types';
 
 type HandoffSectionProps = {
   state: DesignState;
