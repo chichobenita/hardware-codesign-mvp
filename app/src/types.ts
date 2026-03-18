@@ -23,23 +23,6 @@ export type SectionKey =
   | 'dependenciesAndInteractions'
   | 'decompositionStatus';
 
-export type DesignState = {
-  moduleList: ModuleNode[];
-  selectedModuleId: string;
-  connections: Connection[];
-  packageContentByModuleId: Record<string, ModulePackage>;
-  handedOffAtByModuleId: Record<string, string>;
-  suggestionsByModuleId: Record<string, SuggestionCard[]>;
-};
-
-export type PersistedDesignState = {
-  moduleList: ModuleNode[];
-  selectedModuleId: string;
-  connections: Connection[];
-  packageContentByModuleId: Record<string, ModulePackage>;
-  handedOffAtByModuleId: Record<string, string>;
-};
-
 export type WorkspaceMode = 'design' | 'review' | 'handoff';
 
 export type SuggestionType = 'purpose_proposal' | 'behavior_summary' | 'ports_suggestion' | 'decomposition_suggestion';
@@ -58,4 +41,30 @@ export type SuggestionCard = {
     decompositionStatus?: NonNullable<ModulePackage['decompositionStatus']>['decompositionStatus'];
     decompositionRationale?: string;
   };
+};
+
+export type DesignUiState = {
+  workspaceMode: WorkspaceMode;
+  newModuleName: string;
+  newModuleKind: ModuleNode['kind'];
+  renameDraft: string;
+  connectionDraft: Connection;
+};
+
+export type DesignState = {
+  moduleList: ModuleNode[];
+  selectedModuleId: string;
+  connections: Connection[];
+  packageContentByModuleId: Record<string, ModulePackage>;
+  handedOffAtByModuleId: Record<string, string>;
+  suggestionsByModuleId: Record<string, SuggestionCard[]>;
+  ui: DesignUiState;
+};
+
+export type PersistedDesignState = {
+  moduleList: ModuleNode[];
+  selectedModuleId: string;
+  connections: Connection[];
+  packageContentByModuleId: Record<string, ModulePackage>;
+  handedOffAtByModuleId: Record<string, string>;
 };

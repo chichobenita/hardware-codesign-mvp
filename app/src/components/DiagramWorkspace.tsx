@@ -2,34 +2,26 @@ import type { Connection, DesignState, ModuleNode } from '../types';
 
 type DiagramWorkspaceProps = {
   state: DesignState;
-  newModuleName: string;
   setNewModuleName: (value: string) => void;
-  newModuleKind: ModuleNode['kind'];
   setNewModuleKind: (value: ModuleNode['kind']) => void;
   createModule: () => void;
   selectModule: (moduleId: string) => void;
-  renameDraft: string;
   setRenameDraft: (value: string) => void;
   selectedModule?: ModuleNode;
   renameSelectedModule: () => void;
-  connectionDraft: Connection;
   setConnectionDraft: (next: Connection) => void;
   addConnection: () => void;
 };
 
 export function DiagramWorkspace({
   state,
-  newModuleName,
   setNewModuleName,
-  newModuleKind,
   setNewModuleKind,
   createModule,
   selectModule,
-  renameDraft,
   setRenameDraft,
   selectedModule,
   renameSelectedModule,
-  connectionDraft,
   setConnectionDraft,
   addConnection
 }: DiagramWorkspaceProps): JSX.Element {
@@ -38,8 +30,8 @@ export function DiagramWorkspace({
       <h2>Diagram Workspace</h2>
       <p className="muted">Basic interactions: create, select, and connect blocks.</p>
       <div className="inline-form">
-        <input value={newModuleName} onChange={(event) => setNewModuleName(event.target.value)} placeholder="new block name" />
-        <select value={newModuleKind} onChange={(event) => setNewModuleKind(event.target.value as ModuleNode['kind'])} aria-label="Block kind">
+        <input value={state.ui.newModuleName} onChange={(event) => setNewModuleName(event.target.value)} placeholder="new block name" />
+        <select value={state.ui.newModuleKind} onChange={(event) => setNewModuleKind(event.target.value as ModuleNode['kind'])} aria-label="Block kind">
           <option value="leaf">leaf</option>
           <option value="composite">composite</option>
         </select>
@@ -63,7 +55,7 @@ export function DiagramWorkspace({
         <strong>Rename selected block</strong>
         <div className="inline-form">
           <input
-            value={renameDraft}
+            value={state.ui.renameDraft}
             onChange={(event) => setRenameDraft(event.target.value)}
             placeholder={selectedModule?.name ?? 'module name'}
           />
@@ -73,17 +65,17 @@ export function DiagramWorkspace({
       <div className="connection-builder">
         <strong>Connect blocks</strong>
         <div className="inline-form">
-          <select value={connectionDraft.fromModuleId} onChange={(event) => setConnectionDraft({ ...connectionDraft, fromModuleId: event.target.value })} aria-label="Connection source">
+          <select value={state.ui.connectionDraft.fromModuleId} onChange={(event) => setConnectionDraft({ ...state.ui.connectionDraft, fromModuleId: event.target.value })} aria-label="Connection source">
             {state.moduleList.map((moduleNode) => (
               <option key={`from-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
             ))}
           </select>
-          <select value={connectionDraft.toModuleId} onChange={(event) => setConnectionDraft({ ...connectionDraft, toModuleId: event.target.value })} aria-label="Connection target">
+          <select value={state.ui.connectionDraft.toModuleId} onChange={(event) => setConnectionDraft({ ...state.ui.connectionDraft, toModuleId: event.target.value })} aria-label="Connection target">
             {state.moduleList.map((moduleNode) => (
               <option key={`to-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
             ))}
           </select>
-          <input value={connectionDraft.signal} onChange={(event) => setConnectionDraft({ ...connectionDraft, signal: event.target.value })} placeholder="signal" />
+          <input value={state.ui.connectionDraft.signal} onChange={(event) => setConnectionDraft({ ...state.ui.connectionDraft, signal: event.target.value })} placeholder="signal" />
           <button type="button" onClick={addConnection}>Connect</button>
         </div>
       </div>

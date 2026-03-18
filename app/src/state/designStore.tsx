@@ -1,8 +1,9 @@
-import { createContext, useContext, useMemo, useReducer } from 'react';
+import { createContext, useContext, useReducer } from 'react';
 import type { ReactNode } from 'react';
 import type { DesignState } from '../types';
 import type { DesignAction } from './designActions';
-import { designReducer, seedState } from './designReducer';
+import { loadDesignState, saveDesignState } from './designPersistence';
+import { designReducer } from './designReducer';
 
 type DesignStoreContextValue = {
   state: DesignState;
@@ -16,11 +17,16 @@ type DesignStoreProviderProps = {
   initialState?: DesignState;
 };
 
-export function DesignStoreProvider({ children, initialState = seedState }: DesignStoreProviderProps): JSX.Element {
-  const [state, dispatch] = useReducer(designReducer, initialState);
-  const value = useMemo(() => ({ state, dispatch }), [state]);
+function persistedDesignReducer(state: DesignState, action: DesignAction): DesignState {
+  const nextState = designReducer(state, action);
+  saveDesignState(nextState);
+  return nextState;
+}
 
-  return <DesignStoreContext.Provider value={value}>{children}</DesignStoreContext.Provider>;
+export function DesignStoreProvider({ children, initialState }: DesignStoreProviderProps): JSX.Element {
+  const [state, dispatch] = useReducer(persistedDesignReducer, initialState ?? loadDesignState());
+
+  return <DesignStoreContext.Provider value={{ state, dispatch }}>{children}</DesignStoreContext.Provider>;
 }
 
 export function useDesignStore(): DesignStoreContextValue {

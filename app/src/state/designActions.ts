@@ -1,10 +1,15 @@
 import type { ModulePackage } from '../../../shared/src';
-import type { Connection, DesignState, ModuleNode, SuggestionCard } from '../types';
+import type { Connection, DesignState, ModuleNode, SuggestionCard, WorkspaceMode } from '../types';
 
 export type DesignAction =
   | { type: 'create_module'; payload: { name: string; kind: ModuleNode['kind']; nextId?: string; nowIso?: string } }
   | { type: 'rename_module'; payload: { moduleId: string; name: string; nowIso?: string } }
   | { type: 'select_module'; payload: { moduleId: string } }
+  | { type: 'set_workspace_mode'; payload: { mode: WorkspaceMode } }
+  | { type: 'set_new_module_name'; payload: { value: string } }
+  | { type: 'set_new_module_kind'; payload: { value: ModuleNode['kind'] } }
+  | { type: 'set_rename_draft'; payload: { value: string } }
+  | { type: 'set_connection_draft'; payload: { value: Connection } }
   | { type: 'connect_modules'; payload: { connection: Connection; nowIso?: string } }
   | { type: 'update_selected_module_package'; payload: { updater: (current: ModulePackage) => ModulePackage; nowIso?: string } }
   | { type: 'update_module_package'; payload: { moduleId: string; updater: (current: ModulePackage) => ModulePackage; nowIso?: string } }

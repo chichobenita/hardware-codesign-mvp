@@ -8,7 +8,7 @@ import {
   type PackageStatus
 } from '../../../shared/src';
 import type { Connection, DesignState, ModuleNode } from '../types';
-import { seedState } from './designReducer';
+import { defaultConnectionDraft, seedState } from './designReducer';
 
 export const LOCAL_STORAGE_KEY = 'hardware-codesign-mvp.design-state.v1';
 export const PERSISTED_DESIGN_SCHEMA_VERSION = 1;
@@ -255,22 +255,30 @@ function normalizeRestoredState(snapshot: ParsedSnapshot): DesignState | null {
     return null;
   }
 
+  const moduleList = normalizedModuleList as ModuleNode[];
   const normalizedPackages = Object.fromEntries(
-    (normalizedModuleList as ModuleNode[]).map((moduleNode) => [
+    moduleList.map((moduleNode) => [
       moduleNode.id,
       createDefaultModulePackage(moduleNode, snapshot.packageContentByModuleId[moduleNode.id])
     ])
   ) as Record<string, ModulePackage>;
 
   return {
-    moduleList: normalizedModuleList as ModuleNode[],
+    moduleList,
     selectedModuleId: snapshot.selectedModuleId,
     connections: validConnections,
     packageContentByModuleId: normalizeDependencies(normalizedPackages, validConnections),
     handedOffAtByModuleId: Object.fromEntries(
       Object.entries(snapshot.handedOffAtByModuleId).filter(([moduleId]) => moduleIds.has(moduleId))
     ),
-    suggestionsByModuleId: {}
+    suggestionsByModuleId: {},
+    ui: {
+      workspaceMode: 'design',
+      newModuleName: '',
+      newModuleKind: 'leaf',
+      renameDraft: moduleList.find((moduleNode) => moduleNode.id === snapshot.selectedModuleId)?.name ?? '',
+      connectionDraft: defaultConnectionDraft(moduleList)
+    }
   };
 }
 
