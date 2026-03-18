@@ -36,6 +36,26 @@ The MVP focuses on:
 - Keep state model understandable
 - Keep UI copy concise
 
+## React hook usage rule
+
+Avoid `useState`, `useEffect`, and `useMemo` in application logic and feature implementation.
+
+Project policy:
+- Do not introduce new `useState`, `useEffect`, or `useMemo` usage in app code unless explicitly requested.
+- Prefer centralized reducer/store-driven state updates.
+- Prefer pure helper functions and selectors over memoization hooks.
+- Prefer explicit event-driven updates over effect-driven synchronization.
+- Keep derived values in selectors or pure computation helpers, not in `useMemo`.
+- Keep persistence, normalization, and domain synchronization outside React effect logic whenever practical.
+
+If existing code still uses `useState`, `useEffect`, or `useMemo`, refactor it away gradually without changing visible behavior.
+
+When a task touches files that still use these hooks:
+- first try to remove them
+- preserve current behavior
+- do not replace them with another hidden source of complexity
+- explain any place where removing them is not practical within the task scope
+
 ## Definition of done
 A task is done only if:
 - code builds
