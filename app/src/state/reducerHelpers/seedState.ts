@@ -130,6 +130,7 @@ export const baseSeedState: DesignState = {
   },
   handedOffAtByModuleId: {},
   handoffArtifacts: [],
+  providerJobs: [],
   suggestionsByModuleId: {},
   ui: {
     workspaceMode: 'design',

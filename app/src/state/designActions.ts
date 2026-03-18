@@ -27,6 +27,10 @@ export type DesignAction =
   | { type: 'set_suggestions_for_module'; payload: { moduleId: string; suggestions: SuggestionCard[] } }
   | { type: 'remove_suggestion'; payload: { moduleId: string; suggestionId: string } }
   | { type: 'move_selected_package_state_forward'; payload: { to: ModulePackage['packageStatus']; nowIso?: string } }
+  | { type: 'queue_handoff_artifact'; payload: { artifact: HandoffArtifact } }
+  | { type: 'start_provider_job'; payload: { job: ProviderJob } }
+  | { type: 'complete_provider_job_success'; payload: { jobId: string; artifactId: string; response: ProviderHandoffResult; completedAt: string } }
+  | { type: 'complete_provider_job_failure'; payload: { jobId: string; artifactId: string; error: ProviderExecutionFailure; completedAt: string } }
   | { type: 'mark_selected_module_handed_off'; payload: { nowIso?: string } }
   | { type: 'load_persisted_design_state'; payload: { state: DesignState } }
   | { type: 'replace_design_state'; payload: { state: DesignState } };

@@ -7,6 +7,7 @@ import {
 } from '../../../shared/src';
 import { buildHdlGenerationPromptFromState } from '../ai/promptBuilder';
 import type { HandoffArtifact } from '../ai/handoffTypes';
+import type { ProviderJob } from '../ai/providerJobTypes';
 import type { PromptBuildResult } from '../ai/promptTypes';
 import { getTransitionReadiness, type TransitionReadiness } from '../packageLifecycle';
 import {
@@ -199,4 +200,12 @@ export function selectHandoffArtifactsForModule(state: DesignState, moduleId: st
 
 export function selectLatestHandoffArtifactForModule(state: DesignState, moduleId: string): HandoffArtifact | null {
   return selectHandoffArtifactsForModule(state, moduleId)[0] ?? null;
+}
+
+export function selectProviderJobsForArtifact(state: DesignState, artifactId: string): ProviderJob[] {
+  return state.providerJobs.filter((job) => job.artifactId === artifactId);
+}
+
+export function selectLatestProviderJobForArtifact(state: DesignState, artifactId: string): ProviderJob | null {
+  return selectProviderJobsForArtifact(state, artifactId)[0] ?? null;
 }

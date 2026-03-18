@@ -62,6 +62,7 @@ export type DesignState = {
   packageContentByModuleId: Record<string, ModulePackage>;
   handedOffAtByModuleId: Record<string, string>;
   handoffArtifacts: HandoffArtifact[];
+  providerJobs: ProviderJob[];
   suggestionsByModuleId: Record<string, SuggestionCard[]>;
   ui: DesignUiState;
 };

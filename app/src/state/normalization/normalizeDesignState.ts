@@ -114,12 +114,18 @@ export function normalizeDesignState(
     handedOffAtByModuleId: Object.fromEntries(
       Object.entries(state.handedOffAtByModuleId).filter(([moduleId]) => normalizedPackages[moduleId])
     ),
-    handoffArtifacts: []
+    handoffArtifacts: [],
+    providerJobs: state.providerJobs
   };
 
   nextState = {
     ...nextState,
     handoffArtifacts: normalizeHandoffArtifacts(nextState, state.handoffArtifacts.filter((artifact) => normalizedPackages[artifact.moduleId]))
+  };
+
+  nextState = {
+    ...nextState,
+    providerJobs: nextState.providerJobs.filter((job) => nextState.handoffArtifacts.some((artifact) => artifact.artifactId === job.artifactId))
   };
 
   if (options.ensureUi) {
@@ -163,6 +169,7 @@ export function createRestoredDesignState(
       packageContentByModuleId: persistedState.packageContentByModuleId,
       handedOffAtByModuleId: persistedState.handedOffAtByModuleId,
       handoffArtifacts: persistedState.handoffArtifacts,
+      providerJobs: [],
       suggestionsByModuleId: {},
       ui: {
         workspaceMode: 'design',

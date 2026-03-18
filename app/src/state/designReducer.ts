@@ -348,6 +348,67 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
         (current) => ({ ...current, packageStatus: action.payload.to }),
         nowIso(action.payload.nowIso)
       );
+    case 'queue_handoff_artifact':
+      return {
+        ...state,
+        handoffArtifacts: [action.payload.artifact, ...state.handoffArtifacts]
+      };
+    case 'start_provider_job':
+      return {
+        ...state,
+        providerJobs: [action.payload.job, ...state.providerJobs]
+      };
+    case 'complete_provider_job_success': {
+      const artifact = state.handoffArtifacts.find((item) => item.artifactId === action.payload.artifactId);
+      if (!artifact) {
+        return state;
+      }
+      const withPackageUpdate = applyModulePackageUpdate(
+        state,
+        artifact.moduleId,
+        (current) => ({ ...current, packageStatus: 'handed_off' }),
+        action.payload.completedAt
+      );
+      return {
+        ...withPackageUpdate,
+        handedOffAtByModuleId: {
+          ...withPackageUpdate.handedOffAtByModuleId,
+          [artifact.moduleId]: action.payload.completedAt
+        },
+        handoffArtifacts: withPackageUpdate.handoffArtifacts.map((item) => (
+          item.artifactId === artifact.artifactId
+            ? applyProviderResultToArtifact(item, action.payload.response)
+            : item
+        )),
+        providerJobs: withPackageUpdate.providerJobs.map((job) => (
+          job.jobId === action.payload.jobId
+            ? {
+              ...job,
+              status: 'success',
+              completedAt: action.payload.completedAt,
+              retryable: false,
+              result: action.payload.response,
+              error: undefined
+            }
+            : job
+        ))
+      };
+    }
+    case 'complete_provider_job_failure':
+      return {
+        ...state,
+        providerJobs: state.providerJobs.map((job) => (
+          job.jobId === action.payload.jobId
+            ? {
+              ...job,
+              status: 'failure',
+              completedAt: action.payload.completedAt,
+              retryable: action.payload.error.retryable,
+              error: action.payload.error
+            }
+            : job
+        ))
+      };
     case 'mark_selected_module_handed_off': {
       const timestamp = nowIso(action.payload.nowIso);
       const artifact = createHandoffArtifactFromState(state, state.selectedModuleId, state.ui.selectedProviderId, timestamp);
@@ -366,7 +427,24 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
           ...withPackageUpdate.handedOffAtByModuleId,
           [state.selectedModuleId]: timestamp
         },
-        handoffArtifacts: [artifact, ...withPackageUpdate.handoffArtifacts]
+        handoffArtifacts: [artifact, ...withPackageUpdate.handoffArtifacts],
+        providerJobs: [{
+          jobId: `legacy_${artifact.artifactId}`,
+          artifactId: artifact.artifactId,
+          moduleId: artifact.moduleId,
+          targetProviderId: artifact.targetProviderId,
+          status: 'success',
+          createdAt: timestamp,
+          startedAt: timestamp,
+          completedAt: timestamp,
+          attemptCount: 1,
+          retryable: false,
+          result: {
+            providerId: artifact.providerResponse.providerId,
+            status: 'handed_off',
+            summary: artifact.providerResponse.summary
+          }
+        }, ...withPackageUpdate.providerJobs]
       };
     }
     case 'load_persisted_design_state':

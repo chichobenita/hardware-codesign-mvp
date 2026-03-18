@@ -1,5 +1,6 @@
 import type { GenerationPayloadMinimal, ModulePackage, SemanticValidationIssue } from '../../../shared/src';
 import type { HandoffArtifact } from '../ai/handoffTypes';
+import type { ProviderJob } from '../ai/providerJobTypes';
 import type { HandoffProvider } from '../ai/providers/providerTypes';
 import type { PromptBuildResult } from '../ai/promptTypes';
 import type { TransitionReadiness } from '../packageLifecycle';
@@ -36,6 +37,7 @@ type ModulePackagePanelProps = {
   exportGeneratedPrompt: () => void;
   exportLatestHandoffArtifact: () => void;
   approvedLeafReadyModules: ModuleNode[];
+  currentProviderJob: ProviderJob | null;
   selectModule: (moduleId: string) => void;
   markSelectedModuleAsHandedOff: () => void;
   exportCurrentProject: () => void;
