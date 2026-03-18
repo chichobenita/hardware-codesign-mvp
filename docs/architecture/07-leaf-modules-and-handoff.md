@@ -163,3 +163,15 @@ The payload should be:
 For the MVP, downstream AI code generation should consume only the Generation Payload Minimal v1 rather than the full Module Package.
 
 This keeps the architecture lightweight while preserving the richer internal planning model.
+
+## 3. Prompt Builder / Package-to-Prompt Compiler v1
+
+The MVP may derive one deterministic HDL-generation prompt from the normalized Module Package and Generation Payload Minimal v1.
+
+Prompt builder v1 rules:
+
+* keep the prompt formatter pure and deterministic
+* preserve the Generation Payload Minimal v1 as the compact machine-facing source
+* add only lightweight hierarchy context such as parent module, hierarchy path, and leaf/composite role when that data is already stable
+* present the prompt in a stable sectioned format for review and downstream handoff
+* avoid provider-specific transport, orchestration, or network integration in v1

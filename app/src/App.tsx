@@ -10,6 +10,7 @@ import {
   selectDesignHasValidationIssues,
   selectEligibleLeafReadyModules,
   selectGenerationPayloadSource,
+  selectGenerationPromptSource,
   selectHierarchyBreadcrumbs,
   selectParentHierarchyModuleId,
   selectSectionStatuses,
@@ -44,6 +45,7 @@ export function AppWorkspace(): JSX.Element {
   const currentSectionStatuses = selectSectionStatuses(currentPackageContent);
   const moduleConnections = state.connections.filter((connection) => connection.fromModuleId === state.selectedModuleId || connection.toModuleId === state.selectedModuleId);
   const generatedPayload = selectGenerationPayloadSource(currentPackageContent);
+  const generatedPrompt = selectGenerationPromptSource(state, state.selectedModuleId);
   const transitionReadiness = selectTransitionReadiness(currentPackageContent);
   const approvedLeafReadyModules = selectEligibleLeafReadyModules(state);
   const canShowPayloadPreview = selectCanShowPayloadPreview(state.ui.workspaceMode, selectedModule, currentPackageContent);
@@ -219,6 +221,7 @@ export function AppWorkspace(): JSX.Element {
           moduleConnections={moduleConnections}
           canShowPayloadPreview={canShowPayloadPreview}
           generatedPayload={generatedPayload}
+          generatedPrompt={generatedPrompt}
           approvedLeafReadyModules={approvedLeafReadyModules}
           selectModule={(moduleId) => dispatch({ type: 'select_module', payload: { moduleId } })}
           markSelectedModuleAsHandedOff={markSelectedModuleAsHandedOff}

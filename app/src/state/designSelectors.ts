@@ -5,6 +5,8 @@ import {
   validateSemanticDesign,
   type SemanticValidationIssue
 } from '../../../shared/src';
+import { buildHdlGenerationPromptFromState } from '../ai/promptBuilder';
+import type { PromptBuildResult } from '../ai/promptTypes';
 import { getTransitionReadiness, type TransitionReadiness } from '../packageLifecycle';
 import {
   selectCurrentHierarchyModuleFromState,
@@ -184,4 +186,8 @@ export function selectCanShowPayloadPreview(mode: WorkspaceMode, selectedModule:
 
 export function selectGenerationPayloadSource(modulePackage: ModulePackage): GenerationPayloadMinimal {
   return deriveGenerationPayloadMinimalV1(modulePackage);
+}
+
+export function selectGenerationPromptSource(state: DesignState, moduleId: string): PromptBuildResult | null {
+  return buildHdlGenerationPromptFromState(state, moduleId);
 }
