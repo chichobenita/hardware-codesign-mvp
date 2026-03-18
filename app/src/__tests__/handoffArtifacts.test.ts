@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
+
 import { createArtifactConsistencyMarkerFromState, createHandoffArtifactFromState } from '../ai/handoffArtifacts';
 import { buildArtifactExportFilename, buildPromptExportFilename, serializeHandoffArtifact, serializePromptExport } from '../ai/handoffExport';
 import { mockLocalHdlProvider } from '../ai/providers/mockProvider';
 import { DEFAULT_PROVIDER_ID } from '../ai/providers/providerRegistry';
 import { selectCanShowPayloadPreview } from '../state/designSelectors';
+
 import { designReducer, seedState } from '../state/designReducer';
+
+
 
 describe('handoff artifacts', () => {
   it('creates a handoff artifact from a valid leaf-ready module with payload and prompt snapshots', () => {
@@ -27,6 +31,7 @@ describe('handoff artifacts', () => {
         module_name: 'uart_rx'
       }
     });
+
     expect(artifact?.consistencyMarker).toBe(createArtifactConsistencyMarkerFromState(state, 'example_uart_rx'));
     expect(artifact?.promptSnapshot.promptText).toContain('HDL Generation Prompt v1');
     expect(artifact?.promptSnapshot.promptText).toContain('- Module name: uart_rx');
