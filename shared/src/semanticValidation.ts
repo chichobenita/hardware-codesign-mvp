@@ -9,6 +9,11 @@ export type SemanticValidationCode =
   | 'connection_missing_module'
   | 'leaf_missing_purpose'
   | 'leaf_missing_ports'
+  | 'leaf_missing_clock_reset_notes'
+  | 'leaf_interface_clarity_incomplete'
+  | 'leaf_missing_behavior_rules'
+  | 'leaf_missing_corner_cases'
+  | 'leaf_missing_integration_assumptions'
   | 'missing_dependency_for_connection'
   | 'stale_dependency_entry';
 
@@ -30,6 +35,32 @@ function hasPurpose(modulePackage: ModulePackage): boolean {
 
 function hasPorts(modulePackage: ModulePackage): boolean {
   return (modulePackage.interfaces?.ports ?? []).some((port) => port.name.trim().length > 0);
+}
+
+function hasClockResetNotes(modulePackage: ModulePackage): boolean {
+  return Boolean(modulePackage.behavior?.clockResetNotes?.trim().length);
+}
+
+function namedPorts(modulePackage: ModulePackage) {
+  return (modulePackage.interfaces?.ports ?? []).filter((port) => port.name.trim().length > 0);
+}
+
+function hasBehaviorRules(modulePackage: ModulePackage): boolean {
+  return (modulePackage.behavior?.behaviorRules ?? []).some((rule) => rule.trim().length > 0);
+}
+
+function hasCornerCases(modulePackage: ModulePackage): boolean {
+  return (modulePackage.behavior?.cornerCases ?? []).some((item) => item.trim().length > 0);
+}
+
+function hasInterfaceClarity(modulePackage: ModulePackage): boolean {
+  const interfaceNotes = modulePackage.interfaces?.interfaceNotes?.trim().length ?? 0;
+  const describedPorts = namedPorts(modulePackage).filter((port) => (port.description?.trim().length ?? 0) > 0).length;
+  return interfaceNotes > 0 || describedPorts > 0;
+}
+
+function hasIntegrationAssumptions(modulePackage: ModulePackage): boolean {
+  return (modulePackage.dependencies?.integrationAssumptions ?? []).some((item) => item.trim().length > 0);
 }
 
 function requiresLeafCompleteness(modulePackage: ModulePackage): boolean {
@@ -108,6 +139,7 @@ function declaredDependencyKeys(modulePackage: ModulePackage): { upstream: Set<s
 export function validateSemanticDesign(snapshot: SemanticDesignSnapshot): SemanticValidationIssue[] {
   const issues: SemanticValidationIssue[] = [];
   const moduleIdSet = new Set(snapshot.moduleIds);
+  const expectedByModuleId = expectedDependencyLinks(snapshot.connections);
 
   for (const moduleId of snapshot.moduleIds) {
     const modulePackage = snapshot.packageContentByModuleId[moduleId];
@@ -151,6 +183,61 @@ export function validateSemanticDesign(snapshot: SemanticDesignSnapshot): Semant
         message: 'Approved leaf or leaf-ready module must define at least one named port.'
       });
     }
+
+    if (requiresLeafCompleteness(modulePackage) && !hasClockResetNotes(modulePackage)) {
+      issues.push({
+        code: 'leaf_missing_clock_reset_notes',
+        severity: 'error',
+        moduleId,
+        message: 'Approved leaf or leaf-ready module requires clock/reset notes for implementation readiness.'
+      });
+    }
+
+    const moduleNamedPorts = namedPorts(modulePackage);
+    if (requiresLeafCompleteness(modulePackage) && moduleNamedPorts.length >= 2 && !hasInterfaceClarity(modulePackage)) {
+      issues.push({
+        code: 'leaf_interface_clarity_incomplete',
+        severity: 'warning',
+        moduleId,
+        message: 'Leaf module interfaces should include port descriptions or interface notes so integration intent is clear.'
+      });
+    }
+
+    if (requiresLeafCompleteness(modulePackage) && !hasBehaviorRules(modulePackage)) {
+      issues.push({
+        code: 'leaf_missing_behavior_rules',
+        severity: 'warning',
+        moduleId,
+        message: 'Leaf module has no explicit behavior rules for downstream generation.'
+      });
+    }
+
+    if (
+      requiresLeafCompleteness(modulePackage)
+      && moduleNamedPorts.length >= 3
+      && hasClockResetNotes(modulePackage)
+      && !hasCornerCases(modulePackage)
+    ) {
+      issues.push({
+        code: 'leaf_missing_corner_cases',
+        severity: 'warning',
+        moduleId,
+        message: 'Leaf module appears integration-relevant but does not describe any corner cases.'
+      });
+    }
+
+    const expected = expectedByModuleId[moduleId] ?? { upstream: new Set<string>(), downstream: new Set<string>() };
+    const hasDependencySurface = expected.upstream.size > 0
+      || expected.downstream.size > 0
+      || (modulePackage.dependencies?.relevantDependencies ?? []).some((entry) => entry.trim().length > 0);
+    if (requiresLeafCompleteness(modulePackage) && hasDependencySurface && !hasIntegrationAssumptions(modulePackage)) {
+      issues.push({
+        code: 'leaf_missing_integration_assumptions',
+        severity: 'warning',
+        moduleId,
+        message: 'Leaf module has dependencies or connections but no integration assumptions.'
+      });
+    }
   }
 
   for (const connection of snapshot.connections) {
@@ -181,8 +268,6 @@ export function validateSemanticDesign(snapshot: SemanticDesignSnapshot): Semant
       });
     }
   }
-
-  const expectedByModuleId = expectedDependencyLinks(snapshot.connections);
 
   for (const moduleId of snapshot.moduleIds) {
     const modulePackage = snapshot.packageContentByModuleId[moduleId];
