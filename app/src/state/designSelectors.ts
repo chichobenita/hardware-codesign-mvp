@@ -5,6 +5,7 @@ import {
   validateSemanticDesign,
   type SemanticValidationIssue
 } from '../../../shared/src';
+import { evaluateModuleWorkflowPolicy, selectStructurallyReadyHandoffModules, summarizeWorkflowIssues } from '../application/policies/workflowReadinessPolicy';
 import { buildHdlGenerationPromptFromState } from '../ai/promptBuilder';
 import type { HandoffArtifact } from '../ai/handoffTypes';
 import type { ProviderJob } from '../ai/providerJobTypes';
@@ -141,16 +142,7 @@ export function selectTransitionReadiness(modulePackage: ModulePackage): Transit
 }
 
 export function selectEligibleLeafReadyModules(state: DesignState): ModuleNode[] {
-  return state.moduleList.filter((moduleNode) => {
-    const modulePackage = state.packageContentByModuleId[moduleNode.id];
-    if (!modulePackage) {
-      return false;
-    }
-
-    const isLeafReadyPackage = modulePackage.packageStatus === 'leaf_ready' || modulePackage.packageStatus === 'handed_off';
-    const isApprovedLeaf = modulePackage.decompositionStatus?.decompositionStatus === 'approved_leaf';
-    return moduleNode.kind === 'leaf' && isLeafReadyPackage && isApprovedLeaf;
-  });
+  return selectStructurallyReadyHandoffModules(state.moduleList, state.packageContentByModuleId);
 }
 
 export function selectValidationIssues(state: DesignState): SemanticValidationIssue[] {
@@ -166,7 +158,7 @@ export function selectValidationIssuesForModule(state: DesignState, moduleId: st
 }
 
 export function selectModuleHasBlockingValidationErrors(state: DesignState, moduleId: string): boolean {
-  return selectValidationIssuesForModule(state, moduleId).some((issue) => issue.severity === 'error');
+  return summarizeWorkflowIssues(selectValidationIssuesForModule(state, moduleId)).hasBlockingIssues;
 }
 
 export function selectDesignHasValidationIssues(state: DesignState): boolean {
@@ -174,16 +166,22 @@ export function selectDesignHasValidationIssues(state: DesignState): boolean {
 }
 
 export function selectModuleIsValidForReviewOrHandoff(state: DesignState, moduleId: string): boolean {
-  return !selectModuleHasBlockingValidationErrors(state, moduleId);
+  const moduleNode = state.moduleList.find((item) => item.id === moduleId);
+  const modulePackage = state.packageContentByModuleId[moduleId];
+  if (!modulePackage) {
+    return false;
+  }
+
+  return evaluateModuleWorkflowPolicy(
+    moduleNode,
+    modulePackage,
+    state.ui.workspaceMode,
+    selectValidationIssuesForModule(state, moduleId)
+  ).review.isEligible || !summarizeWorkflowIssues(selectValidationIssuesForModule(state, moduleId)).hasBlockingIssues;
 }
 
 export function selectCanShowPayloadPreview(mode: WorkspaceMode, selectedModule: ModuleNode | undefined, modulePackage: ModulePackage): boolean {
-  const isReviewOrHandoffMode = mode === 'review' || mode === 'handoff';
-  const isLeafReadyPackage = modulePackage.packageStatus === 'leaf_ready' || modulePackage.packageStatus === 'handed_off';
-  const isApprovedLeaf = modulePackage.decompositionStatus?.decompositionStatus === 'approved_leaf';
-  const isLeafModule = selectedModule?.kind === 'leaf';
-
-  return isReviewOrHandoffMode && isLeafReadyPackage && isApprovedLeaf && isLeafModule;
+  return evaluateModuleWorkflowPolicy(selectedModule, modulePackage, mode, []).structural.isStructurallyReadyForReviewOrHandoff && (mode === 'review' || mode === 'handoff');
 }
 
 export function selectGenerationPayloadSource(modulePackage: ModulePackage): GenerationPayloadMinimal {
