@@ -1,5 +1,6 @@
 import { getAuthoritativeModuleName, type ModulePackage } from '../../../../shared/src';
-import type { DesignState, ModuleNode } from '../../types';
+import type { ModuleNode } from '../../../../shared/src';
+import type { DesignState } from '../../types';
 
 type HierarchySnapshot = {
   moduleById: Record<string, ModuleNode>;

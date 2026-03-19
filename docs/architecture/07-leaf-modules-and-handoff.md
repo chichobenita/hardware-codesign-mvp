@@ -101,6 +101,13 @@ The MVP should distinguish between the full internal Module Package and the comp
 
 The full Module Package remains the internal semantic artifact used by the platform during planning and refinement. However, downstream HDL generation should consume only a minimal generation-focused payload in order to reduce token usage, improve prompt clarity, and avoid passing non-essential planning data.
 
+For MVP purposes, the internal Module Package may still carry a very small set of additional generation-supporting fields used during prompt construction without expanding the compact payload contract:
+
+* `interfaces.interfaceNotes`
+* `behavior.cornerCases`
+* `behavior.implementationNotes`
+* `dependencies.integrationAssumptions`
+
 ### 2.1 Purpose
 
 The purpose of the Generation Payload Minimal v1 is to provide only the information required for bounded HDL generation of a specific module.
@@ -173,6 +180,7 @@ Prompt builder v1 rules:
 * keep the prompt formatter pure and deterministic
 * preserve the Generation Payload Minimal v1 as the compact machine-facing source
 * add only lightweight hierarchy context such as parent module, hierarchy path, and leaf/composite role when that data is already stable
+* it may surface the small generation-supporting package fields above when they are present
 * present the prompt in a stable sectioned format for review and downstream handoff
 * avoid provider-specific transport, orchestration, or network integration in v1
 

@@ -1,5 +1,5 @@
 import { dependencyLinkKey, expectedDependencyLinks, splitDependencyNotes } from './dependencySemantics';
-import type { ModuleDependencyLink, ModulePackage } from './types';
+import type { ModuleDependencyLink, ModulePackage, SemanticDesignSnapshot } from './types';
 
 export type ValidationSeverity = 'error' | 'warning';
 
@@ -19,17 +19,6 @@ export type SemanticValidationIssue = {
   moduleId?: string;
 };
 
-export type SemanticConnection = {
-  fromModuleId: string;
-  toModuleId: string;
-  signal: string;
-};
-
-export type SemanticDesignSnapshot = {
-  moduleIds: string[];
-  packageContentByModuleId: Record<string, ModulePackage>;
-  connections: SemanticConnection[];
-};
 
 function cleanKey(value: string): string {
   return value.trim().toLowerCase();
