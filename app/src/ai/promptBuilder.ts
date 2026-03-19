@@ -1,5 +1,6 @@
 import { deriveGenerationPayloadMinimalV1, getAuthoritativeModuleName, type ModulePackage } from '../../../shared/src';
-import type { DesignState, ModuleNode } from '../types';
+import type { ModuleNode } from '../../../shared/src';
+import type { DesignState } from '../types';
 import type { PromptBuildInput, PromptBuildResult, PromptHierarchyContext } from './promptTypes';
 
 function cleanText(value: string | undefined): string {
@@ -62,6 +63,10 @@ export function buildHdlGenerationPrompt(input: PromptBuildInput): PromptBuildRe
   const moduleDescription = cleanText(input.moduleDescription);
   const behaviorSummary = cleanText(input.behaviorSummary);
   const operationalDescription = cleanText(input.operationalDescription);
+  const interfaceNotes = cleanText(input.modulePackage.interfaces?.interfaceNotes);
+  const cornerCases = cleanList(input.modulePackage.behavior?.cornerCases);
+  const implementationNotes = cleanList(input.modulePackage.behavior?.implementationNotes);
+  const integrationAssumptions = cleanList(input.modulePackage.dependencies?.integrationAssumptions);
 
   const lines = [
     'HDL Generation Prompt v1',
@@ -84,8 +89,14 @@ export function buildHdlGenerationPrompt(input: PromptBuildInput): PromptBuildRe
     'Ports',
     ...formatPorts(input),
     '',
+    'Interface notes',
+    ...formatBulletList(interfaceNotes ? [interfaceNotes] : [], 'No explicit interface notes were provided.'),
+    '',
     'Behavior rules',
     ...formatNumberedList(behaviorRules, 'No explicit behavior rules were provided.'),
+    '',
+    'Corner cases',
+    ...formatNumberedList(cornerCases, 'No explicit corner cases were provided.'),
     '',
     'Basic constraints',
     ...formatNumberedList(basicConstraints, 'No explicit basic constraints were provided.'),
@@ -93,8 +104,14 @@ export function buildHdlGenerationPrompt(input: PromptBuildInput): PromptBuildRe
     'Relevant dependencies',
     ...formatNumberedList(relevantDependencies, 'No relevant dependencies were provided.'),
     '',
+    'Integration assumptions',
+    ...formatNumberedList(integrationAssumptions, 'No explicit integration assumptions were provided.'),
+    '',
     'Clock and reset notes',
     `- ${clockResetNotes || 'No explicit clock/reset notes were provided.'}`,
+    '',
+    'Implementation notes',
+    ...formatNumberedList(implementationNotes, 'No explicit implementation notes were provided.'),
     '',
     'Implementation guidance',
     '- Preserve the declared module name and port names exactly.',
@@ -155,6 +172,7 @@ export function createPromptBuildInput(state: DesignState, moduleId: string): Pr
     purposeSummary: cleanText(modulePackage.purpose?.summary),
     behaviorSummary: cleanText(modulePackage.behavior?.behaviorSummary),
     operationalDescription: cleanText(modulePackage.behavior?.operationalDescription),
+    modulePackage,
     payload,
     hierarchyContext: createHierarchyContext(state, moduleNode, modulePackage)
   };

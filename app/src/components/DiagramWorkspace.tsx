@@ -1,4 +1,5 @@
-import type { Connection, DesignState, HierarchyBreadcrumbItem, ModuleNode } from '../types';
+import type { ModuleKind, ModuleNode } from '../../../shared/src';
+import type { Connection, DesignState, HierarchyBreadcrumbItem } from '../types';
 import { createDiagramLayout } from './diagram/layout';
 
 type DiagramWorkspaceProps = {
@@ -11,7 +12,7 @@ type DiagramWorkspaceProps = {
   setHierarchyView: (moduleId: string) => void;
   navigateToParentHierarchy: () => void;
   setNewModuleName: (value: string) => void;
-  setNewModuleKind: (value: ModuleNode['kind']) => void;
+  setNewModuleKind: (value: ModuleKind) => void;
   createModule: () => void;
   selectModule: (moduleId: string) => void;
   setRenameDraft: (value: string) => void;
@@ -170,7 +171,7 @@ export function DiagramWorkspace({
           <strong>Create module in current scope</strong>
           <div className="inline-form inline-form-tight">
             <input value={state.ui.newModuleName} onChange={(event) => setNewModuleName(event.target.value)} placeholder="new block name" />
-            <select value={state.ui.newModuleKind} onChange={(event) => setNewModuleKind(event.target.value as ModuleNode['kind'])} aria-label="Block kind">
+            <select value={state.ui.newModuleKind} onChange={(event) => setNewModuleKind(event.target.value as ModuleKind)} aria-label="Block kind">
               <option value="leaf">leaf</option>
               <option value="composite">composite</option>
             </select>

@@ -1,5 +1,6 @@
 import type { ModulePackage } from '../../../../shared/src';
-import type { DesignState, HierarchyBreadcrumbItem, ModuleNode } from '../../types';
+import type { ModuleNode } from '../../../../shared/src';
+import type { DesignState, HierarchyBreadcrumbItem } from '../../types';
 import {
   normalizeHierarchyForPackages,
   selectHierarchyAncestorIds,
