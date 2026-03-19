@@ -1,26 +1,11 @@
-import { type ModulePackage } from '../../../shared/src';
-import { isHandoffArtifactRecord } from '../ai/handoffArtifacts';
-import type { Connection, DesignState, ModuleNode } from '../types';
+import type { DesignState } from '../types';
 import { seedState } from './designReducer';
+import { PERSISTED_DESIGN_SCHEMA_VERSION, type PersistedDesignSnapshot } from './migrations/migrationTypes';
+import { migratePersistedDesignSnapshot } from './migrations/snapshotMigrations';
 import { createRestoredDesignState } from './normalization/normalizeDesignState';
 
 export const LOCAL_STORAGE_KEY = 'hardware-codesign-mvp.design-state.v1';
-export const PERSISTED_DESIGN_SCHEMA_VERSION = 2;
-
-/**
- * Suggestions remain intentionally non-persisted in the MVP.
- * They are derived UI collaboration state and can be regenerated after restore.
- */
-export type PersistedDesignSnapshot = {
-  schemaVersion: number;
-  moduleList: ModuleNode[];
-  selectedModuleId: string;
-  connections: Connection[];
-  packageContentByModuleId: Record<string, ModulePackage>;
-  handedOffAtByModuleId: Record<string, string>;
-  handoffArtifacts: DesignState['handoffArtifacts'];
-};
-
+export { PERSISTED_DESIGN_SCHEMA_VERSION };
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -29,75 +14,15 @@ export type SnapshotParseResult =
   | { ok: true; snapshot: PersistedDesignSnapshot }
   | { ok: false; reason: 'invalid_json' | 'invalid_shape' | 'unsupported_schema_version' | 'invalid_restore_state' };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function isModuleNode(value: unknown): value is ModuleNode {
-  return (
-    isRecord(value)
-    && typeof value.id === 'string'
-    && typeof value.name === 'string'
-    && (value.kind === 'composite' || value.kind === 'leaf')
-  );
-}
-
-function isConnection(value: unknown): value is Connection {
-  return (
-    isRecord(value)
-    && typeof value.fromModuleId === 'string'
-    && typeof value.toModuleId === 'string'
-    && typeof value.signal === 'string'
-  );
-}
-
-function isStringMap(value: unknown): value is Record<string, string> {
-  return isRecord(value) && Object.values(value).every((item) => typeof item === 'string');
-}
-
-function isPackageMap(value: unknown): value is Record<string, ModulePackage> {
-  return isRecord(value) && Object.values(value).every((item) => isRecord(item));
-}
-
 function parseSnapshotRecord(parsed: unknown): SnapshotParseResult {
-  if (!isRecord(parsed)) {
-    return { ok: false, reason: 'invalid_shape' };
+  const migrated = migratePersistedDesignSnapshot(parsed);
+  if (!migrated.ok) {
+    return migrated;
   }
-
-  const schemaVersion = parsed.schemaVersion;
-  if (schemaVersion !== undefined && schemaVersion !== PERSISTED_DESIGN_SCHEMA_VERSION) {
-    return { ok: false, reason: 'unsupported_schema_version' };
-  }
-
-  if (!Array.isArray(parsed.moduleList) || !parsed.moduleList.every(isModuleNode)) {
-    return { ok: false, reason: 'invalid_shape' };
-  }
-  if (typeof parsed.selectedModuleId !== 'string') {
-    return { ok: false, reason: 'invalid_shape' };
-  }
-  if (!Array.isArray(parsed.connections) || !parsed.connections.every(isConnection)) {
-    return { ok: false, reason: 'invalid_shape' };
-  }
-  if (!isPackageMap(parsed.packageContentByModuleId)) {
-    return { ok: false, reason: 'invalid_shape' };
-  }
-
-  const handedOffAtByModuleId = isStringMap(parsed.handedOffAtByModuleId) ? parsed.handedOffAtByModuleId : {};
-  const handoffArtifacts = Array.isArray(parsed.handoffArtifacts)
-    ? parsed.handoffArtifacts.filter(isHandoffArtifactRecord)
-    : [];
 
   return {
     ok: true,
-    snapshot: {
-      schemaVersion: typeof schemaVersion === 'number' ? schemaVersion : PERSISTED_DESIGN_SCHEMA_VERSION,
-      moduleList: parsed.moduleList,
-      selectedModuleId: parsed.selectedModuleId,
-      connections: parsed.connections,
-      packageContentByModuleId: parsed.packageContentByModuleId,
-      handedOffAtByModuleId,
-      handoffArtifacts
-    }
+    snapshot: migrated.snapshot
   };
 }
 

@@ -1,5 +1,6 @@
 import type { ModulePackage } from '../../../../shared/src';
-import type { Connection, ModuleNode } from '../../types';
+import type { ModuleNode } from '../../../../shared/src';
+import type { Connection } from '../../types';
 
 export type DiagramNodeLayout = {
   module: ModuleNode;

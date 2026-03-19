@@ -16,7 +16,7 @@ The objective is to ship a small but coherent vertical slice quickly, without ba
 - **State management:** React state + Context + `useReducer` for deterministic local updates
 - **Diagram (initial):** lightweight custom SVG/canvas rendering (no graph framework yet)
 - **Validation/types:** TypeScript-first interfaces in `app/src/types`
-- **Persistence:** browser `localStorage` only (single-project snapshot), plus explicit versioned JSON import/export using the same snapshot schema
+- **Persistence:** browser `localStorage` only (single-project snapshot), plus explicit versioned JSON import/export using the same snapshot schema; restore should detect snapshot version, migrate into the current persisted shape when possible, then normalize into runtime state
 - **Testing:** Vitest + React Testing Library for smoke tests of core state transitions
 
 ### Why this stack

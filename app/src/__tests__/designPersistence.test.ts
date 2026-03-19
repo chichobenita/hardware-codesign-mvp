@@ -83,6 +83,66 @@ describe('designPersistence', () => {
     expect(imported.state?.ui.currentHierarchyModuleId).toBe('child');
   });
 
+  it('migrates an unversioned legacy snapshot into the current persisted shape before restore', () => {
+    const legacySnapshot = {
+      moduleList: [{ id: 'child', name: 'legacy_name', kind: 'leaf' }],
+      selectedModuleId: 'child',
+      connections: [],
+      packageContentByModuleId: {
+        child: {
+          packageId: 'pkg_child',
+          moduleId: 'child',
+          packageVersion: '0.1.0',
+          packageStatus: 'draft',
+          lastUpdatedAt: '2026-03-18T00:00:00.000Z',
+          lastUpdatedBy: 'tester',
+          identity: { name: 'migrated_name' }
+        }
+      }
+    };
+
+    const imported = importDesignState(JSON.stringify(legacySnapshot));
+
+    expect(imported.ok).toBe(true);
+    if (!imported.ok) {
+      return;
+    }
+    expect(imported.snapshot.schemaVersion).toBe(PERSISTED_DESIGN_SCHEMA_VERSION);
+    expect(imported.state?.moduleList[0]?.name).toBe('migrated_name');
+    expect(imported.state?.handoffArtifacts).toEqual([]);
+    expect(imported.state?.handedOffAtByModuleId).toEqual({});
+  });
+
+  it('migrates schemaVersion 1 snapshots by defaulting newer persistence fields', () => {
+    const legacySnapshot = {
+      schemaVersion: 1,
+      moduleList: [{ id: 'child', name: 'legacy_name', kind: 'leaf' }],
+      selectedModuleId: 'child',
+      connections: [],
+      packageContentByModuleId: {
+        child: {
+          packageId: 'pkg_child',
+          moduleId: 'child',
+          packageVersion: '0.1.0',
+          packageStatus: 'draft',
+          lastUpdatedAt: '2026-03-18T00:00:00.000Z',
+          lastUpdatedBy: 'tester',
+          identity: { name: 'migrated_name' }
+        }
+      }
+    };
+
+    const imported = importDesignState(JSON.stringify(legacySnapshot));
+
+    expect(imported.ok).toBe(true);
+    if (!imported.ok) {
+      return;
+    }
+    expect(imported.snapshot.schemaVersion).toBe(PERSISTED_DESIGN_SCHEMA_VERSION);
+    expect(imported.snapshot.handoffArtifacts).toEqual([]);
+    expect(imported.snapshot.handedOffAtByModuleId).toEqual({});
+  });
+
   it('fails safely for unsupported snapshot versions', () => {
     const imported = importDesignState(
       JSON.stringify({

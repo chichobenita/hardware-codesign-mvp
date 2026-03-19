@@ -14,7 +14,8 @@ describe('deriveGenerationPayloadMinimalV1', () => {
         name: '  alu_top  '
       },
       interfaces: {
-        ports: [{ id: 'p_clk', name: 'clk', direction: 'input', width: '1', description: 'clock' }]
+        ports: [{ id: 'p_clk', name: 'clk', direction: 'input', width: '1', description: 'clock' }],
+        interfaceNotes: 'clock domain is shared by the parent controller'
       },
       purpose: {
         summary: '  Arithmetic top-level module '
@@ -23,11 +24,14 @@ describe('deriveGenerationPayloadMinimalV1', () => {
         basicConstraints: ['single-cycle add']
       },
       dependencies: {
-        relevantDependencies: ['upstream:controller:start']
+        relevantDependencies: ['upstream:controller:start'],
+        integrationAssumptions: ['controller keeps start stable for one cycle']
       },
       behavior: {
         behaviorRules: ['valid implies ready'],
-        clockResetNotes: ' synchronous reset '
+        clockResetNotes: ' synchronous reset ',
+        cornerCases: ['hold output low during reset'],
+        implementationNotes: ['prefer a one-hot FSM']
       }
     };
 
