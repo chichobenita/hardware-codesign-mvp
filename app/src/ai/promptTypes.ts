@@ -14,6 +14,7 @@ export type PromptBuildInput = {
   purposeSummary: string;
   behaviorSummary: string;
   operationalDescription: string;
+  modulePackage: ModulePackage;
   payload: GenerationPayloadMinimal;
   hierarchyContext?: PromptHierarchyContext;
 };

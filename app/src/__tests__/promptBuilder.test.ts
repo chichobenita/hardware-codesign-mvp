@@ -28,7 +28,8 @@ function createLeafReadyPackage(): ModulePackage {
         { id: 'rst_n', name: 'rst_n', direction: 'input', width: '1', description: 'Active-low reset' },
         { id: 'rx_i', name: 'rx_i', direction: 'input', width: '1', description: 'Serial input' },
         { id: 'data_o', name: 'data_o', direction: 'output', width: '8', description: 'Decoded byte output' }
-      ]
+      ],
+      interfaceNotes: 'data_o is presented after a complete valid frame and shares the system clock domain.'
     },
     purpose: {
       summary: 'Receive UART serial frames and emit decoded bytes.'
@@ -37,13 +38,16 @@ function createLeafReadyPackage(): ModulePackage {
       basicConstraints: ['115200 baud nominal', '8-N-1 framing']
     },
     dependencies: {
-      relevantDependencies: ['upstream:uart_tx:rx_i', 'system clock']
+      relevantDependencies: ['upstream:uart_tx:rx_i', 'system clock'],
+      integrationAssumptions: ['Upstream UART transmitter follows nominal baud timing', 'Parent logic consumes data_o only after frame completion']
     },
     behavior: {
       behaviorSummary: 'Samples the incoming line and emits a byte after a valid frame.',
       operationalDescription: 'Uses a baud counter to sample start, data, and stop bits.',
       behaviorRules: ['Detect a valid start bit before sampling data bits', 'Emit one byte only after a complete valid frame'],
-      clockResetNotes: 'Synchronous to clk. rst_n clears the receive state machine.'
+      clockResetNotes: 'Synchronous to clk. rst_n clears the receive state machine.',
+      cornerCases: ['Discard frames with an invalid stop bit', 'Return to idle if reset is asserted mid-frame'],
+      implementationNotes: ['Keep the receive state machine single-clocked', 'Derive bit sampling from a simple baud counter']
     },
     decompositionStatus: {
       decompositionStatus: 'approved_leaf',
@@ -62,6 +66,7 @@ describe('promptBuilder', () => {
       purposeSummary: packageContent.purpose?.summary ?? '',
       behaviorSummary: packageContent.behavior?.behaviorSummary ?? '',
       operationalDescription: packageContent.behavior?.operationalDescription ?? '',
+      modulePackage: packageContent,
       payload: {
         module_name: 'uart_rx',
         ports: packageContent.interfaces?.ports ?? [],
@@ -88,6 +93,9 @@ describe('promptBuilder', () => {
     expect(result.promptText).toContain('Hierarchy context');
     expect(result.promptText).toContain('- Parent module: top_controller');
     expect(result.promptText).toContain('- input clk [1] — System clock');
+    expect(result.promptText).toContain('Interface notes');
+    expect(result.promptText).toContain('Corner cases');
+    expect(result.promptText).toContain('Implementation notes');
   });
 
   it('is deterministic for the same normalized input', () => {
@@ -116,6 +124,7 @@ describe('promptBuilder', () => {
     expect(result?.promptText).toContain('Behavior rules');
     expect(result?.promptText).toContain('Basic constraints');
     expect(result?.promptText).toContain('Relevant dependencies');
+    expect(result?.promptText).toContain('Integration assumptions');
     expect(result?.promptText).toContain('Clock and reset notes');
     expect(result?.promptText).toContain('115200 baud nominal');
     expect(result?.promptText).toContain('upstream:uart_tx:rx_i');
@@ -131,6 +140,8 @@ describe('promptBuilder', () => {
     expect(result?.promptText).toContain('Synchronous to clk. rst_n clears the receive state machine.');
     expect(result?.promptText).toContain('system clock');
     expect(result?.promptText).toContain('Emit one byte only after a complete valid frame');
+    expect(result?.promptText).toContain('Discard frames with an invalid stop bit');
+    expect(result?.promptText).toContain('Parent logic consumes data_o only after frame completion');
   });
 
   it('remains compatible after restore/import of state', () => {

@@ -96,12 +96,17 @@ export function selectParentHierarchyModuleId(state: DesignState): string | null
 export function selectSectionStatuses(modulePackage: ModulePackage): Record<SectionKey, PackageSectionStatus> {
   const reviewMode = modulePackage.packageStatus === 'under_review';
 
-  const interfaceValues = (modulePackage.interfaces?.ports ?? []).flatMap((port) => [port.name ?? '', port.direction ?? '', port.width ?? '']);
+  const interfaceValues = [
+    ...(modulePackage.interfaces?.ports ?? []).flatMap((port) => [port.name ?? '', port.direction ?? '', port.width ?? '']),
+    modulePackage.interfaces?.interfaceNotes ?? ''
+  ];
   const behaviorValues = [
     modulePackage.behavior?.behaviorSummary ?? '',
     modulePackage.behavior?.operationalDescription ?? '',
     modulePackage.behavior?.clockResetNotes ?? '',
-    ...(modulePackage.behavior?.behaviorRules ?? [])
+    ...(modulePackage.behavior?.behaviorRules ?? []),
+    ...(modulePackage.behavior?.cornerCases ?? []),
+    ...(modulePackage.behavior?.implementationNotes ?? [])
   ];
   const constraintValues = [
     ...(modulePackage.constraints?.timingConstraints ?? []),
@@ -124,7 +129,13 @@ export function selectSectionStatuses(modulePackage: ModulePackage): Record<Sect
     purpose: markNeedsReview(listStatus([modulePackage.purpose?.summary ?? '']), reviewMode),
     behavior: markNeedsReview(listStatus(behaviorValues), reviewMode),
     constraints: markNeedsReview(listStatus(constraintValues), reviewMode),
-    dependenciesAndInteractions: markNeedsReview(listStatus(modulePackage.dependencies?.relevantDependencies ?? []), reviewMode),
+    dependenciesAndInteractions: markNeedsReview(
+      listStatus([
+        ...(modulePackage.dependencies?.relevantDependencies ?? []),
+        ...(modulePackage.dependencies?.integrationAssumptions ?? [])
+      ]),
+      reviewMode
+    ),
     decompositionStatus: markNeedsReview(
       listStatus([
         modulePackage.decompositionStatus?.decompositionStatus ?? '',

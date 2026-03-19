@@ -50,7 +50,8 @@ export function normalizeModulePackage(moduleNode: ModuleNode, existingPackage?:
         : [moduleName]
     },
     interfaces: {
-      ports: Array.isArray(existingPackage?.interfaces?.ports) ? existingPackage.interfaces?.ports ?? [] : []
+      ports: Array.isArray(existingPackage?.interfaces?.ports) ? existingPackage.interfaces?.ports ?? [] : [],
+      interfaceNotes: existingPackage?.interfaces?.interfaceNotes ?? ''
     },
     purpose: {
       summary: existingPackage?.purpose?.summary ?? ''
@@ -64,13 +65,18 @@ export function normalizeModulePackage(moduleNode: ModuleNode, existingPackage?:
         : [],
       relevantDependencies: isStringArray(existingPackage?.dependencies?.relevantDependencies)
         ? existingPackage.dependencies.relevantDependencies
+        : [],
+      integrationAssumptions: isStringArray(existingPackage?.dependencies?.integrationAssumptions)
+        ? existingPackage.dependencies.integrationAssumptions
         : []
     },
     behavior: {
       behaviorSummary: existingPackage?.behavior?.behaviorSummary ?? '',
       operationalDescription: existingPackage?.behavior?.operationalDescription ?? '',
       behaviorRules: isStringArray(existingPackage?.behavior?.behaviorRules) ? existingPackage.behavior.behaviorRules : [],
-      clockResetNotes: existingPackage?.behavior?.clockResetNotes ?? ''
+      clockResetNotes: existingPackage?.behavior?.clockResetNotes ?? '',
+      cornerCases: isStringArray(existingPackage?.behavior?.cornerCases) ? existingPackage.behavior.cornerCases : [],
+      implementationNotes: isStringArray(existingPackage?.behavior?.implementationNotes) ? existingPackage.behavior.implementationNotes : []
     },
     decompositionStatus: existingPackage?.decompositionStatus
       ? {
