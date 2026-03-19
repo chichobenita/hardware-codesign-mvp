@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import type { SemanticValidationIssue } from '../../../shared/src';
 import { evaluateModuleWorkflowPolicy, summarizeWorkflowIssues } from '../application/policies/workflowReadinessPolicy';
 import { seedState } from '../state/designReducer';
 
@@ -32,7 +31,7 @@ describe('workflowReadinessPolicy', () => {
       packageStatus: 'leaf_ready' as const
     };
 
-    const issues: SemanticValidationIssue[] = [{
+    const issues = [{
       code: 'missing_dependency_for_connection',
       severity: 'warning' as const,
       moduleId: 'example_uart_rx',

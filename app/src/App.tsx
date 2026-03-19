@@ -63,7 +63,6 @@ export function AppWorkspace(): JSX.Element {
           exportGeneratedPrompt={actions.exportGeneratedPrompt}
           exportLatestHandoffArtifact={actions.exportLatestHandoffArtifact}
           approvedLeafReadyModules={viewModel.approvedLeafReadyModules}
-          currentProviderJob={viewModel.currentProviderJob}
           selectModule={actions.selectModule}
           markSelectedModuleAsHandedOff={actions.markSelectedModuleAsHandedOff}
           exportCurrentProject={actions.exportCurrentProject}

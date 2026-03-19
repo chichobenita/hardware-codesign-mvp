@@ -1,6 +1,4 @@
-import type { ModuleKind, ModulePackage } from '../../../../shared/src';
-import { createPendingProviderJob, executeProviderHandoff } from '../../ai/handoffExecution';
-import { createPreparedHandoffArtifactFromState } from '../../ai/handoffArtifacts';
+import type { ModulePackage } from '../../../../shared/src';
 import {
   buildArtifactExportFilename,
   buildPromptExportFilename,
@@ -12,7 +10,7 @@ import {
 import { exportProjectSnapshot, getProjectImportErrorMessage, importProjectSnapshot, triggerProjectDownload } from '../../state/designTransfer';
 import type { DesignAction } from '../../state/designActions';
 import type { AppWorkspaceViewModel } from '../viewModels/appWorkspaceViewModel';
-import type { Connection, DesignState, SuggestionCard, WorkspaceMode } from '../../types';
+import type { Connection, DesignState, ModuleNode, SuggestionCard, WorkspaceMode } from '../../types';
 
 function parseDecompositionNames(value: string): string[] {
   return value
@@ -89,46 +87,8 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     dispatch({ type: 'connect_modules', payload: { connection: nextConnection } });
   };
 
-  const markSelectedModuleAsHandedOff = async () => {
-    const startedAt = new Date().toISOString();
-    const artifact = createPreparedHandoffArtifactFromState(state, state.selectedModuleId, state.ui.selectedProviderId, startedAt);
-    if (!artifact) {
-      return;
-    }
-
-    const previousAttempts = viewModel.currentProviderJob?.artifactId === artifact.artifactId
-      ? viewModel.currentProviderJob.attemptCount
-      : 0;
-    const job = createPendingProviderJob(artifact, startedAt, previousAttempts);
-
-    dispatch({ type: 'queue_handoff_artifact', payload: { artifact } });
-    dispatch({ type: 'start_provider_job', payload: { job } });
-
-    const executionResult = await executeProviderHandoff(artifact);
-    const completedAt = new Date().toISOString();
-
-    if (executionResult.ok) {
-      dispatch({
-        type: 'complete_provider_job_success',
-        payload: {
-          jobId: job.jobId,
-          artifactId: artifact.artifactId,
-          response: executionResult.response,
-          completedAt
-        }
-      });
-      return;
-    }
-
-    dispatch({
-      type: 'complete_provider_job_failure',
-      payload: {
-        jobId: job.jobId,
-        artifactId: artifact.artifactId,
-        error: executionResult.error,
-        completedAt
-      }
-    });
+  const markSelectedModuleAsHandedOff = () => {
+    dispatch({ type: 'mark_selected_module_handed_off', payload: {} });
   };
 
   const copyGeneratedPrompt = async () => {
@@ -215,13 +175,13 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
   const setHierarchyView = (moduleId: string) => dispatch({ type: 'set_hierarchy_view', payload: { moduleId } });
   const navigateToParentHierarchy = () => dispatch({ type: 'navigate_to_parent_hierarchy', payload: {} });
   const setNewModuleName = (value: string) => dispatch({ type: 'set_new_module_name', payload: { value } });
-  const setNewModuleKind = (value: ModuleKind) => dispatch({ type: 'set_new_module_kind', payload: { value } });
+  const setNewModuleKind = (value: ModuleNode['kind']) => dispatch({ type: 'set_new_module_kind', payload: { value } });
   const setRenameDraft = (value: string) => dispatch({ type: 'set_rename_draft', payload: { value } });
   const setConnectionDraft = (value: Connection) => dispatch({ type: 'set_connection_draft', payload: { value } });
   const setWorkspaceMode = (mode: WorkspaceMode) => dispatch({ type: 'set_workspace_mode', payload: { mode } });
   const setSelectedProvider = (providerId: string) => dispatch({ type: 'set_selected_provider', payload: { providerId } });
   const setDecompositionNamesText = (value: string) => dispatch({ type: 'set_decomposition_names_text', payload: { value } });
-  const setDecompositionChildKind = (value: ModuleKind) => dispatch({ type: 'set_decomposition_child_kind', payload: { value } });
+  const setDecompositionChildKind = (value: ModuleNode['kind']) => dispatch({ type: 'set_decomposition_child_kind', payload: { value } });
 
   return {
     updateCurrentPackage,
