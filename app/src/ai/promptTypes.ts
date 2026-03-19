@@ -1,4 +1,4 @@
-import type { GenerationPayloadMinimal, ModuleKind, ModulePackage } from '../../../shared/src';
+import type { GenerationPayloadMinimal, ModuleKind } from '../../../shared/src';
 
 export type PromptHierarchyContext = {
   parentModuleName: string;

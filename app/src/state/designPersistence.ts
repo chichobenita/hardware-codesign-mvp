@@ -1,4 +1,7 @@
-import type { DesignState } from '../types';
+import { type ModulePackage } from '../../../shared/src';
+import { isHandoffArtifactRecord } from '../ai/handoffArtifacts';
+import type { ModuleNode } from '../../../shared/src';
+import type { Connection, DesignState } from '../types';
 import { seedState } from './designReducer';
 import { PERSISTED_DESIGN_SCHEMA_VERSION, type PersistedDesignSnapshot } from './migrations/migrationTypes';
 import { migratePersistedDesignSnapshot } from './migrations/snapshotMigrations';

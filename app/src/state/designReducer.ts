@@ -1,5 +1,5 @@
 import { type ModuleKind, type ModuleNode, type ModulePackage } from '../../../shared/src';
-import { applyProviderResultToArtifact, createHandoffArtifactFromState } from '../ai/handoffArtifacts';
+import { createHandoffArtifactFromState } from '../ai/handoffArtifacts';
 import type { DesignState } from '../types';
 import type { DesignAction } from './designActions';
 import { normalizeDesignState } from './normalization/normalizeDesignState';
