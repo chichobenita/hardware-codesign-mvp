@@ -96,6 +96,47 @@ describe('review/handoff UI flow', () => {
     expect(screen.queryByRole('button', { name: 'Copy generated prompt' })).not.toBeInTheDocument();
   });
 
+
+  it('shows a pending provider job state before async handoff completion', async () => {
+    renderWorkspace(createEligibleHandoffState());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark selected module as handed_off' }));
+
+    expect(screen.getByRole('button', { name: 'Submitting to provider...' })).toBeDisabled();
+    expect(screen.getByText(/Latest provider job:/i).textContent).toContain('pending');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Already handed off' })).toBeDisabled();
+    });
+  });
+
+  it('renders provider failure state separately from the prepared artifact snapshot', async () => {
+    const state = createEligibleHandoffState();
+    state.ui.selectedProviderId = MOCK_STRUCTURED_PROVIDER_ID;
+    state.moduleList = state.moduleList.map((moduleNode) => (
+      moduleNode.id === 'example_uart_rx' ? { ...moduleNode, name: 'provider_fail_uart' } : moduleNode
+    ));
+    state.packageContentByModuleId.example_uart_rx = {
+      ...state.packageContentByModuleId.example_uart_rx,
+      identity: {
+        ...state.packageContentByModuleId.example_uart_rx.identity,
+        name: 'provider_fail_uart'
+      }
+    };
+
+    renderWorkspace(state);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark selected module as handed_off' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Latest provider job:/i).textContent).toContain('failure');
+    });
+
+    expect(screen.getByText(/Structured mock provider could not process provider_fail_uart/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry handoff execution' })).toBeEnabled();
+    expect(screen.getByText(/Current artifact status:/i).textContent).toContain('prepared');
+  });
+
   it('performs handoff from an eligible module and renders handed_off artifact/history state', async () => {
     renderWorkspace(createEligibleHandoffState());
 
