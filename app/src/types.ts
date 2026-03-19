@@ -1,6 +1,5 @@
 import type { ModuleKind, ModuleNode, ModulePackage, ModulePort, SemanticConnection } from '../../shared/src';
 import type { HandoffArtifact } from './ai/handoffTypes';
-import type { ProviderJob } from './ai/providerJobTypes';
 
 export type Connection = SemanticConnection;
 
