@@ -19,20 +19,38 @@ export function AISuggestionsPanel({
   applyProposal,
   rejectProposal
 }: AISuggestionsPanelProps): JSX.Element {
+  const proposalCount = selectedProposals.length;
+  const appliedCount = selectedProposals.filter((proposal) => proposal.status === 'applied').length;
+
   return (
-    <section className="panel left-panel">
-      <h2>AI Collaboration</h2>
-      <p className="muted">Mock proposals for selected module: <strong>{selectedModule?.name}</strong></p>
-      <p className="suggestions-note">Proposals are not committed until you click <strong>Accept</strong>.</p>
+    <section className="panel left-panel" aria-labelledby="ai-collaboration-title">
+      <div className="panel-header-row">
+        <div>
+          <p className="workspace-stage-kicker">AI sidebar</p>
+          <h2 id="ai-collaboration-title">AI Collaboration</h2>
+          <p className="muted">Mock proposals for selected module: <strong>{selectedModule?.name ?? 'None'}</strong></p>
+        </div>
+        <div className="secondary-workspace-meta" aria-label="AI proposal summary">
+          <span className="secondary-workspace-chip">{proposalCount} proposals</span>
+          <span className="secondary-workspace-chip">{appliedCount} applied</span>
+        </div>
+      </div>
+      <p className="suggestions-note">Proposals stay editable until you click <strong>Accept</strong>. Use this sidebar for iteration, not for irreversible commit.</p>
       <button type="button" onClick={regenerateProposalsForSelectedModule}>Regenerate mock proposals</button>
-      <div className="suggestions-list">
+      {selectedProposals.length === 0 ? (
+        <div className="empty-state-card">
+          <strong>No active proposals</strong>
+          <p className="muted">Regenerate suggestions to get another AI draft for the current module package.</p>
+        </div>
+      ) : null}
+      <div className="suggestions-list" aria-live="polite">
         {selectedProposals.map((proposal) => (
           <article key={proposal.proposalId} className="suggestion-card">
             <div className="suggestion-header-row">
               <h3>{getProposalTitle(proposal.proposedChange)}</h3>
               <span className={`suggestion-status suggestion-${proposal.status}`}>{proposal.status}</span>
             </div>
-            <p className="muted">{getProposalDescription(proposal.proposedChange)}</p>
+            <p className="muted suggestion-description">{getProposalDescription(proposal.proposedChange)}</p>
             <p className="muted">{proposal.rationale}</p>
 
             {(proposal.proposedChange.kind === 'purpose_update' || proposal.proposedChange.kind === 'behavior_update') && (
