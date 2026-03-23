@@ -72,19 +72,25 @@ export function DiagramWorkspace({
       ? 'visible child'
       : 'outside visible scope';
   const bundledEdgeGroups = layout.edgeGroups.filter((group) => group.connections.length > 1);
+  const edgeGroupsByKey = new Map(layout.edgeGroups.map((group) => [group.groupKey, group]));
   const expandedBundleCount = bundledEdgeGroups.filter((group) => group.isExpanded).length;
+  const noSelectionVisible = Boolean(selectedModule && !selectedVisibleNode && selectedModule.id !== currentHierarchyModule?.id);
+  const createDisabled = !state.ui.newModuleName.trim();
+  const renameDisabled = !state.ui.renameDraft.trim();
+  const connectDisabled = !state.ui.connectionDraft.signal.trim();
 
   return (
-    <section className="panel center-panel">
+    <section className="panel center-panel" aria-labelledby="diagram-workspace-title">
       <div className="diagram-header-row">
         <div>
-          <h2>Diagram Workspace</h2>
-          <p className="muted">SVG-based MVP surface derived directly from reducer state.</p>
+          <h2 id="diagram-workspace-title">Diagram Workspace</h2>
+          <p className="muted">SVG-based MVP surface derived directly from reducer state, now polished around hierarchy framing, visibility cues, and bundle inspection.</p>
         </div>
         <div className="diagram-stats" aria-label="Diagram statistics">
           <span>{layout.nodes.length} modules</span>
           <span>{visibleConnections.length} connections</span>
           <span>{bundledEdgeGroups.length} bundles</span>
+          <span>{expandedBundleCount} expanded</span>
         </div>
       </div>
 
@@ -130,6 +136,7 @@ export function DiagramWorkspace({
                 className={isCurrent ? 'breadcrumb-item current' : 'breadcrumb-item'}
                 onClick={() => setHierarchyView(item.moduleId)}
                 disabled={isCurrent}
+                aria-current={isCurrent ? 'page' : undefined}
               >
                 {item.label}
               </button>
@@ -138,6 +145,12 @@ export function DiagramWorkspace({
           );
         })}
       </nav>
+
+      {noSelectionVisible ? (
+        <div className="diagram-inline-notice" role="status">
+          <strong>{selectedModule?.name}</strong> is outside the current scope. Use the breadcrumb, parent navigation, or scope fit to re-orient the canvas.
+        </div>
+      ) : null}
 
       <div className="diagram-surface-card">
         <div className="diagram-surface-header">
@@ -150,6 +163,7 @@ export function DiagramWorkspace({
               <button
                 type="button"
                 className={diagramViewportMode === 'fit_scope' ? 'diagram-viewport-button active' : 'diagram-viewport-button'}
+                aria-pressed={diagramViewportMode === 'fit_scope'}
                 onClick={() => setDiagramViewportMode('fit_scope')}
               >
                 Fit scope
@@ -157,6 +171,7 @@ export function DiagramWorkspace({
               <button
                 type="button"
                 className={diagramViewportMode === 'focus_selection' ? 'diagram-viewport-button active' : 'diagram-viewport-button'}
+                aria-pressed={diagramViewportMode === 'focus_selection'}
                 onClick={() => setDiagramViewportMode('focus_selection')}
               >
                 Focus selection
@@ -164,6 +179,7 @@ export function DiagramWorkspace({
               <button
                 type="button"
                 className={diagramViewportMode === 'overview' ? 'diagram-viewport-button active' : 'diagram-viewport-button'}
+                aria-pressed={diagramViewportMode === 'overview'}
                 onClick={() => setDiagramViewportMode('overview')}
               >
                 Overview
@@ -190,12 +206,26 @@ export function DiagramWorkspace({
 
           <g aria-label="Diagram edges">
             {layout.edges.map((edge) => {
+              const shouldToggle = edge.connections.length > 1;
+              const toggleLabel = edge.isExpanded ? 'Collapse bundle' : 'Expand bundle';
+              const edgeGroup = edgeGroupsByKey.get(edge.groupKey);
+
               return (
                 <g
                   key={edge.key}
                   data-testid={`diagram-edge-${edge.groupKey.replace(/[^a-z0-9_-]+/gi, '_')}`}
                   className={edge.isBundle ? 'diagram-edge-group' : undefined}
-                  onClick={() => edge.connections.length > 1 ? toggleEdgeBundle(edge.groupKey) : undefined}
+                  onClick={() => shouldToggle ? toggleEdgeBundle(edge.groupKey) : undefined}
+                  onKeyDown={(event) => {
+                    if (shouldToggle && (event.key === 'Enter' || event.key === ' ')) {
+                      event.preventDefault();
+                      toggleEdgeBundle(edge.groupKey);
+                    }
+                  }}
+                  role={shouldToggle ? 'button' : undefined}
+                  tabIndex={shouldToggle ? 0 : undefined}
+                  aria-label={shouldToggle && edgeGroup ? `${toggleLabel} for ${edgeGroup.fromLabel} to ${edgeGroup.toLabel}` : undefined}
+                  aria-expanded={shouldToggle ? edge.isExpanded : undefined}
                 >
                   <path
                     d={edge.path}
@@ -212,9 +242,9 @@ export function DiagramWorkspace({
                   </text>
                   {edge.isBundle ? (
                     <>
-                      <rect x={edge.badgeX - 52} y={edge.badgeY - 12} width="104" height="20" rx="10" className="diagram-edge-bundle-badge" />
+                      <rect x={edge.badgeX - 60} y={edge.badgeY - 12} width="120" height="20" rx="10" className="diagram-edge-bundle-badge" />
                       <text x={edge.badgeX} y={edge.badgeY + 2} className="diagram-edge-bundle-text" textAnchor="middle">
-                        Expand bundle
+                        {edge.isExpanded ? 'Collapse bundle' : 'Expand bundle'}
                       </text>
                     </>
                   ) : null}
@@ -244,6 +274,22 @@ export function DiagramWorkspace({
                     className={rectClassName}
                     onClick={() => selectModule(node.module.id)}
                     onDoubleClick={() => node.module.kind === 'composite' ? setHierarchyView(node.module.id) : undefined}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        selectModule(node.module.id);
+                        return;
+                      }
+
+                      if (event.key === ' ' && node.module.kind === 'composite') {
+                        event.preventDefault();
+                        setHierarchyView(node.module.id);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${node.module.name}, ${node.module.kind} module`}
+                    aria-pressed={isSelected}
                   />
                   <text x="16" y="24" className="diagram-node-level">{node.depthLabel}</text>
                   <text x="16" y="48" className="diagram-node-title">{node.module.name}</text>
@@ -269,10 +315,16 @@ export function DiagramWorkspace({
               <strong>Connection bundles</strong>
               <p className="muted">Repeated endpoint pairs collapse into one bundle. Expand only the path you need to inspect.</p>
             </div>
-            <span className="diagram-edge-inspector-chip">{bundledEdgeGroups.length} grouped paths</span>
+            <div className="diagram-edge-inspector-meta">
+              <span className="diagram-edge-inspector-chip">{bundledEdgeGroups.length} grouped paths</span>
+              <span className="diagram-edge-inspector-chip">{expandedBundleCount} expanded</span>
+            </div>
           </div>
           {bundledEdgeGroups.length === 0 ? (
-            <p className="muted">No bundled edge groups in this scope.</p>
+            <div className="empty-state-card">
+              <strong>No bundled edge groups in this scope</strong>
+              <p className="muted">Repeated endpoint pairs will collapse here automatically once the current hierarchy view becomes dense enough.</p>
+            </div>
           ) : (
             <div className="diagram-edge-bundle-list">
               {bundledEdgeGroups.map((group) => (
@@ -283,7 +335,7 @@ export function DiagramWorkspace({
                   </div>
                   <div className="diagram-edge-bundle-card-actions">
                     <span className="diagram-edge-bundle-chip">{group.connections.length} signals</span>
-                    <button type="button" className="diagram-viewport-button" onClick={() => toggleEdgeBundle(group.groupKey)}>
+                    <button type="button" className="diagram-viewport-button" onClick={() => toggleEdgeBundle(group.groupKey)} aria-expanded={group.isExpanded}>
                       {group.isExpanded ? 'Collapse signals' : 'Expand signals'}
                     </button>
                   </div>
@@ -305,30 +357,34 @@ export function DiagramWorkspace({
       <div className="diagram-toolbar-grid">
         <div className="diagram-tool-card">
           <strong>Create module in current scope</strong>
+          <p className="muted">This quick form mirrors the ribbon so common structure edits stay close to the canvas.</p>
           <div className="inline-form inline-form-tight">
-            <input value={state.ui.newModuleName} onChange={(event) => setNewModuleName(event.target.value)} placeholder="new block name" />
+            <input value={state.ui.newModuleName} onChange={(event) => setNewModuleName(event.target.value)} placeholder="new block name" aria-label="Diagram new block name" />
             <select value={state.ui.newModuleKind} onChange={(event) => setNewModuleKind(event.target.value as ModuleKind)} aria-label="Block kind">
               <option value="leaf">leaf</option>
               <option value="composite">composite</option>
             </select>
-            <button type="button" onClick={createModule}>Create block</button>
+            <button type="button" onClick={createModule} disabled={createDisabled}>Create block</button>
           </div>
         </div>
 
         <div className="diagram-tool-card">
           <strong>Rename selected block</strong>
+          <p className="muted">Selection-driven rename keeps naming aligned across the diagram, package, and review flows.</p>
           <div className="inline-form inline-form-tight">
             <input
               value={state.ui.renameDraft}
               onChange={(event) => setRenameDraft(event.target.value)}
               placeholder={selectedModule?.name ?? 'module name'}
+              aria-label="Rename selected block"
             />
-            <button type="button" onClick={renameSelectedModule}>Rename block</button>
+            <button type="button" onClick={renameSelectedModule} disabled={renameDisabled}>Rename block</button>
           </div>
         </div>
 
         <div className="diagram-tool-card">
           <strong>Connect visible blocks</strong>
+          <p className="muted">Use the same draft fields as the ribbon when you want to wire blocks without leaving the current diagram context.</p>
           <div className="inline-form inline-form-tight">
             <select value={state.ui.connectionDraft.fromModuleId} onChange={(event) => setConnectionDraft({ ...state.ui.connectionDraft, fromModuleId: event.target.value })} aria-label="Connection source">
               {visibleModules.map((moduleNode) => (
@@ -340,8 +396,8 @@ export function DiagramWorkspace({
                 <option key={`to-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
               ))}
             </select>
-            <input value={state.ui.connectionDraft.signal} onChange={(event) => setConnectionDraft({ ...state.ui.connectionDraft, signal: event.target.value })} placeholder="signal" />
-            <button type="button" onClick={addConnection}>Connect</button>
+            <input value={state.ui.connectionDraft.signal} onChange={(event) => setConnectionDraft({ ...state.ui.connectionDraft, signal: event.target.value })} placeholder="signal" aria-label="Diagram connection signal" />
+            <button type="button" onClick={addConnection} disabled={connectDisabled}>Connect</button>
           </div>
         </div>
       </div>

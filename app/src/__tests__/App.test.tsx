@@ -22,12 +22,16 @@ describe('App', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Validation' })[0]);
     expect(screen.getByRole('heading', { name: 'Validation', level: 2 })).toBeInTheDocument();
+    expect(screen.getByText(/Selected module clean|module issue/)).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Project data' })[0]);
     expect(screen.getByRole('heading', { name: 'Project data', level: 2 })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Close workspace' }));
     expect(screen.getByRole('heading', { name: 'No deep-work surface open' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Package editor' })).toBeInTheDocument();
+    expect(screen.getByText('Review remains gated by readiness')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close workspace' })).toBeDisabled();
   });
 
   it('supports ribbon-driven insert/connect commands and keyboard shortcuts', () => {
@@ -47,5 +51,18 @@ describe('App', () => {
 
     fireEvent.keyDown(screen.getByText('Architecture canvas'), { key: '2', ctrlKey: true });
     expect(screen.getByRole('button', { name: 'Selection focus' })).toHaveClass('ribbon-button-active');
+  });
+
+  it('keeps insert and connection commands disabled until the draft is actionable', () => {
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: /Add leaf block/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Connect now/i })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('New module name'), { target: { value: 'ready_block' } });
+    fireEvent.change(screen.getByLabelText('Ribbon connection signal'), { target: { value: 'cfg_bus' } });
+
+    expect(screen.getByRole('button', { name: /Add leaf block/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Connect now/i })).toBeEnabled();
   });
 });
