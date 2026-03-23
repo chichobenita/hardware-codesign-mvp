@@ -1,6 +1,6 @@
 import type { ModuleKind, ModulePackage } from '../../../shared/src';
 import type { AiProposal } from '../ai/proposals/proposalTypes';
-import type { Connection, DesignState, WorkspaceMode } from '../types';
+import type { Connection, DesignState, DiagramViewportMode, SecondaryWorkspace, WorkspaceMode } from '../types';
 import type { HandoffArtifact } from '../ai/handoffTypes';
 import type { ProviderExecutionFailure, ProviderHandoffResult } from '../ai/providers/providerTypes';
 import type { ProviderJob } from '../ai/providerJobTypes';
@@ -11,6 +11,8 @@ export type DesignAction =
   | { type: 'rename_module'; payload: { moduleId: string; name: string; nowIso?: string } }
   | { type: 'select_module'; payload: { moduleId: string } }
   | { type: 'set_workspace_mode'; payload: { mode: WorkspaceMode } }
+  | { type: 'set_secondary_workspace'; payload: { workspace: SecondaryWorkspace } }
+  | { type: 'set_diagram_viewport_mode'; payload: { mode: DiagramViewportMode } }
   | { type: 'set_selected_provider'; payload: { providerId: string } }
   | { type: 'enter_hierarchy_view'; payload: { moduleId: string } }
   | { type: 'navigate_to_parent_hierarchy'; payload: {} }

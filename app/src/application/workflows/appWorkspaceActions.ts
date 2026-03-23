@@ -13,7 +13,7 @@ import {
 import { exportProjectSnapshot, getProjectImportErrorMessage, importProjectSnapshot, triggerProjectDownload } from '../../state/designTransfer';
 import type { DesignAction } from '../../state/designActions';
 import type { AppWorkspaceViewModel } from '../viewModels/appWorkspaceViewModel';
-import type { Connection, DesignState, WorkspaceMode } from '../../types';
+import type { Connection, DesignState, DiagramViewportMode, SecondaryWorkspace, WorkspaceMode } from '../../types';
 
 function parseDecompositionNames(value: string): string[] {
   return value
@@ -220,6 +220,8 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
   const setRenameDraft = (value: string) => dispatch({ type: 'set_rename_draft', payload: { value } });
   const setConnectionDraft = (value: Connection) => dispatch({ type: 'set_connection_draft', payload: { value } });
   const setWorkspaceMode = (mode: WorkspaceMode) => dispatch({ type: 'set_workspace_mode', payload: { mode } });
+  const setSecondaryWorkspace = (workspace: SecondaryWorkspace) => dispatch({ type: 'set_secondary_workspace', payload: { workspace } });
+  const setDiagramViewportMode = (mode: DiagramViewportMode) => dispatch({ type: 'set_diagram_viewport_mode', payload: { mode } });
   const setSelectedProvider = (providerId: string) => dispatch({ type: 'set_selected_provider', payload: { providerId } });
   const setDecompositionNamesText = (value: string) => dispatch({ type: 'set_decomposition_names_text', payload: { value } });
   const setDecompositionChildKind = (value: ModuleKind) => dispatch({ type: 'set_decomposition_child_kind', payload: { value } });
@@ -250,6 +252,8 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     setRenameDraft,
     setConnectionDraft,
     setWorkspaceMode,
+    setSecondaryWorkspace,
+    setDiagramViewportMode,
     setSelectedProvider,
     setDecompositionNamesText,
     setDecompositionChildKind

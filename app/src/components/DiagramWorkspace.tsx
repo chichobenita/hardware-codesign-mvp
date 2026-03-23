@@ -1,5 +1,5 @@
 import type { ModuleKind, ModuleNode } from '../../../shared/src';
-import type { Connection, DesignState, HierarchyBreadcrumbItem } from '../types';
+import type { Connection, DesignState, DiagramViewportMode, HierarchyBreadcrumbItem } from '../types';
 import { createDiagramLayout } from './diagram/layout';
 
 type DiagramWorkspaceProps = {
@@ -9,7 +9,9 @@ type DiagramWorkspaceProps = {
   currentHierarchyModule?: ModuleNode;
   currentHierarchyBreadcrumbs: HierarchyBreadcrumbItem[];
   parentHierarchyModuleId: string | null;
+  diagramViewportMode: DiagramViewportMode;
   setHierarchyView: (moduleId: string) => void;
+  setDiagramViewportMode: (mode: DiagramViewportMode) => void;
   navigateToParentHierarchy: () => void;
   setNewModuleName: (value: string) => void;
   setNewModuleKind: (value: ModuleKind) => void;
@@ -30,7 +32,9 @@ export function DiagramWorkspace({
   currentHierarchyModule,
   currentHierarchyBreadcrumbs,
   parentHierarchyModuleId,
+  diagramViewportMode,
   setHierarchyView,
+  setDiagramViewportMode,
   navigateToParentHierarchy,
   setNewModuleName,
   setNewModuleKind,
@@ -45,6 +49,18 @@ export function DiagramWorkspace({
 }: DiagramWorkspaceProps): JSX.Element {
   const layout = createDiagramLayout(visibleModules, state.packageContentByModuleId, visibleConnections);
   const selectedIsComposite = selectedModule?.kind === 'composite';
+  const selectedVisibleNode = layout.nodes.find((node) => node.module.id === selectedModule?.id);
+  const scopeNode = layout.nodes.find((node) => node.module.id === currentHierarchyModule?.id) ?? layout.nodes[0];
+  const viewportNode = diagramViewportMode === 'focus_selection'
+    ? selectedVisibleNode ?? scopeNode
+    : scopeNode;
+  const viewport = createViewportFrame(layout, viewportNode, diagramViewportMode);
+  const directChildCount = visibleModules.filter((moduleNode) => moduleNode.id !== currentHierarchyModule?.id).length;
+  const selectionRelationship = selectedModule?.id === currentHierarchyModule?.id
+    ? 'scope module'
+    : selectedVisibleNode
+      ? 'visible child'
+      : 'outside visible scope';
 
   return (
     <section className="panel center-panel">
@@ -60,9 +76,26 @@ export function DiagramWorkspace({
       </div>
 
       <div className="hierarchy-toolbar" aria-label="Hierarchy navigation">
-        <div>
-          <strong>Current scope</strong>
-          <p className="muted">{currentHierarchyModule?.name ?? 'workspace'} child-level view</p>
+        <div className="hierarchy-toolbar-copy">
+          <div>
+            <strong>Current scope</strong>
+            <p className="muted">{currentHierarchyModule?.name ?? 'workspace'} child-level view</p>
+          </div>
+          <div className="hierarchy-summary-grid" aria-label="Hierarchy scope summary">
+            <div className="hierarchy-summary-card">
+              <span className="hierarchy-summary-label">Parent</span>
+              <strong>{parentHierarchyModuleId ? 'Available' : 'Root scope'}</strong>
+            </div>
+            <div className="hierarchy-summary-card">
+              <span className="hierarchy-summary-label">Children</span>
+              <strong>{directChildCount}</strong>
+            </div>
+            <div className="hierarchy-summary-card">
+              <span className="hierarchy-summary-label">Selection</span>
+              <strong>{selectedModule?.name ?? 'None'}</strong>
+              <span className="hierarchy-summary-footnote">{selectionRelationship}</span>
+            </div>
+          </div>
         </div>
         <div className="hierarchy-actions">
           <button type="button" onClick={navigateToParentHierarchy} disabled={!parentHierarchyModuleId}>
@@ -94,9 +127,38 @@ export function DiagramWorkspace({
       </nav>
 
       <div className="diagram-surface-card">
+        <div className="diagram-surface-header">
+          <div className="diagram-surface-header-copy">
+            <strong>Hierarchy framing</strong>
+            <p className="muted">Use scope-fit for the current composite, selection-focus for quick inspection, or overview for a wider hierarchy read.</p>
+          </div>
+          <div className="diagram-viewport-controls" aria-label="Diagram viewport controls">
+            <button
+              type="button"
+              className={diagramViewportMode === 'fit_scope' ? 'diagram-viewport-button active' : 'diagram-viewport-button'}
+              onClick={() => setDiagramViewportMode('fit_scope')}
+            >
+              Fit scope
+            </button>
+            <button
+              type="button"
+              className={diagramViewportMode === 'focus_selection' ? 'diagram-viewport-button active' : 'diagram-viewport-button'}
+              onClick={() => setDiagramViewportMode('focus_selection')}
+            >
+              Focus selection
+            </button>
+            <button
+              type="button"
+              className={diagramViewportMode === 'overview' ? 'diagram-viewport-button active' : 'diagram-viewport-button'}
+              onClick={() => setDiagramViewportMode('overview')}
+            >
+              Overview
+            </button>
+          </div>
+        </div>
         <svg
           className="diagram-surface"
-          viewBox={`0 0 ${layout.width} ${layout.height}`}
+          viewBox={`${viewport.x} ${viewport.y} ${viewport.width} ${viewport.height}`}
           role="img"
           aria-label="Hardware module diagram"
         >
@@ -148,6 +210,7 @@ export function DiagramWorkspace({
                     rx="14"
                     className={rectClassName}
                     onClick={() => selectModule(node.module.id)}
+                    onDoubleClick={() => node.module.kind === 'composite' ? setHierarchyView(node.module.id) : undefined}
                   />
                   <text x="16" y="24" className="diagram-node-level">{node.depthLabel}</text>
                   <text x="16" y="48" className="diagram-node-title">{node.module.name}</text>
@@ -163,6 +226,7 @@ export function DiagramWorkspace({
           <span><strong>Lx</strong> = deterministic hierarchy depth column</span>
           <span><strong>Badge</strong> = parent/child/top cue</span>
           <span><strong>Scope</strong> = selected composite and direct children</span>
+          <span><strong>Viewport</strong> = reducer-owned fit/focus mode</span>
         </div>
       </div>
 
@@ -211,4 +275,34 @@ export function DiagramWorkspace({
       </div>
     </section>
   );
+}
+
+type ViewportFrame = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+function clampViewport(layoutSize: number, viewportSize: number, position: number): number {
+  const maxPosition = Math.max(0, layoutSize - viewportSize);
+  return Math.min(Math.max(0, position), maxPosition);
+}
+
+function createViewportFrame(
+  layout: ReturnType<typeof createDiagramLayout>,
+  focalNode: ReturnType<typeof createDiagramLayout>['nodes'][number] | undefined,
+  mode: DiagramViewportMode
+): ViewportFrame {
+  if (mode === 'overview' || !focalNode) {
+    return { x: 0, y: 0, width: layout.width, height: layout.height };
+  }
+
+  const zoomFactor = mode === 'focus_selection' ? 0.64 : 0.82;
+  const width = Math.max(320, Math.round(layout.width * zoomFactor));
+  const height = Math.max(220, Math.round(layout.height * zoomFactor));
+  const x = clampViewport(layout.width, width, focalNode.centerX - width / 2);
+  const y = clampViewport(layout.height, height, focalNode.centerY - height / 2);
+
+  return { x, y, width, height };
 }

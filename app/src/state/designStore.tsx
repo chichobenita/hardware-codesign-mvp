@@ -4,6 +4,7 @@ import type { DesignState } from '../types';
 import type { DesignAction } from './designActions';
 import { loadDesignState, saveDesignState } from './designPersistence';
 import { designReducer } from './designReducer';
+import { normalizeDesignState } from './normalization/normalizeDesignState';
 
 type DesignStoreContextValue = {
   state: DesignState;
@@ -24,7 +25,10 @@ function persistedDesignReducer(state: DesignState, action: DesignAction): Desig
 }
 
 export function DesignStoreProvider({ children, initialState }: DesignStoreProviderProps): JSX.Element {
-  const [state, dispatch] = useReducer(persistedDesignReducer, initialState ?? loadDesignState());
+  const [state, dispatch] = useReducer(
+    persistedDesignReducer,
+    normalizeDesignState(initialState ?? loadDesignState(), { ensureUi: true, ensureProposals: true })
+  );
 
   return <DesignStoreContext.Provider value={{ state, dispatch }}>{children}</DesignStoreContext.Provider>;
 }
