@@ -59,6 +59,30 @@ function createModuleNode(kind: ModuleKind, nextId: string, cleanName: string): 
   return { id: nextId, name: cleanName, kind };
 }
 
+function workspaceModeForSecondaryWorkspace(workspace: DesignState['ui']['secondaryWorkspace']): DesignState['ui']['workspaceMode'] {
+  if (workspace === 'review') {
+    return 'review';
+  }
+
+  if (workspace === 'handoff') {
+    return 'handoff';
+  }
+
+  return 'design';
+}
+
+function secondaryWorkspaceForWorkspaceMode(mode: DesignState['ui']['workspaceMode']): DesignState['ui']['secondaryWorkspace'] {
+  if (mode === 'review') {
+    return 'review';
+  }
+
+  if (mode === 'handoff') {
+    return 'handoff';
+  }
+
+  return 'package_editor';
+}
+
 export { defaultConnectionDraft };
 
 export const seedState: DesignState = normalizeInteractiveState(baseSeedState);
@@ -203,7 +227,23 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
     case 'select_module':
       return normalizeInteractiveState({ ...state, selectedModuleId: action.payload.moduleId });
     case 'set_workspace_mode':
-      return { ...state, ui: { ...state.ui, workspaceMode: action.payload.mode } };
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          workspaceMode: action.payload.mode,
+          secondaryWorkspace: secondaryWorkspaceForWorkspaceMode(action.payload.mode)
+        }
+      };
+    case 'set_secondary_workspace':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          secondaryWorkspace: action.payload.workspace,
+          workspaceMode: workspaceModeForSecondaryWorkspace(action.payload.workspace)
+        }
+      };
     case 'set_selected_provider':
       return { ...state, ui: { ...state.ui, selectedProviderId: action.payload.providerId } };
     case 'enter_hierarchy_view':

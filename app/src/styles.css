@@ -443,6 +443,11 @@ button {
   overflow-y: auto;
 }
 
+.secondary-workspace-panel .right-panel {
+  max-height: none;
+  overflow: visible;
+}
+
 .module-package-section {
   border: 1px solid #e5e7eb;
   border-radius: 6px;

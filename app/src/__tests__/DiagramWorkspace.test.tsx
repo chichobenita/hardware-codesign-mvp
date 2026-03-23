@@ -44,7 +44,7 @@ describe('DiagramWorkspace', () => {
     fireEvent.click(screen.getByTestId('diagram-node-root').querySelector('rect') as SVGRectElement);
 
     expect(screen.getByText('top_controller', { selector: '.left-panel strong' })).toBeInTheDocument();
-    expect(screen.getByText(/Selected module:/)).toHaveTextContent('top_controller (root)');
+    expect(screen.getByText('Selection: top_controller')).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('top_controller');
   });
 
@@ -135,7 +135,7 @@ describe('DiagramWorkspace', () => {
     expect(screen.getByTestId('diagram-node-child_a')).toBeInTheDocument();
     expect(screen.getByTestId('diagram-node-nested_decoder')).toBeInTheDocument();
     expect(screen.queryByTestId('diagram-node-child_b')).not.toBeInTheDocument();
-    expect(screen.getByText(/Selected module:/)).toHaveTextContent('input_fifo (child_a)');
+    expect(screen.getByText('Selection: input_fifo')).toBeInTheDocument();
   });
 
   it('navigates back to the parent via breadcrumb and preserves selection sync', () => {
@@ -181,7 +181,7 @@ describe('DiagramWorkspace', () => {
     expect(screen.getByText('top_controller child-level view')).toBeInTheDocument();
     expect(screen.getByTestId('diagram-node-composite_child')).toBeInTheDocument();
     expect(screen.queryByTestId('diagram-node-leaf_grandchild')).not.toBeInTheDocument();
-    expect(screen.getByText(/Selected module:/)).toHaveTextContent('top_controller (root)');
+    expect(screen.getByText('Selection: top_controller')).toBeInTheDocument();
   });
 
   it('remains hierarchy-compatible after import/restore of state', () => {
@@ -227,7 +227,7 @@ describe('DiagramWorkspace', () => {
     expect(screen.getByTestId('diagram-node-decoder')).toBeInTheDocument();
     expect(screen.getByTestId('diagram-edge-fabric-decoder')).toBeInTheDocument();
     expect(within(screen.getByTestId('diagram-node-decoder')).getByText('address_decoder')).toBeInTheDocument();
-    expect(screen.getByText(/Selected module:/)).toHaveTextContent('address_decoder (decoder)');
+    expect(screen.getByText('Selection: address_decoder')).toBeInTheDocument();
     expect(within(screen.getByTestId('diagram-node-decoder')).getByText('control_fabric / address_decoder')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Hierarchy breadcrumb' })).toBeInTheDocument();
   });
