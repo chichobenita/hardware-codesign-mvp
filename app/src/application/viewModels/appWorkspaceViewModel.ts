@@ -1,47 +1,18 @@
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> origin/main
 import { evaluateModuleWorkflowPolicy, summarizeWorkflowIssues } from '../policies/workflowReadinessPolicy';
 import { listHandoffProviders } from '../../ai/providers/providerRegistry';
 import {
   selectCurrentHierarchyModule,
-<<<<<<< HEAD
-=======
-=======
-import { listHandoffProviders } from '../../ai/providers/providerRegistry';
-import {
-  selectCanShowPayloadPreview,
-  selectCurrentHierarchyModule,
-  selectDesignHasValidationIssues,
->>>>>>> origin/main
->>>>>>> origin/main
   selectEligibleLeafReadyModules,
   selectGenerationPayloadSource,
   selectGenerationPromptSource,
   selectHandoffArtifactsForModule,
   selectHierarchyBreadcrumbs,
   selectLatestHandoffArtifactForModule,
-<<<<<<< HEAD
   selectLatestProviderJobForArtifact,
-=======
-<<<<<<< HEAD
-  selectLatestProviderJobForArtifact,
-=======
-  selectModuleIsValidForReviewOrHandoff,
->>>>>>> origin/main
->>>>>>> origin/main
   selectParentHierarchyModuleId,
   selectSectionStatuses,
   selectSelectedModule,
   selectSelectedModulePackage,
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-  selectTransitionReadiness,
->>>>>>> origin/main
->>>>>>> origin/main
   selectValidationIssues,
   selectValidationIssuesForModule,
   selectVisibleConnections,
@@ -68,10 +39,6 @@ export function buildAppWorkspaceViewModel(state: DesignState) {
   const handoffArtifacts = selectHandoffArtifactsForModule(state, state.selectedModuleId);
   const latestHandoffArtifact = selectLatestHandoffArtifactForModule(state, state.selectedModuleId);
   const handoffProviders = listHandoffProviders();
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> origin/main
   const approvedLeafReadyModules = selectEligibleLeafReadyModules(state);
   const validationIssues = selectValidationIssues(state);
   const moduleValidationIssues = selectValidationIssuesForModule(state, state.selectedModuleId);
@@ -86,22 +53,6 @@ export function buildAppWorkspaceViewModel(state: DesignState) {
   const currentProviderJob = latestHandoffArtifact ? selectLatestProviderJobForArtifact(state, latestHandoffArtifact.artifactId) : null;
   const hasCurrentSelectedArtifact = latestHandoffArtifact?.handoffStatus === 'handed_off';
   const isSelectedModuleHandoffReady = moduleWorkflowPolicy.handoff.isEligible;
-<<<<<<< HEAD
-=======
-=======
-  const transitionReadiness = selectTransitionReadiness(currentPackageContent);
-  const approvedLeafReadyModules = selectEligibleLeafReadyModules(state);
-  const canShowPayloadPreview = selectCanShowPayloadPreview(state.ui.workspaceMode, selectedModule, currentPackageContent);
-  const validationIssues = selectValidationIssues(state);
-  const moduleValidationIssues = selectValidationIssuesForModule(state, state.selectedModuleId);
-  const designHasValidationIssues = selectDesignHasValidationIssues(state);
-  const isSelectedModuleValidForReviewOrHandoff = selectModuleIsValidForReviewOrHandoff(state, state.selectedModuleId);
-  const selectedSuggestions = state.suggestionsByModuleId[state.selectedModuleId] ?? [];
-  const hasCurrentSelectedArtifact = latestHandoffArtifact?.handoffStatus === 'handed_off';
-  const isSelectedModuleHandoffReady = approvedLeafReadyModules.some((moduleNode) => moduleNode.id === state.selectedModuleId)
-    && isSelectedModuleValidForReviewOrHandoff;
->>>>>>> origin/main
->>>>>>> origin/main
 
   return {
     selectedModule,
@@ -118,10 +69,6 @@ export function buildAppWorkspaceViewModel(state: DesignState) {
     handoffArtifacts,
     latestHandoffArtifact,
     handoffProviders,
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> origin/main
     workflowPolicy: moduleWorkflowPolicy,
     transitionReadiness: moduleWorkflowPolicy.lifecycle.transitionReadiness,
     approvedLeafReadyModules,
@@ -133,19 +80,6 @@ export function buildAppWorkspaceViewModel(state: DesignState) {
     isSelectedModuleValidForReviewOrHandoff: moduleWorkflowPolicy.review.isEligible,
     selectedProposals,
     currentProviderJob,
-<<<<<<< HEAD
-=======
-=======
-    transitionReadiness,
-    approvedLeafReadyModules,
-    canShowPayloadPreview,
-    validationIssues,
-    moduleValidationIssues,
-    designHasValidationIssues,
-    isSelectedModuleValidForReviewOrHandoff,
-    selectedSuggestions,
->>>>>>> origin/main
->>>>>>> origin/main
     hasCurrentSelectedArtifact,
     isSelectedModuleHandoffReady
   };

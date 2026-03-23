@@ -1,15 +1,6 @@
+import type { ModuleNode } from '../../../../shared/src';
 import type { HandoffProvider } from '../../ai/providers/providerTypes';
-<<<<<<< HEAD
-import type { ModuleNode } from '../../../../shared/src';
 import type { WorkspaceMode } from '../../types';
-=======
-<<<<<<< HEAD
-import type { ModuleNode } from '../../../../shared/src';
-import type { WorkspaceMode } from '../../types';
-=======
-import type { ModuleNode, WorkspaceMode } from '../../types';
->>>>>>> origin/main
->>>>>>> origin/main
 
 type PanelControlsSectionProps = {
   selectedModule?: ModuleNode;
