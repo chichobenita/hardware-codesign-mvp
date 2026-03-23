@@ -13,25 +13,11 @@ export function AppWorkspace(): JSX.Element {
       <main className="workspace-grid">
         <AISuggestionsPanel
           selectedModule={viewModel.selectedModule}
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> origin/main
           regenerateProposalsForSelectedModule={actions.regenerateProposalsForSelectedModule}
           selectedProposals={viewModel.selectedProposals}
           updateProposal={actions.updateProposal}
           applyProposal={actions.applyProposal}
           rejectProposal={actions.rejectProposal}
-<<<<<<< HEAD
-=======
-=======
-          regenerateSuggestionsForSelectedModule={actions.regenerateSuggestionsForSelectedModule}
-          selectedSuggestions={viewModel.selectedSuggestions}
-          updateSuggestion={actions.updateSuggestion}
-          acceptSuggestion={actions.acceptSuggestion}
-          rejectSuggestion={actions.rejectSuggestion}
->>>>>>> origin/main
->>>>>>> origin/main
         />
 
         <DiagramWorkspace
@@ -77,14 +63,7 @@ export function AppWorkspace(): JSX.Element {
           exportGeneratedPrompt={actions.exportGeneratedPrompt}
           exportLatestHandoffArtifact={actions.exportLatestHandoffArtifact}
           approvedLeafReadyModules={viewModel.approvedLeafReadyModules}
-<<<<<<< HEAD
           currentProviderJob={viewModel.currentProviderJob}
-=======
-<<<<<<< HEAD
-          currentProviderJob={viewModel.currentProviderJob}
-=======
->>>>>>> origin/main
->>>>>>> origin/main
           selectModule={actions.selectModule}
           markSelectedModuleAsHandedOff={actions.markSelectedModuleAsHandedOff}
           exportCurrentProject={actions.exportCurrentProject}

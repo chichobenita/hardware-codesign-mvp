@@ -1,13 +1,5 @@
 import { type ModuleKind, type ModuleNode, type ModulePackage } from '../../../shared/src';
-<<<<<<< HEAD
 import { applyProviderResultToArtifact, createHandoffArtifactFromState } from '../ai/handoffArtifacts';
-=======
-<<<<<<< HEAD
-import { applyProviderResultToArtifact, createHandoffArtifactFromState } from '../ai/handoffArtifacts';
-=======
-import { createHandoffArtifactFromState } from '../ai/handoffArtifacts';
->>>>>>> origin/main
->>>>>>> origin/main
 import type { DesignState } from '../types';
 import type { DesignAction } from './designActions';
 import { normalizeDesignState } from './normalization/normalizeDesignState';
@@ -391,13 +383,13 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
         providerJobs: withPackageUpdate.providerJobs.map((job) => (
           job.jobId === action.payload.jobId
             ? {
-              ...job,
-              status: 'success',
-              completedAt: action.payload.completedAt,
-              retryable: false,
-              result: action.payload.response,
-              error: undefined
-            }
+                ...job,
+                status: 'success',
+                completedAt: action.payload.completedAt,
+                retryable: false,
+                result: action.payload.response,
+                error: undefined
+              }
             : job
         ))
       };
@@ -408,12 +400,12 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
         providerJobs: state.providerJobs.map((job) => (
           job.jobId === action.payload.jobId
             ? {
-              ...job,
-              status: 'failure',
-              completedAt: action.payload.completedAt,
-              retryable: action.payload.error.retryable,
-              error: action.payload.error
-            }
+                ...job,
+                status: 'failure',
+                completedAt: action.payload.completedAt,
+                retryable: action.payload.error.retryable,
+                error: action.payload.error
+              }
             : job
         ))
       };

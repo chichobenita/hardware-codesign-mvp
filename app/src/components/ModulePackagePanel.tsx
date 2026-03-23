@@ -1,20 +1,10 @@
-import type { GenerationPayloadMinimal, ModulePackage, SemanticValidationIssue } from '../../../shared/src';
+import type { GenerationPayloadMinimal, ModuleKind, ModuleNode, ModulePackage, SemanticValidationIssue } from '../../../shared/src';
 import type { HandoffArtifact } from '../ai/handoffTypes';
 import type { ProviderJob } from '../ai/providerJobTypes';
 import type { HandoffProvider } from '../ai/providers/providerTypes';
 import type { PromptBuildResult } from '../ai/promptTypes';
 import type { TransitionReadiness } from '../packageLifecycle';
-<<<<<<< HEAD
-import type { ModuleKind, ModuleNode } from '../../../shared/src';
 import type { Connection, DesignState, PackageSectionStatus, SectionKey, WorkspaceMode } from '../types';
-=======
-<<<<<<< HEAD
-import type { ModuleKind, ModuleNode } from '../../../shared/src';
-import type { Connection, DesignState, PackageSectionStatus, SectionKey, WorkspaceMode } from '../types';
-=======
-import type { Connection, DesignState, ModuleNode, PackageSectionStatus, SectionKey, WorkspaceMode } from '../types';
->>>>>>> origin/main
->>>>>>> origin/main
 import { ArtifactHistorySection } from './modulePackagePanel/ArtifactHistorySection';
 import { DecompositionSection } from './modulePackagePanel/DecompositionSection';
 import { HandoffSection } from './modulePackagePanel/HandoffSection';
@@ -87,14 +77,7 @@ export function ModulePackagePanel({
   exportGeneratedPrompt,
   exportLatestHandoffArtifact,
   approvedLeafReadyModules,
-<<<<<<< HEAD
   currentProviderJob,
-=======
-<<<<<<< HEAD
-  currentProviderJob,
-=======
->>>>>>> origin/main
->>>>>>> origin/main
   selectModule,
   markSelectedModuleAsHandedOff,
   exportCurrentProject,
@@ -183,14 +166,7 @@ export function ModulePackagePanel({
           <HandoffSection
             state={state}
             approvedLeafReadyModules={approvedLeafReadyModules}
-<<<<<<< HEAD
             currentProviderJob={currentProviderJob}
-=======
-<<<<<<< HEAD
-            currentProviderJob={currentProviderJob}
-=======
->>>>>>> origin/main
->>>>>>> origin/main
             latestHandoffArtifact={latestHandoffArtifact}
             isSelectedModuleHandoffReady={isSelectedModuleHandoffReady}
             hasCurrentSelectedArtifact={hasCurrentSelectedArtifact}

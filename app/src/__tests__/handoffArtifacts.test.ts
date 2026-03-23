@@ -9,8 +9,6 @@ import { selectCanShowPayloadPreview } from '../state/designSelectors';
 
 import { designReducer, seedState } from '../state/designReducer';
 
-
-
 describe('handoff artifacts', () => {
   it('creates a handoff artifact from a valid leaf-ready module with payload and prompt snapshots', () => {
     const state = structuredClone(seedState);
@@ -40,11 +38,7 @@ describe('handoff artifacts', () => {
   });
 
   it('uses the mock provider seam deterministically', () => {
-<<<<<<< HEAD
     const result = mockLocalHdlProvider.buildPreparedResult(createProviderInvocationRequest({
-=======
-    const result = mockLocalHdlProvider.buildResultSnapshot({
->>>>>>> origin/main
       artifactId: 'handoff_test',
       schemaVersion: 'handoff-artifact/v1',
       moduleId: 'example_uart_rx',

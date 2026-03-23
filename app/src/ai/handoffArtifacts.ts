@@ -4,10 +4,7 @@ import { buildHdlGenerationPromptFromState } from './promptBuilder';
 import { HANDOFF_ARTIFACT_SCHEMA_VERSION, type HandoffArtifact } from './handoffTypes';
 import type { ProviderHandoffResult } from './providers/providerTypes';
 import { getHandoffProvider } from './providers/providerRegistry';
-<<<<<<< HEAD
 import { createProviderInvocationRequest } from './providers/providerRequests';
-=======
->>>>>>> origin/main
 
 function sanitizeArtifactSegment(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'artifact';
@@ -164,9 +161,5 @@ export function createHandoffArtifactFromState(
   }
 
   const provider = getHandoffProvider(targetProviderId);
-<<<<<<< HEAD
   return applyProviderResultToArtifact(artifact, provider.buildPreparedResult(createProviderInvocationRequest(artifact)));
-=======
-  return applyProviderResultToArtifact(artifact, provider.buildResultSnapshot(artifact));
->>>>>>> origin/main
 }
