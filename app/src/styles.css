@@ -100,10 +100,6 @@ body {
   gap: 8px;
 }
 
-.ribbon-workspace-grid-wide {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
 .ribbon-button {
   width: 100%;
   margin-top: 0;
@@ -191,8 +187,7 @@ body {
   overflow-y: auto;
 }
 
-.secondary-workspace-shell,
-.secondary-workspace-empty {
+.secondary-workspace-dock {
   border: 1px solid #cbd5e1;
   border-radius: 14px;
   background: #ffffff;
@@ -208,7 +203,6 @@ body {
   align-items: flex-start;
 }
 
-.secondary-workspace-header-actions,
 .secondary-workspace-actions {
   display: flex;
   flex-wrap: wrap;
@@ -223,32 +217,18 @@ body {
   border: 1px solid #cbd5e1;
 }
 
-.secondary-workspace-button.active,
-.secondary-workspace-close {
+.secondary-workspace-button.active {
   background: #111827;
   color: #ffffff;
   border-color: #111827;
 }
 
-.secondary-workspace-panel {
-  padding: 16px;
-}
-
-.secondary-workspace-panel-header {
-  margin-bottom: 12px;
-}
-
-.secondary-workspace-panel-header h3 {
-  margin: 0 0 4px;
-}
-
-.secondary-workspace-panel-body {
-  display: grid;
-  gap: 12px;
-}
-
-.secondary-workspace-empty h2 {
-  margin: 0;
+.secondary-workspace-content .right-panel {
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .panel {
@@ -748,12 +728,4 @@ button {
   .secondary-workspace-header {
     flex-direction: column;
   }
-}
-
-.secondary-workspace-shell .validation-card,
-.secondary-workspace-shell .project-transfer-card,
-.secondary-workspace-shell .lifecycle-card,
-.secondary-workspace-shell .handoff-card,
-.secondary-workspace-shell .payload-preview {
-  background: #f9fafb;
 }
