@@ -1,7 +1,11 @@
+<<<<<<< HEAD
 import type { ModuleKind, ModulePackage } from '../../../../shared/src';
 import { createPendingProviderJob, executeProviderHandoff } from '../../ai/handoffExecution';
 import type { AiProposal } from '../../ai/proposals/proposalTypes';
 import { createPreparedHandoffArtifactFromState } from '../../ai/handoffArtifacts';
+=======
+import type { ModulePackage } from '../../../../shared/src';
+>>>>>>> origin/main
 import {
   buildArtifactExportFilename,
   buildPromptExportFilename,
@@ -13,7 +17,11 @@ import {
 import { exportProjectSnapshot, getProjectImportErrorMessage, importProjectSnapshot, triggerProjectDownload } from '../../state/designTransfer';
 import type { DesignAction } from '../../state/designActions';
 import type { AppWorkspaceViewModel } from '../viewModels/appWorkspaceViewModel';
+<<<<<<< HEAD
 import type { Connection, DesignState, WorkspaceMode } from '../../types';
+=======
+import type { Connection, DesignState, ModuleNode, SuggestionCard, WorkspaceMode } from '../../types';
+>>>>>>> origin/main
 
 function parseDecompositionNames(value: string): string[] {
   return value
@@ -31,21 +39,33 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     dispatch({ type: 'update_selected_module_package', payload: { updater } });
   };
 
+<<<<<<< HEAD
   const regenerateProposalsForSelectedModule = () => {
+=======
+  const regenerateSuggestionsForSelectedModule = () => {
+>>>>>>> origin/main
     if (!viewModel.selectedModule) {
       return;
     }
 
     dispatch({
+<<<<<<< HEAD
       type: 'set_proposals_for_module',
       payload: {
         moduleId: viewModel.selectedModule.id,
         proposals: []
+=======
+      type: 'set_suggestions_for_module',
+      payload: {
+        moduleId: viewModel.selectedModule.id,
+        suggestions: []
+>>>>>>> origin/main
       }
     });
     dispatch({ type: 'select_module', payload: { moduleId: viewModel.selectedModule.id } });
   };
 
+<<<<<<< HEAD
   const updateProposal = (proposalId: string, updater: (current: AiProposal) => AiProposal) => {
     dispatch({ type: 'update_proposal', payload: { moduleId: state.selectedModuleId, proposalId, updater } });
   };
@@ -56,6 +76,18 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
 
   const applyProposal = (proposal: AiProposal) => {
     dispatch({ type: 'apply_proposal', payload: { moduleId: state.selectedModuleId, proposal } });
+=======
+  const updateSuggestion = (suggestionId: string, updater: (current: SuggestionCard) => SuggestionCard) => {
+    dispatch({ type: 'update_suggestion', payload: { moduleId: state.selectedModuleId, suggestionId, updater } });
+  };
+
+  const rejectSuggestion = (suggestionId: string) => {
+    dispatch({ type: 'reject_suggestion', payload: { moduleId: state.selectedModuleId, suggestionId } });
+  };
+
+  const acceptSuggestion = (suggestion: SuggestionCard) => {
+    dispatch({ type: 'apply_accepted_suggestion', payload: { moduleId: state.selectedModuleId, suggestion } });
+>>>>>>> origin/main
   };
 
   const moveToNextPackageState = () => {
@@ -90,6 +122,7 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     dispatch({ type: 'connect_modules', payload: { connection: nextConnection } });
   };
 
+<<<<<<< HEAD
   const markSelectedModuleAsHandedOff = async () => {
     const startedAt = new Date().toISOString();
     const artifact = createPreparedHandoffArtifactFromState(state, state.selectedModuleId, state.ui.selectedProviderId, startedAt);
@@ -130,6 +163,10 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
         completedAt
       }
     });
+=======
+  const markSelectedModuleAsHandedOff = () => {
+    dispatch({ type: 'mark_selected_module_handed_off', payload: {} });
+>>>>>>> origin/main
   };
 
   const copyGeneratedPrompt = async () => {
@@ -216,12 +253,17 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
   const setHierarchyView = (moduleId: string) => dispatch({ type: 'set_hierarchy_view', payload: { moduleId } });
   const navigateToParentHierarchy = () => dispatch({ type: 'navigate_to_parent_hierarchy', payload: {} });
   const setNewModuleName = (value: string) => dispatch({ type: 'set_new_module_name', payload: { value } });
+<<<<<<< HEAD
   const setNewModuleKind = (value: ModuleKind) => dispatch({ type: 'set_new_module_kind', payload: { value } });
+=======
+  const setNewModuleKind = (value: ModuleNode['kind']) => dispatch({ type: 'set_new_module_kind', payload: { value } });
+>>>>>>> origin/main
   const setRenameDraft = (value: string) => dispatch({ type: 'set_rename_draft', payload: { value } });
   const setConnectionDraft = (value: Connection) => dispatch({ type: 'set_connection_draft', payload: { value } });
   const setWorkspaceMode = (mode: WorkspaceMode) => dispatch({ type: 'set_workspace_mode', payload: { mode } });
   const setSelectedProvider = (providerId: string) => dispatch({ type: 'set_selected_provider', payload: { providerId } });
   const setDecompositionNamesText = (value: string) => dispatch({ type: 'set_decomposition_names_text', payload: { value } });
+<<<<<<< HEAD
   const setDecompositionChildKind = (value: ModuleKind) => dispatch({ type: 'set_decomposition_child_kind', payload: { value } });
 
   return {
@@ -230,6 +272,16 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     updateProposal,
     rejectProposal,
     applyProposal,
+=======
+  const setDecompositionChildKind = (value: ModuleNode['kind']) => dispatch({ type: 'set_decomposition_child_kind', payload: { value } });
+
+  return {
+    updateCurrentPackage,
+    regenerateSuggestionsForSelectedModule,
+    updateSuggestion,
+    rejectSuggestion,
+    acceptSuggestion,
+>>>>>>> origin/main
     moveToNextPackageState,
     createModule,
     renameSelectedModule,

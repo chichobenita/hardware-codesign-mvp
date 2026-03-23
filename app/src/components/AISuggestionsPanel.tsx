@@ -1,6 +1,10 @@
 import type { ModuleNode, ModulePackage, ModulePort } from '../../../shared/src';
+<<<<<<< HEAD
 import { getProposalDescription, getProposalTitle } from '../ai/proposals/proposalApplication';
 import type { AiProposal } from '../ai/proposals/proposalTypes';
+=======
+import type { SuggestionCard } from '../types';
+>>>>>>> origin/main
 
 type AISuggestionsPanelProps = {
   selectedModule?: ModuleNode;
@@ -85,6 +89,7 @@ export function AISuggestionsPanel({
                       onChange={(event) =>
                         updateProposal(proposal.proposalId, (current) => ({
                           ...current,
+<<<<<<< HEAD
                           proposedChange: current.proposedChange.kind === 'ports_update'
                             ? {
                                 ...current.proposedChange,
@@ -94,6 +99,15 @@ export function AISuggestionsPanel({
                               }
                             : current.proposedChange,
                           status: current.status === 'applied' ? 'proposed' : current.status
+=======
+                          draft: {
+                            ...current.draft,
+                            ports: (current.draft.ports ?? []).map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, direction: event.target.value as ModulePort['direction'] } : item
+                            )
+                          },
+                          status: current.status === 'accepted' ? 'pending' : current.status
+>>>>>>> origin/main
                         }))
                       }
                     >

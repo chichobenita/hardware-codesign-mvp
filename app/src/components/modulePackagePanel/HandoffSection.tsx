@@ -1,13 +1,20 @@
 import type { HandoffArtifact } from '../../ai/handoffTypes';
+<<<<<<< HEAD
 import type { ProviderJob } from '../../ai/providerJobTypes';
 import type { ModuleNode } from '../../../../shared/src';
 import type { DesignState } from '../../types';
+=======
+import type { DesignState, ModuleNode } from '../../types';
+>>>>>>> origin/main
 
 type HandoffSectionProps = {
   state: DesignState;
   approvedLeafReadyModules: ModuleNode[];
   latestHandoffArtifact: HandoffArtifact | null;
+<<<<<<< HEAD
   currentProviderJob: ProviderJob | null;
+=======
+>>>>>>> origin/main
   isSelectedModuleHandoffReady: boolean;
   hasCurrentSelectedArtifact: boolean;
   selectModule: (moduleId: string) => void;
@@ -19,16 +26,22 @@ export function HandoffSection({
   state,
   approvedLeafReadyModules,
   latestHandoffArtifact,
+<<<<<<< HEAD
   currentProviderJob,
+=======
+>>>>>>> origin/main
   isSelectedModuleHandoffReady,
   hasCurrentSelectedArtifact,
   selectModule,
   markSelectedModuleAsHandedOff,
   exportLatestHandoffArtifact
 }: HandoffSectionProps): JSX.Element {
+<<<<<<< HEAD
   const isPending = currentProviderJob?.status === 'pending';
   const hasFailedJob = currentProviderJob?.status === 'failure';
 
+=======
+>>>>>>> origin/main
   return (
     <section className="handoff-card">
       <h3>Handoff / Export</h3>
@@ -60,6 +73,7 @@ export function HandoffSection({
         </ul>
       )}
 
+<<<<<<< HEAD
       <button type="button" onClick={() => { void markSelectedModuleAsHandedOff(); }} disabled={!isSelectedModuleHandoffReady || hasCurrentSelectedArtifact || isPending}>
         {hasCurrentSelectedArtifact
           ? 'Already handed off'
@@ -81,6 +95,16 @@ export function HandoffSection({
         </div>
       ) : null}
 
+=======
+      <button type="button" onClick={markSelectedModuleAsHandedOff} disabled={!isSelectedModuleHandoffReady || hasCurrentSelectedArtifact}>
+        {hasCurrentSelectedArtifact
+          ? 'Already handed off'
+          : latestHandoffArtifact?.handoffStatus === 'stale'
+            ? 'Create refreshed handoff artifact'
+            : 'Mark selected module as handed_off'}
+      </button>
+
+>>>>>>> origin/main
       <section className="payload-preview">
         <strong>Handoff artifact preview</strong>
         <p className="muted">Concrete handoff record built from the derived payload and prompt snapshots.</p>

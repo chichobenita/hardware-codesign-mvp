@@ -9,9 +9,12 @@ export function ValidationSummarySection({
   designHasValidationIssues,
   moduleValidationIssues
 }: ValidationSummarySectionProps): JSX.Element {
+<<<<<<< HEAD
   const blockingCount = moduleValidationIssues.filter((issue) => issue.severity === 'error').length;
   const warningCount = moduleValidationIssues.filter((issue) => issue.severity === 'warning').length;
 
+=======
+>>>>>>> origin/main
   return (
     <section className="validation-card">
       <h3>Semantic validation</h3>
@@ -19,6 +22,7 @@ export function ValidationSummarySection({
       {moduleValidationIssues.length === 0 ? (
         <p className="ready-message">No semantic issues for selected module.</p>
       ) : (
+<<<<<<< HEAD
         <>
           <p className="muted">
             Selected module diagnostics: <strong>{blockingCount} blocking</strong>, <strong>{warningCount} warning</strong>.
@@ -31,6 +35,15 @@ export function ValidationSummarySection({
             ))}
           </ul>
         </>
+=======
+        <ul className="validation-list">
+          {moduleValidationIssues.map((issue, index) => (
+            <li key={`${issue.code}-${index}`} className={`validation-issue validation-${issue.severity}`}>
+              <strong>{issue.severity.toUpperCase()}</strong> — {issue.message}
+            </li>
+          ))}
+        </ul>
+>>>>>>> origin/main
       )}
     </section>
   );
