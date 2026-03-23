@@ -33,14 +33,14 @@ describe('designPersistence', () => {
 
   it('exports the expected versioned snapshot shape', () => {
     const state = cloneSeedState();
-    state.suggestionsByModuleId.root = [
+    state.proposalsByModuleId.root = [
       {
-        id: 'suggestion-1',
-        type: 'purpose_proposal',
-        title: 'Ignored suggestion',
-        description: 'Should not persist',
-        status: 'pending',
-        draft: { summaryText: 'ignore me' }
+        proposalId: 'proposal-1',
+        source: { kind: 'mock_local', label: 'test' },
+        target: { moduleId: 'root', scope: 'module_package' },
+        status: 'proposed',
+        rationale: 'Should not persist',
+        proposedChange: { kind: 'purpose_update', purposeSummary: 'ignore me' }
       }
     ];
 
@@ -48,7 +48,7 @@ describe('designPersistence', () => {
     const serialized = JSON.parse(serializeDesignSnapshot(state));
 
     expect(snapshot.schemaVersion).toBe(PERSISTED_DESIGN_SCHEMA_VERSION);
-    expect(snapshot).not.toHaveProperty('suggestionsByModuleId');
+    expect(snapshot).not.toHaveProperty('proposalsByModuleId');
     expect(serialized).toEqual(snapshot);
   });
 
@@ -79,8 +79,68 @@ describe('designPersistence', () => {
     expect(imported.ok).toBe(true);
     expect(imported.state).toEqual(restored);
     expect(imported.state?.moduleList[0]?.name).toBe('normalized_name');
-    expect(imported.state?.suggestionsByModuleId).toEqual({});
+    expect(imported.state?.proposalsByModuleId).toEqual({});
     expect(imported.state?.ui.currentHierarchyModuleId).toBe('child');
+  });
+
+  it('migrates an unversioned legacy snapshot into the current persisted shape before restore', () => {
+    const legacySnapshot = {
+      moduleList: [{ id: 'child', name: 'legacy_name', kind: 'leaf' }],
+      selectedModuleId: 'child',
+      connections: [],
+      packageContentByModuleId: {
+        child: {
+          packageId: 'pkg_child',
+          moduleId: 'child',
+          packageVersion: '0.1.0',
+          packageStatus: 'draft',
+          lastUpdatedAt: '2026-03-18T00:00:00.000Z',
+          lastUpdatedBy: 'tester',
+          identity: { name: 'migrated_name' }
+        }
+      }
+    };
+
+    const imported = importDesignState(JSON.stringify(legacySnapshot));
+
+    expect(imported.ok).toBe(true);
+    if (!imported.ok) {
+      return;
+    }
+    expect(imported.snapshot.schemaVersion).toBe(PERSISTED_DESIGN_SCHEMA_VERSION);
+    expect(imported.state?.moduleList[0]?.name).toBe('migrated_name');
+    expect(imported.state?.handoffArtifacts).toEqual([]);
+    expect(imported.state?.handedOffAtByModuleId).toEqual({});
+  });
+
+  it('migrates schemaVersion 1 snapshots by defaulting newer persistence fields', () => {
+    const legacySnapshot = {
+      schemaVersion: 1,
+      moduleList: [{ id: 'child', name: 'legacy_name', kind: 'leaf' }],
+      selectedModuleId: 'child',
+      connections: [],
+      packageContentByModuleId: {
+        child: {
+          packageId: 'pkg_child',
+          moduleId: 'child',
+          packageVersion: '0.1.0',
+          packageStatus: 'draft',
+          lastUpdatedAt: '2026-03-18T00:00:00.000Z',
+          lastUpdatedBy: 'tester',
+          identity: { name: 'migrated_name' }
+        }
+      }
+    };
+
+    const imported = importDesignState(JSON.stringify(legacySnapshot));
+
+    expect(imported.ok).toBe(true);
+    if (!imported.ok) {
+      return;
+    }
+    expect(imported.snapshot.schemaVersion).toBe(PERSISTED_DESIGN_SCHEMA_VERSION);
+    expect(imported.snapshot.handoffArtifacts).toEqual([]);
+    expect(imported.snapshot.handedOffAtByModuleId).toEqual({});
   });
 
   it('fails safely for unsupported snapshot versions', () => {
@@ -142,7 +202,7 @@ describe('designPersistence', () => {
       { id: 'root', name: 'top_controller', kind: 'composite' },
       { id: 'child', name: 'restored_child', kind: 'leaf' }
     ]);
-    expect(restored.suggestionsByModuleId).toEqual({});
+    expect(restored.proposalsByModuleId).toEqual({});
     expect(restored.handedOffAtByModuleId).toEqual({ child: '2026-03-18T00:00:00.000Z' });
   });
 
@@ -276,14 +336,14 @@ describe('designPersistence', () => {
 
   it('roundtrips the current MVP state shape through save and load', () => {
     const state = cloneSeedState();
-    state.suggestionsByModuleId.root = [
+    state.proposalsByModuleId.root = [
       {
-        id: 'suggestion-1',
-        type: 'purpose_proposal',
-        title: 'Ignored suggestion',
-        description: 'Should not persist',
-        status: 'pending',
-        draft: { summaryText: 'ignore me' }
+        proposalId: 'proposal-1',
+        source: { kind: 'mock_local', label: 'test' },
+        target: { moduleId: 'root', scope: 'module_package' },
+        status: 'proposed',
+        rationale: 'Should not persist',
+        proposedChange: { kind: 'purpose_update', purposeSummary: 'ignore me' }
       }
     ];
 
@@ -293,10 +353,10 @@ describe('designPersistence', () => {
     const savedSnapshot = JSON.parse(raw);
 
     expect(savedSnapshot.schemaVersion).toBe(PERSISTED_DESIGN_SCHEMA_VERSION);
-    expect(savedSnapshot.suggestionsByModuleId).toBeUndefined();
+    expect(savedSnapshot.proposalsByModuleId).toBeUndefined();
 
     const restored = loadDesignState(storage);
-    expect(restored.suggestionsByModuleId).toEqual({});
+    expect(restored.proposalsByModuleId).toEqual({});
     expect(restored.moduleList).toEqual(seedState.moduleList);
     expect(restored.connections).toEqual(seedState.connections);
     expect(restored.handedOffAtByModuleId).toEqual(seedState.handedOffAtByModuleId);

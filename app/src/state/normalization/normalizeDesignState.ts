@@ -1,8 +1,9 @@
 import { getAuthoritativeModuleName, type ModulePackage } from '../../../../shared/src';
 import { DEFAULT_PROVIDER_ID } from '../../ai/providers/providerRegistry';
 import { normalizeHandoffArtifacts } from '../../ai/handoffArtifacts';
-import type { Connection, DesignState, ModuleNode } from '../../types';
-import { createMockSuggestions } from '../reducerHelpers/suggestionSync';
+import type { ModuleNode } from '../../../../shared/src';
+import type { Connection, DesignState } from '../../types';
+import { createMockProposals } from '../../ai/proposals/proposalFactory';
 import { normalizeHierarchyForPackages, selectHierarchyModuleId, selectVisibleHierarchyModuleIds } from '../hierarchy/hierarchyHelpers';
 import { defaultConnectionDraft } from '../reducerHelpers/seedState';
 import { normalizeDependencies } from './normalizeDependencies';
@@ -11,7 +12,7 @@ import { normalizeModulePackage } from './normalizeModulePackage';
 type NormalizeDesignStateOptions = {
   fallbackUpdatedBy?: string;
   ensureUi?: boolean;
-  ensureSuggestions?: boolean;
+  ensureProposals?: boolean;
 };
 
 function normalizeModuleList(
@@ -71,9 +72,9 @@ function normalizeUiState(state: DesignState): DesignState {
   };
 }
 
-function normalizeSuggestions(state: DesignState): DesignState {
+function normalizeProposals(state: DesignState): DesignState {
   const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === state.selectedModuleId);
-  if (!selectedModule || state.suggestionsByModuleId[selectedModule.id]) {
+  if (!selectedModule || state.proposalsByModuleId[selectedModule.id]) {
     return state;
   }
 
@@ -84,9 +85,9 @@ function normalizeSuggestions(state: DesignState): DesignState {
 
   return {
     ...state,
-    suggestionsByModuleId: {
-      ...state.suggestionsByModuleId,
-      [selectedModule.id]: createMockSuggestions(selectedModule, modulePackage)
+    proposalsByModuleId: {
+      ...state.proposalsByModuleId,
+      [selectedModule.id]: createMockProposals(selectedModule, modulePackage)
     }
   };
 }
@@ -113,7 +114,8 @@ export function normalizeDesignState(
     handedOffAtByModuleId: Object.fromEntries(
       Object.entries(state.handedOffAtByModuleId).filter(([moduleId]) => normalizedPackages[moduleId])
     ),
-    handoffArtifacts: []
+    handoffArtifacts: [],
+    providerJobs: state.providerJobs
   };
 
   nextState = {
@@ -121,12 +123,17 @@ export function normalizeDesignState(
     handoffArtifacts: normalizeHandoffArtifacts(nextState, state.handoffArtifacts.filter((artifact) => normalizedPackages[artifact.moduleId]))
   };
 
+  nextState = {
+    ...nextState,
+    providerJobs: nextState.providerJobs.filter((job) => nextState.handoffArtifacts.some((artifact) => artifact.artifactId === job.artifactId))
+  };
+
   if (options.ensureUi) {
     nextState = normalizeUiState(nextState);
   }
 
-  if (options.ensureSuggestions) {
-    nextState = normalizeSuggestions(nextState);
+  if (options.ensureProposals) {
+    nextState = normalizeProposals(nextState);
   }
 
   return nextState;
@@ -140,7 +147,7 @@ export function createRestoredDesignState(
   const defaultHierarchyId = selectHierarchyModuleId({
     ...persistedState,
     moduleList: normalizedModuleList,
-    suggestionsByModuleId: {},
+    proposalsByModuleId: {},
     ui: {
       workspaceMode: 'design',
       selectedProviderId: DEFAULT_PROVIDER_ID,
@@ -162,7 +169,8 @@ export function createRestoredDesignState(
       packageContentByModuleId: persistedState.packageContentByModuleId,
       handedOffAtByModuleId: persistedState.handedOffAtByModuleId,
       handoffArtifacts: persistedState.handoffArtifacts,
-      suggestionsByModuleId: {},
+      providerJobs: [],
+      proposalsByModuleId: {},
       ui: {
         workspaceMode: 'design',
         selectedProviderId: DEFAULT_PROVIDER_ID,
@@ -178,6 +186,6 @@ export function createRestoredDesignState(
         projectImportError: null
       }
     },
-    { fallbackUpdatedBy, ensureUi: true, ensureSuggestions: false }
+    { fallbackUpdatedBy, ensureUi: true, ensureProposals: false }
   );
 }

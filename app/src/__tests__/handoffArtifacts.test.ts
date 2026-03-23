@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createArtifactConsistencyMarkerFromState, createHandoffArtifactFromState } from '../ai/handoffArtifacts';
 import { buildArtifactExportFilename, buildPromptExportFilename, serializeHandoffArtifact, serializePromptExport } from '../ai/handoffExport';
 import { mockLocalHdlProvider } from '../ai/providers/mockProvider';
+import { createProviderInvocationRequest } from '../ai/providers/providerRequests';
 import { DEFAULT_PROVIDER_ID } from '../ai/providers/providerRegistry';
 import { selectCanShowPayloadPreview } from '../state/designSelectors';
 
@@ -39,7 +40,7 @@ describe('handoff artifacts', () => {
   });
 
   it('uses the mock provider seam deterministically', () => {
-    const result = mockLocalHdlProvider.handoffArtifact({
+    const result = mockLocalHdlProvider.buildPreparedResult(createProviderInvocationRequest({
       artifactId: 'handoff_test',
       schemaVersion: 'handoff-artifact/v1',
       moduleId: 'example_uart_rx',
@@ -66,7 +67,7 @@ describe('handoff artifacts', () => {
         status: 'prepared',
         summary: 'prepared'
       }
-    });
+    }));
 
     expect(result).toEqual({
       providerId: mockLocalHdlProvider.id,

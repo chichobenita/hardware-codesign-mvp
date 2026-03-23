@@ -137,6 +137,8 @@ The system should present this as guidance rather than as a rigid form-validatio
 
 AI-generated suggestions should not overwrite package content silently.
 
+For MVP implementation, the source-of-truth should be an explicit proposal model in application/runtime state, while suggestion cards remain presentation over those proposals.
+
 The MVP should support a simple suggestion workflow:
 
 * AI proposes content

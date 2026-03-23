@@ -1,9 +1,10 @@
-import { getAuthoritativeModuleName } from '../../../shared/src';
+import { deriveGenerationPayloadMinimalV1, getAuthoritativeModuleName } from '../../../shared/src';
 import type { DesignState } from '../types';
 import { buildHdlGenerationPromptFromState } from './promptBuilder';
 import { HANDOFF_ARTIFACT_SCHEMA_VERSION, type HandoffArtifact } from './handoffTypes';
+import type { ProviderHandoffResult } from './providers/providerTypes';
 import { getHandoffProvider } from './providers/providerRegistry';
-import { deriveGenerationPayloadMinimalV1 } from '../../../shared/src';
+import { createProviderInvocationRequest } from './providers/providerRequests';
 
 function sanitizeArtifactSegment(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'artifact';
@@ -99,7 +100,7 @@ export function normalizeHandoffArtifacts(state: DesignState, artifacts: Handoff
   });
 }
 
-export function createHandoffArtifactFromState(
+export function createPreparedHandoffArtifactFromState(
   state: DesignState,
   moduleId: string,
   targetProviderId: string,
@@ -118,7 +119,7 @@ export function createHandoffArtifactFromState(
   const moduleName = getAuthoritativeModuleName(moduleId, modulePackage, moduleNode.name);
   const provider = getHandoffProvider(targetProviderId);
 
-  const createdArtifact: HandoffArtifact = {
+  return {
     artifactId: createHandoffArtifactId(moduleId, createdAt),
     schemaVersion: HANDOFF_ARTIFACT_SCHEMA_VERSION,
     moduleId,
@@ -138,12 +139,27 @@ export function createHandoffArtifactFromState(
       summary: `Prepared handoff artifact for ${moduleName}.`
     }
   };
+}
 
-  const providerResponse = provider.handoffArtifact(createdArtifact);
-
+export function applyProviderResultToArtifact(artifact: HandoffArtifact, providerResponse: ProviderHandoffResult): HandoffArtifact {
   return {
-    ...createdArtifact,
+    ...artifact,
     handoffStatus: providerResponse.status,
     providerResponse
   };
+}
+
+export function createHandoffArtifactFromState(
+  state: DesignState,
+  moduleId: string,
+  targetProviderId: string,
+  createdAt: string
+): HandoffArtifact | null {
+  const artifact = createPreparedHandoffArtifactFromState(state, moduleId, targetProviderId, createdAt);
+  if (!artifact) {
+    return null;
+  }
+
+  const provider = getHandoffProvider(targetProviderId);
+  return applyProviderResultToArtifact(artifact, provider.buildPreparedResult(createProviderInvocationRequest(artifact)));
 }
