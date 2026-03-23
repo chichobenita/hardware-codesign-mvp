@@ -1,5 +1,13 @@
 import type { ModuleKind, ModulePackage } from '../../../shared/src';
+<<<<<<< HEAD
+import type { AiProposal } from '../ai/proposals/proposalTypes';
+import type { Connection, DesignState, WorkspaceMode } from '../types';
+import type { HandoffArtifact } from '../ai/handoffTypes';
+import type { ProviderExecutionFailure, ProviderHandoffResult } from '../ai/providers/providerTypes';
+import type { ProviderJob } from '../ai/providerJobTypes';
+=======
 import type { Connection, DesignState, SuggestionCard, WorkspaceMode } from '../types';
+>>>>>>> origin/main
 
 export type DesignAction =
   | { type: 'create_module'; payload: { name: string; kind: ModuleKind; parentModuleId?: string; nextId?: string; nowIso?: string } }
@@ -21,11 +29,11 @@ export type DesignAction =
   | { type: 'connect_modules'; payload: { connection: Connection; nowIso?: string } }
   | { type: 'update_selected_module_package'; payload: { updater: (current: ModulePackage) => ModulePackage; nowIso?: string } }
   | { type: 'update_module_package'; payload: { moduleId: string; updater: (current: ModulePackage) => ModulePackage; nowIso?: string } }
-  | { type: 'apply_accepted_suggestion'; payload: { moduleId: string; suggestion: SuggestionCard; nowIso?: string } }
-  | { type: 'update_suggestion'; payload: { moduleId: string; suggestionId: string; updater: (current: SuggestionCard) => SuggestionCard } }
-  | { type: 'reject_suggestion'; payload: { moduleId: string; suggestionId: string } }
-  | { type: 'set_suggestions_for_module'; payload: { moduleId: string; suggestions: SuggestionCard[] } }
-  | { type: 'remove_suggestion'; payload: { moduleId: string; suggestionId: string } }
+  | { type: 'apply_proposal'; payload: { moduleId: string; proposal: AiProposal; nowIso?: string } }
+  | { type: 'update_proposal'; payload: { moduleId: string; proposalId: string; updater: (current: AiProposal) => AiProposal } }
+  | { type: 'reject_proposal'; payload: { moduleId: string; proposalId: string } }
+  | { type: 'set_proposals_for_module'; payload: { moduleId: string; proposals: AiProposal[] } }
+  | { type: 'remove_proposal'; payload: { moduleId: string; proposalId: string } }
   | { type: 'move_selected_package_state_forward'; payload: { to: ModulePackage['packageStatus']; nowIso?: string } }
   | { type: 'queue_handoff_artifact'; payload: { artifact: HandoffArtifact } }
   | { type: 'start_provider_job'; payload: { job: ProviderJob } }

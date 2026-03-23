@@ -33,14 +33,14 @@ describe('designPersistence', () => {
 
   it('exports the expected versioned snapshot shape', () => {
     const state = cloneSeedState();
-    state.suggestionsByModuleId.root = [
+    state.proposalsByModuleId.root = [
       {
-        id: 'suggestion-1',
-        type: 'purpose_proposal',
-        title: 'Ignored suggestion',
-        description: 'Should not persist',
-        status: 'pending',
-        draft: { summaryText: 'ignore me' }
+        proposalId: 'proposal-1',
+        source: { kind: 'mock_local', label: 'test' },
+        target: { moduleId: 'root', scope: 'module_package' },
+        status: 'proposed',
+        rationale: 'Should not persist',
+        proposedChange: { kind: 'purpose_update', purposeSummary: 'ignore me' }
       }
     ];
 
@@ -48,7 +48,7 @@ describe('designPersistence', () => {
     const serialized = JSON.parse(serializeDesignSnapshot(state));
 
     expect(snapshot.schemaVersion).toBe(PERSISTED_DESIGN_SCHEMA_VERSION);
-    expect(snapshot).not.toHaveProperty('suggestionsByModuleId');
+    expect(snapshot).not.toHaveProperty('proposalsByModuleId');
     expect(serialized).toEqual(snapshot);
   });
 
@@ -79,7 +79,7 @@ describe('designPersistence', () => {
     expect(imported.ok).toBe(true);
     expect(imported.state).toEqual(restored);
     expect(imported.state?.moduleList[0]?.name).toBe('normalized_name');
-    expect(imported.state?.suggestionsByModuleId).toEqual({});
+    expect(imported.state?.proposalsByModuleId).toEqual({});
     expect(imported.state?.ui.currentHierarchyModuleId).toBe('child');
   });
 
@@ -202,7 +202,7 @@ describe('designPersistence', () => {
       { id: 'root', name: 'top_controller', kind: 'composite' },
       { id: 'child', name: 'restored_child', kind: 'leaf' }
     ]);
-    expect(restored.suggestionsByModuleId).toEqual({});
+    expect(restored.proposalsByModuleId).toEqual({});
     expect(restored.handedOffAtByModuleId).toEqual({ child: '2026-03-18T00:00:00.000Z' });
   });
 
@@ -336,14 +336,14 @@ describe('designPersistence', () => {
 
   it('roundtrips the current MVP state shape through save and load', () => {
     const state = cloneSeedState();
-    state.suggestionsByModuleId.root = [
+    state.proposalsByModuleId.root = [
       {
-        id: 'suggestion-1',
-        type: 'purpose_proposal',
-        title: 'Ignored suggestion',
-        description: 'Should not persist',
-        status: 'pending',
-        draft: { summaryText: 'ignore me' }
+        proposalId: 'proposal-1',
+        source: { kind: 'mock_local', label: 'test' },
+        target: { moduleId: 'root', scope: 'module_package' },
+        status: 'proposed',
+        rationale: 'Should not persist',
+        proposedChange: { kind: 'purpose_update', purposeSummary: 'ignore me' }
       }
     ];
 
@@ -353,10 +353,10 @@ describe('designPersistence', () => {
     const savedSnapshot = JSON.parse(raw);
 
     expect(savedSnapshot.schemaVersion).toBe(PERSISTED_DESIGN_SCHEMA_VERSION);
-    expect(savedSnapshot.suggestionsByModuleId).toBeUndefined();
+    expect(savedSnapshot.proposalsByModuleId).toBeUndefined();
 
     const restored = loadDesignState(storage);
-    expect(restored.suggestionsByModuleId).toEqual({});
+    expect(restored.proposalsByModuleId).toEqual({});
     expect(restored.moduleList).toEqual(seedState.moduleList);
     expect(restored.connections).toEqual(seedState.connections);
     expect(restored.handedOffAtByModuleId).toEqual(seedState.handedOffAtByModuleId);

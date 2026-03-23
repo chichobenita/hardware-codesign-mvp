@@ -1,11 +1,21 @@
+<<<<<<< HEAD
+import type { ModuleKind, ModuleNode } from '../../../../shared/src';
+=======
 import type { ModuleNode } from '../../types';
+>>>>>>> origin/main
 
 type DecompositionSectionProps = {
   currentHierarchyModule?: ModuleNode;
   decompositionDraftNamesText: string;
+<<<<<<< HEAD
+  decompositionDraftChildKind: ModuleKind;
+  setDecompositionNamesText: (value: string) => void;
+  setDecompositionChildKind: (value: ModuleKind) => void;
+=======
   decompositionDraftChildKind: ModuleNode['kind'];
   setDecompositionNamesText: (value: string) => void;
   setDecompositionChildKind: (value: ModuleNode['kind']) => void;
+>>>>>>> origin/main
   decomposeSelectedModule: () => void;
 };
 
@@ -31,7 +41,11 @@ export function DecompositionSection({
         />
         <select
           value={decompositionDraftChildKind}
+<<<<<<< HEAD
+          onChange={(event) => setDecompositionChildKind(event.target.value as ModuleKind)}
+=======
           onChange={(event) => setDecompositionChildKind(event.target.value as ModuleNode['kind'])}
+>>>>>>> origin/main
           aria-label="Decomposition child kind"
         >
           <option value="leaf">leaf children</option>

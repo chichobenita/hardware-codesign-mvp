@@ -1,20 +1,34 @@
+<<<<<<< HEAD
+import { evaluateModuleWorkflowPolicy, summarizeWorkflowIssues } from '../policies/workflowReadinessPolicy';
+import { listHandoffProviders } from '../../ai/providers/providerRegistry';
+import {
+  selectCurrentHierarchyModule,
+=======
 import { listHandoffProviders } from '../../ai/providers/providerRegistry';
 import {
   selectCanShowPayloadPreview,
   selectCurrentHierarchyModule,
   selectDesignHasValidationIssues,
+>>>>>>> origin/main
   selectEligibleLeafReadyModules,
   selectGenerationPayloadSource,
   selectGenerationPromptSource,
   selectHandoffArtifactsForModule,
   selectHierarchyBreadcrumbs,
   selectLatestHandoffArtifactForModule,
+<<<<<<< HEAD
+  selectLatestProviderJobForArtifact,
+=======
   selectModuleIsValidForReviewOrHandoff,
+>>>>>>> origin/main
   selectParentHierarchyModuleId,
   selectSectionStatuses,
   selectSelectedModule,
   selectSelectedModulePackage,
+<<<<<<< HEAD
+=======
   selectTransitionReadiness,
+>>>>>>> origin/main
   selectValidationIssues,
   selectValidationIssuesForModule,
   selectVisibleConnections,
@@ -41,6 +55,22 @@ export function buildAppWorkspaceViewModel(state: DesignState) {
   const handoffArtifacts = selectHandoffArtifactsForModule(state, state.selectedModuleId);
   const latestHandoffArtifact = selectLatestHandoffArtifactForModule(state, state.selectedModuleId);
   const handoffProviders = listHandoffProviders();
+<<<<<<< HEAD
+  const approvedLeafReadyModules = selectEligibleLeafReadyModules(state);
+  const validationIssues = selectValidationIssues(state);
+  const moduleValidationIssues = selectValidationIssuesForModule(state, state.selectedModuleId);
+  const designIssueSummary = summarizeWorkflowIssues(validationIssues);
+  const moduleWorkflowPolicy = evaluateModuleWorkflowPolicy(
+    selectedModule,
+    currentPackageContent,
+    state.ui.workspaceMode,
+    moduleValidationIssues
+  );
+  const selectedProposals = state.proposalsByModuleId[state.selectedModuleId] ?? [];
+  const currentProviderJob = latestHandoffArtifact ? selectLatestProviderJobForArtifact(state, latestHandoffArtifact.artifactId) : null;
+  const hasCurrentSelectedArtifact = latestHandoffArtifact?.handoffStatus === 'handed_off';
+  const isSelectedModuleHandoffReady = moduleWorkflowPolicy.handoff.isEligible;
+=======
   const transitionReadiness = selectTransitionReadiness(currentPackageContent);
   const approvedLeafReadyModules = selectEligibleLeafReadyModules(state);
   const canShowPayloadPreview = selectCanShowPayloadPreview(state.ui.workspaceMode, selectedModule, currentPackageContent);
@@ -52,6 +82,7 @@ export function buildAppWorkspaceViewModel(state: DesignState) {
   const hasCurrentSelectedArtifact = latestHandoffArtifact?.handoffStatus === 'handed_off';
   const isSelectedModuleHandoffReady = approvedLeafReadyModules.some((moduleNode) => moduleNode.id === state.selectedModuleId)
     && isSelectedModuleValidForReviewOrHandoff;
+>>>>>>> origin/main
 
   return {
     selectedModule,
@@ -68,6 +99,19 @@ export function buildAppWorkspaceViewModel(state: DesignState) {
     handoffArtifacts,
     latestHandoffArtifact,
     handoffProviders,
+<<<<<<< HEAD
+    workflowPolicy: moduleWorkflowPolicy,
+    transitionReadiness: moduleWorkflowPolicy.lifecycle.transitionReadiness,
+    approvedLeafReadyModules,
+    canShowPayloadPreview: moduleWorkflowPolicy.payloadPreview.canShow,
+    validationIssues,
+    moduleValidationIssues,
+    designHasValidationIssues: designIssueSummary.hasBlockingIssues || designIssueSummary.hasWarnings,
+    designIssueSummary,
+    isSelectedModuleValidForReviewOrHandoff: moduleWorkflowPolicy.review.isEligible,
+    selectedProposals,
+    currentProviderJob,
+=======
     transitionReadiness,
     approvedLeafReadyModules,
     canShowPayloadPreview,
@@ -76,6 +120,7 @@ export function buildAppWorkspaceViewModel(state: DesignState) {
     designHasValidationIssues,
     isSelectedModuleValidForReviewOrHandoff,
     selectedSuggestions,
+>>>>>>> origin/main
     hasCurrentSelectedArtifact,
     isSelectedModuleHandoffReady
   };

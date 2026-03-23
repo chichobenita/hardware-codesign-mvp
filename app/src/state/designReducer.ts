@@ -1,5 +1,9 @@
 import { type ModuleKind, type ModuleNode, type ModulePackage } from '../../../shared/src';
+<<<<<<< HEAD
+import { applyProviderResultToArtifact, createHandoffArtifactFromState } from '../ai/handoffArtifacts';
+=======
 import { createHandoffArtifactFromState } from '../ai/handoffArtifacts';
+>>>>>>> origin/main
 import type { DesignState } from '../types';
 import type { DesignAction } from './designActions';
 import { normalizeDesignState } from './normalization/normalizeDesignState';
@@ -12,11 +16,11 @@ import {
   sanitizeModuleIdSegment
 } from './reducerHelpers/seedState';
 import {
-  applyAcceptedSuggestion
-} from './reducerHelpers/suggestionSync';
+  applyProposal
+} from './reducerHelpers/proposalSync';
 
 function normalizeInteractiveState(state: DesignState): DesignState {
-  return normalizeDesignState(state, { ensureUi: true, ensureSuggestions: true });
+  return normalizeDesignState(state, { ensureUi: true, ensureProposals: true });
 }
 
 function buildUniqueModuleId(state: DesignState, parentModuleId: string | undefined, cleanName: string, index = 0): string {
@@ -280,64 +284,64 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       return applyModulePackageUpdate(state, state.selectedModuleId, action.payload.updater, nowIso(action.payload.nowIso));
     case 'update_module_package':
       return applyModulePackageUpdate(state, action.payload.moduleId, action.payload.updater, nowIso(action.payload.nowIso));
-    case 'apply_accepted_suggestion': {
+    case 'apply_proposal': {
       const withPackageUpdate = applyModulePackageUpdate(
         state,
         action.payload.moduleId,
-        (current) => applyAcceptedSuggestion(current, action.payload.suggestion),
+        (current) => applyProposal(current, action.payload.proposal),
         nowIso(action.payload.nowIso)
       );
-      const suggestions = withPackageUpdate.suggestionsByModuleId[action.payload.moduleId] ?? [];
+      const proposals = withPackageUpdate.proposalsByModuleId[action.payload.moduleId] ?? [];
 
       return {
         ...withPackageUpdate,
-        suggestionsByModuleId: {
-          ...withPackageUpdate.suggestionsByModuleId,
-          [action.payload.moduleId]: suggestions.map((item) =>
-            item.id === action.payload.suggestion.id ? { ...item, status: 'accepted' } : item
+        proposalsByModuleId: {
+          ...withPackageUpdate.proposalsByModuleId,
+          [action.payload.moduleId]: proposals.map((item) =>
+            item.proposalId === action.payload.proposal.proposalId ? { ...item, status: 'applied' } : item
           )
         }
       };
     }
-    case 'update_suggestion': {
-      const moduleSuggestions = state.suggestionsByModuleId[action.payload.moduleId] ?? [];
+    case 'update_proposal': {
+      const moduleProposals = state.proposalsByModuleId[action.payload.moduleId] ?? [];
       return {
         ...state,
-        suggestionsByModuleId: {
-          ...state.suggestionsByModuleId,
-          [action.payload.moduleId]: moduleSuggestions.map((suggestion) =>
-            suggestion.id === action.payload.suggestionId ? action.payload.updater(suggestion) : suggestion
+        proposalsByModuleId: {
+          ...state.proposalsByModuleId,
+          [action.payload.moduleId]: moduleProposals.map((proposal) =>
+            proposal.proposalId === action.payload.proposalId ? action.payload.updater(proposal) : proposal
           )
         }
       };
     }
-    case 'reject_suggestion': {
-      const moduleSuggestions = state.suggestionsByModuleId[action.payload.moduleId] ?? [];
+    case 'reject_proposal': {
+      const moduleProposals = state.proposalsByModuleId[action.payload.moduleId] ?? [];
       return {
         ...state,
-        suggestionsByModuleId: {
-          ...state.suggestionsByModuleId,
-          [action.payload.moduleId]: moduleSuggestions.map((suggestion) =>
-            suggestion.id === action.payload.suggestionId ? { ...suggestion, status: 'rejected' } : suggestion
+        proposalsByModuleId: {
+          ...state.proposalsByModuleId,
+          [action.payload.moduleId]: moduleProposals.map((proposal) =>
+            proposal.proposalId === action.payload.proposalId ? { ...proposal, status: 'rejected' } : proposal
           )
         }
       };
     }
-    case 'set_suggestions_for_module':
+    case 'set_proposals_for_module':
       return {
         ...state,
-        suggestionsByModuleId: {
-          ...state.suggestionsByModuleId,
-          [action.payload.moduleId]: action.payload.suggestions
+        proposalsByModuleId: {
+          ...state.proposalsByModuleId,
+          [action.payload.moduleId]: action.payload.proposals
         }
       };
-    case 'remove_suggestion': {
-      const moduleSuggestions = state.suggestionsByModuleId[action.payload.moduleId] ?? [];
+    case 'remove_proposal': {
+      const moduleProposals = state.proposalsByModuleId[action.payload.moduleId] ?? [];
       return {
         ...state,
-        suggestionsByModuleId: {
-          ...state.suggestionsByModuleId,
-          [action.payload.moduleId]: moduleSuggestions.filter((suggestion) => suggestion.id !== action.payload.suggestionId)
+        proposalsByModuleId: {
+          ...state.proposalsByModuleId,
+          [action.payload.moduleId]: moduleProposals.filter((proposal) => proposal.proposalId !== action.payload.proposalId)
         }
       };
     }

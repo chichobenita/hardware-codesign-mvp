@@ -144,7 +144,11 @@ export const baseSeedState: DesignState = {
   handedOffAtByModuleId: {},
   handoffArtifacts: [],
   providerJobs: [],
+<<<<<<< HEAD
+  proposalsByModuleId: {},
+=======
   suggestionsByModuleId: {},
+>>>>>>> origin/main
   ui: {
     workspaceMode: 'design',
     selectedProviderId: DEFAULT_PROVIDER_ID,

@@ -59,6 +59,10 @@ export interface ModulePort {
 
 export interface ModuleInterfaces {
   ports?: ModulePort[];
+<<<<<<< HEAD
+  interfaceNotes?: string;
+=======
+>>>>>>> origin/main
 }
 
 export interface ModulePurpose {
@@ -70,6 +74,11 @@ export interface ModuleBehavior {
   operationalDescription?: string;
   behaviorRules?: string[];
   clockResetNotes?: string;
+<<<<<<< HEAD
+  cornerCases?: string[];
+  implementationNotes?: string[];
+=======
+>>>>>>> origin/main
 }
 
 export interface ModuleConstraints {
@@ -90,6 +99,10 @@ export interface ModuleDependencies {
    * Entries prefixed with upstream:/downstream: may be synchronized from links.
    */
   relevantDependencies?: string[];
+<<<<<<< HEAD
+  integrationAssumptions?: string[];
+=======
+>>>>>>> origin/main
 }
 
 export interface ModuleDecomposition {

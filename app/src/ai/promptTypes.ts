@@ -1,4 +1,8 @@
+<<<<<<< HEAD
+import type { GenerationPayloadMinimal, ModuleKind, ModulePackage } from '../../../shared/src';
+=======
 import type { GenerationPayloadMinimal, ModuleKind } from '../../../shared/src';
+>>>>>>> origin/main
 
 export type PromptHierarchyContext = {
   parentModuleName: string;
