@@ -1,5 +1,9 @@
 import type { HandoffArtifact } from './handoffTypes';
 import { getHandoffProvider } from './providers/providerRegistry';
+<<<<<<< HEAD
+import { createProviderInvocationRequest } from './providers/providerRequests';
+=======
+>>>>>>> origin/main
 import { createProviderJobId, type ProviderJob } from './providerJobTypes';
 
 export function createPendingProviderJob(artifact: HandoffArtifact, startedAt: string, previousAttempts = 0): ProviderJob {
@@ -18,5 +22,9 @@ export function createPendingProviderJob(artifact: HandoffArtifact, startedAt: s
 
 export async function executeProviderHandoff(artifact: HandoffArtifact) {
   const provider = getHandoffProvider(artifact.targetProviderId);
+<<<<<<< HEAD
+  return provider.executePreparedRequest(createProviderInvocationRequest(artifact));
+=======
   return provider.executeHandoffArtifact(artifact);
+>>>>>>> origin/main
 }

@@ -2,7 +2,11 @@ import { type ModuleKind, type ModuleNode, type ModulePackage } from '../../../s
 <<<<<<< HEAD
 import { applyProviderResultToArtifact, createHandoffArtifactFromState } from '../ai/handoffArtifacts';
 =======
+<<<<<<< HEAD
+import { applyProviderResultToArtifact, createHandoffArtifactFromState } from '../ai/handoffArtifacts';
+=======
 import { createHandoffArtifactFromState } from '../ai/handoffArtifacts';
+>>>>>>> origin/main
 >>>>>>> origin/main
 import type { DesignState } from '../types';
 import type { DesignAction } from './designActions';

@@ -147,7 +147,11 @@ export const baseSeedState: DesignState = {
 <<<<<<< HEAD
   proposalsByModuleId: {},
 =======
+<<<<<<< HEAD
+  proposalsByModuleId: {},
+=======
   suggestionsByModuleId: {},
+>>>>>>> origin/main
 >>>>>>> origin/main
   ui: {
     workspaceMode: 'design',

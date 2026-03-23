@@ -14,17 +14,23 @@ export function AppWorkspace(): JSX.Element {
         <AISuggestionsPanel
           selectedModule={viewModel.selectedModule}
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
           regenerateProposalsForSelectedModule={actions.regenerateProposalsForSelectedModule}
           selectedProposals={viewModel.selectedProposals}
           updateProposal={actions.updateProposal}
           applyProposal={actions.applyProposal}
           rejectProposal={actions.rejectProposal}
+<<<<<<< HEAD
+=======
 =======
           regenerateSuggestionsForSelectedModule={actions.regenerateSuggestionsForSelectedModule}
           selectedSuggestions={viewModel.selectedSuggestions}
           updateSuggestion={actions.updateSuggestion}
           acceptSuggestion={actions.acceptSuggestion}
           rejectSuggestion={actions.rejectSuggestion}
+>>>>>>> origin/main
 >>>>>>> origin/main
         />
 
@@ -74,6 +80,10 @@ export function AppWorkspace(): JSX.Element {
 <<<<<<< HEAD
           currentProviderJob={viewModel.currentProviderJob}
 =======
+<<<<<<< HEAD
+          currentProviderJob={viewModel.currentProviderJob}
+=======
+>>>>>>> origin/main
 >>>>>>> origin/main
           selectModule={actions.selectModule}
           markSelectedModuleAsHandedOff={actions.markSelectedModuleAsHandedOff}

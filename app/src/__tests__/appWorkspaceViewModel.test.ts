@@ -12,7 +12,11 @@ describe('buildAppWorkspaceViewModel', () => {
 <<<<<<< HEAD
     expect(viewModel.selectedProposals).toEqual(seedState.proposalsByModuleId[seedState.selectedModuleId] ?? []);
 =======
+<<<<<<< HEAD
+    expect(viewModel.selectedProposals).toEqual(seedState.proposalsByModuleId[seedState.selectedModuleId] ?? []);
+=======
     expect(viewModel.selectedSuggestions).toEqual(seedState.suggestionsByModuleId[seedState.selectedModuleId] ?? []);
+>>>>>>> origin/main
 >>>>>>> origin/main
   });
 });

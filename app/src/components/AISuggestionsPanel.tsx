@@ -3,7 +3,12 @@ import type { ModuleNode, ModulePackage, ModulePort } from '../../../shared/src'
 import { getProposalDescription, getProposalTitle } from '../ai/proposals/proposalApplication';
 import type { AiProposal } from '../ai/proposals/proposalTypes';
 =======
+<<<<<<< HEAD
+import { getProposalDescription, getProposalTitle } from '../ai/proposals/proposalApplication';
+import type { AiProposal } from '../ai/proposals/proposalTypes';
+=======
 import type { SuggestionCard } from '../types';
+>>>>>>> origin/main
 >>>>>>> origin/main
 
 type AISuggestionsPanelProps = {
@@ -90,6 +95,9 @@ export function AISuggestionsPanel({
                         updateProposal(proposal.proposalId, (current) => ({
                           ...current,
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
                           proposedChange: current.proposedChange.kind === 'ports_update'
                             ? {
                                 ...current.proposedChange,
@@ -99,6 +107,8 @@ export function AISuggestionsPanel({
                               }
                             : current.proposedChange,
                           status: current.status === 'applied' ? 'proposed' : current.status
+<<<<<<< HEAD
+=======
 =======
                           draft: {
                             ...current.draft,
@@ -107,6 +117,7 @@ export function AISuggestionsPanel({
                             )
                           },
                           status: current.status === 'accepted' ? 'pending' : current.status
+>>>>>>> origin/main
 >>>>>>> origin/main
                         }))
                       }

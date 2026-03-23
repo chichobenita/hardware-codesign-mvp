@@ -1,12 +1,18 @@
 import type { ModuleKind, ModulePackage } from '../../../shared/src';
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
 import type { AiProposal } from '../ai/proposals/proposalTypes';
 import type { Connection, DesignState, WorkspaceMode } from '../types';
 import type { HandoffArtifact } from '../ai/handoffTypes';
 import type { ProviderExecutionFailure, ProviderHandoffResult } from '../ai/providers/providerTypes';
 import type { ProviderJob } from '../ai/providerJobTypes';
+<<<<<<< HEAD
+=======
 =======
 import type { Connection, DesignState, SuggestionCard, WorkspaceMode } from '../types';
+>>>>>>> origin/main
 >>>>>>> origin/main
 
 export type DesignAction =

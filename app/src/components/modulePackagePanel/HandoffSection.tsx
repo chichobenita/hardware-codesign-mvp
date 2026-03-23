@@ -4,7 +4,13 @@ import type { ProviderJob } from '../../ai/providerJobTypes';
 import type { ModuleNode } from '../../../../shared/src';
 import type { DesignState } from '../../types';
 =======
+<<<<<<< HEAD
+import type { ProviderJob } from '../../ai/providerJobTypes';
+import type { ModuleNode } from '../../../../shared/src';
+import type { DesignState } from '../../types';
+=======
 import type { DesignState, ModuleNode } from '../../types';
+>>>>>>> origin/main
 >>>>>>> origin/main
 
 type HandoffSectionProps = {
@@ -14,6 +20,10 @@ type HandoffSectionProps = {
 <<<<<<< HEAD
   currentProviderJob: ProviderJob | null;
 =======
+<<<<<<< HEAD
+  currentProviderJob: ProviderJob | null;
+=======
+>>>>>>> origin/main
 >>>>>>> origin/main
   isSelectedModuleHandoffReady: boolean;
   hasCurrentSelectedArtifact: boolean;
@@ -29,6 +39,10 @@ export function HandoffSection({
 <<<<<<< HEAD
   currentProviderJob,
 =======
+<<<<<<< HEAD
+  currentProviderJob,
+=======
+>>>>>>> origin/main
 >>>>>>> origin/main
   isSelectedModuleHandoffReady,
   hasCurrentSelectedArtifact,
@@ -41,6 +55,12 @@ export function HandoffSection({
   const hasFailedJob = currentProviderJob?.status === 'failure';
 
 =======
+<<<<<<< HEAD
+  const isPending = currentProviderJob?.status === 'pending';
+  const hasFailedJob = currentProviderJob?.status === 'failure';
+
+=======
+>>>>>>> origin/main
 >>>>>>> origin/main
   return (
     <section className="handoff-card">
@@ -74,6 +94,9 @@ export function HandoffSection({
       )}
 
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
       <button type="button" onClick={() => { void markSelectedModuleAsHandedOff(); }} disabled={!isSelectedModuleHandoffReady || hasCurrentSelectedArtifact || isPending}>
         {hasCurrentSelectedArtifact
           ? 'Already handed off'
@@ -95,6 +118,8 @@ export function HandoffSection({
         </div>
       ) : null}
 
+<<<<<<< HEAD
+=======
 =======
       <button type="button" onClick={markSelectedModuleAsHandedOff} disabled={!isSelectedModuleHandoffReady || hasCurrentSelectedArtifact}>
         {hasCurrentSelectedArtifact
@@ -104,6 +129,7 @@ export function HandoffSection({
             : 'Mark selected module as handed_off'}
       </button>
 
+>>>>>>> origin/main
 >>>>>>> origin/main
       <section className="payload-preview">
         <strong>Handoff artifact preview</strong>

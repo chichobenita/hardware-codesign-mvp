@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 <<<<<<< HEAD
 import type { SemanticValidationIssue } from '../../../shared/src';
 =======
+<<<<<<< HEAD
+import type { SemanticValidationIssue } from '../../../shared/src';
+=======
+>>>>>>> origin/main
 >>>>>>> origin/main
 import { evaluateModuleWorkflowPolicy, summarizeWorkflowIssues } from '../application/policies/workflowReadinessPolicy';
 import { seedState } from '../state/designReducer';
@@ -38,7 +42,11 @@ describe('workflowReadinessPolicy', () => {
 <<<<<<< HEAD
     const issues: SemanticValidationIssue[] = [{
 =======
+<<<<<<< HEAD
+    const issues: SemanticValidationIssue[] = [{
+=======
     const issues = [{
+>>>>>>> origin/main
 >>>>>>> origin/main
       code: 'missing_dependency_for_connection',
       severity: 'warning' as const,

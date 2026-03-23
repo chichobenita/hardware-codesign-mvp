@@ -8,7 +8,12 @@ import type { TransitionReadiness } from '../packageLifecycle';
 import type { ModuleKind, ModuleNode } from '../../../shared/src';
 import type { Connection, DesignState, PackageSectionStatus, SectionKey, WorkspaceMode } from '../types';
 =======
+<<<<<<< HEAD
+import type { ModuleKind, ModuleNode } from '../../../shared/src';
+import type { Connection, DesignState, PackageSectionStatus, SectionKey, WorkspaceMode } from '../types';
+=======
 import type { Connection, DesignState, ModuleNode, PackageSectionStatus, SectionKey, WorkspaceMode } from '../types';
+>>>>>>> origin/main
 >>>>>>> origin/main
 import { ArtifactHistorySection } from './modulePackagePanel/ArtifactHistorySection';
 import { DecompositionSection } from './modulePackagePanel/DecompositionSection';
@@ -85,6 +90,10 @@ export function ModulePackagePanel({
 <<<<<<< HEAD
   currentProviderJob,
 =======
+<<<<<<< HEAD
+  currentProviderJob,
+=======
+>>>>>>> origin/main
 >>>>>>> origin/main
   selectModule,
   markSelectedModuleAsHandedOff,
@@ -177,6 +186,10 @@ export function ModulePackagePanel({
 <<<<<<< HEAD
             currentProviderJob={currentProviderJob}
 =======
+<<<<<<< HEAD
+            currentProviderJob={currentProviderJob}
+=======
+>>>>>>> origin/main
 >>>>>>> origin/main
             latestHandoffArtifact={latestHandoffArtifact}
             isSelectedModuleHandoffReady={isSelectedModuleHandoffReady}

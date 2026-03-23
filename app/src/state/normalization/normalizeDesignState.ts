@@ -6,7 +6,11 @@ import type { Connection, DesignState } from '../../types';
 <<<<<<< HEAD
 import { createMockProposals } from '../../ai/proposals/proposalFactory';
 =======
+<<<<<<< HEAD
+import { createMockProposals } from '../../ai/proposals/proposalFactory';
+=======
 import { createMockSuggestions } from '../reducerHelpers/suggestionSync';
+>>>>>>> origin/main
 >>>>>>> origin/main
 import { normalizeHierarchyForPackages, selectHierarchyModuleId, selectVisibleHierarchyModuleIds } from '../hierarchy/hierarchyHelpers';
 import { defaultConnectionDraft } from '../reducerHelpers/seedState';
@@ -177,7 +181,11 @@ export function createRestoredDesignState(
 <<<<<<< HEAD
       proposalsByModuleId: {},
 =======
+<<<<<<< HEAD
+      proposalsByModuleId: {},
+=======
       suggestionsByModuleId: {},
+>>>>>>> origin/main
 >>>>>>> origin/main
       ui: {
         workspaceMode: 'design',

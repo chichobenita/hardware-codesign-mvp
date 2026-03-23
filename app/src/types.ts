@@ -1,11 +1,17 @@
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
 import type { ModuleKind, ModuleNode, ModulePackage, SemanticConnection } from '../../shared/src';
 import type { HandoffArtifact } from './ai/handoffTypes';
 import type { AiProposal } from './ai/proposals/proposalTypes';
 import type { ProviderJob } from './ai/providerJobTypes';
+<<<<<<< HEAD
+=======
 =======
 import type { ModuleKind, ModuleNode, ModulePackage, ModulePort, SemanticConnection } from '../../shared/src';
 import type { HandoffArtifact } from './ai/handoffTypes';
+>>>>>>> origin/main
 >>>>>>> origin/main
 
 export type Connection = SemanticConnection;
@@ -25,6 +31,8 @@ export type WorkspaceMode = 'design' | 'review' | 'handoff';
 
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
 export type SuggestionType = 'purpose_proposal' | 'behavior_summary' | 'ports_suggestion' | 'decomposition_suggestion';
 export type SuggestionStatus = 'pending' | 'accepted' | 'rejected';
 
@@ -42,6 +50,7 @@ export type SuggestionCard = {
   };
 };
 
+>>>>>>> origin/main
 >>>>>>> origin/main
 export type HierarchyBreadcrumbItem = {
   moduleId: string;
@@ -76,7 +85,11 @@ export type DesignState = {
 <<<<<<< HEAD
   proposalsByModuleId: Record<string, AiProposal[]>;
 =======
+<<<<<<< HEAD
+  proposalsByModuleId: Record<string, AiProposal[]>;
+=======
   suggestionsByModuleId: Record<string, SuggestionCard[]>;
+>>>>>>> origin/main
 >>>>>>> origin/main
   ui: DesignUiState;
 };

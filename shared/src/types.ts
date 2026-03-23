@@ -62,6 +62,10 @@ export interface ModuleInterfaces {
 <<<<<<< HEAD
   interfaceNotes?: string;
 =======
+<<<<<<< HEAD
+  interfaceNotes?: string;
+=======
+>>>>>>> origin/main
 >>>>>>> origin/main
 }
 
@@ -78,6 +82,11 @@ export interface ModuleBehavior {
   cornerCases?: string[];
   implementationNotes?: string[];
 =======
+<<<<<<< HEAD
+  cornerCases?: string[];
+  implementationNotes?: string[];
+=======
+>>>>>>> origin/main
 >>>>>>> origin/main
 }
 
@@ -102,6 +111,10 @@ export interface ModuleDependencies {
 <<<<<<< HEAD
   integrationAssumptions?: string[];
 =======
+<<<<<<< HEAD
+  integrationAssumptions?: string[];
+=======
+>>>>>>> origin/main
 >>>>>>> origin/main
 }
 
