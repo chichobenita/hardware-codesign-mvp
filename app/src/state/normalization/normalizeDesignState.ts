@@ -38,6 +38,23 @@ function normalizePackageMap(
   ) as Record<string, ModulePackage>;
 }
 
+function normalizeSecondaryWorkspace(state: DesignState): DesignState['ui']['secondaryWorkspace'] {
+  if (state.ui.workspaceMode === 'review') {
+    return 'review';
+  }
+
+  if (state.ui.workspaceMode === 'handoff') {
+    return 'handoff';
+  }
+
+  const requested = state.ui.secondaryWorkspace;
+  if (requested === 'package_editor' || requested === 'validation' || requested === 'project_data' || requested === 'none') {
+    return requested;
+  }
+
+  return 'package_editor';
+}
+
 function normalizeUiState(state: DesignState): DesignState {
   const moduleIds = new Set(state.moduleList.map((moduleNode) => moduleNode.id));
   const currentHierarchyModuleId = selectHierarchyModuleId(state, state.ui.currentHierarchyModuleId);
@@ -56,6 +73,7 @@ function normalizeUiState(state: DesignState): DesignState {
     ui: {
       ...state.ui,
       selectedProviderId: state.ui.selectedProviderId || DEFAULT_PROVIDER_ID,
+      secondaryWorkspace: normalizeSecondaryWorkspace(state),
       currentHierarchyModuleId,
       renameDraft: selectedModule?.name ?? '',
       connectionDraft: {
@@ -150,6 +168,7 @@ export function createRestoredDesignState(
     proposalsByModuleId: {},
     ui: {
       workspaceMode: 'design',
+      secondaryWorkspace: 'package_editor',
       selectedProviderId: DEFAULT_PROVIDER_ID,
       currentHierarchyModuleId: persistedState.selectedModuleId,
       newModuleName: '',
@@ -173,6 +192,7 @@ export function createRestoredDesignState(
       proposalsByModuleId: {},
       ui: {
         workspaceMode: 'design',
+        secondaryWorkspace: 'package_editor',
         selectedProviderId: DEFAULT_PROVIDER_ID,
         currentHierarchyModuleId: defaultHierarchyId,
         newModuleName: '',

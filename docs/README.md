@@ -15,6 +15,7 @@ This directory contains the MVP documentation split into focused architecture an
 9. [09-ui-state-model.md](architecture/09-ui-state-model.md)
 10. [10-mvp-roadmap-and-open-decisions.md](architecture/10-mvp-roadmap-and-open-decisions.md)
 11. [11-mvp-v1-minimal-implementation-plan.md](architecture/11-mvp-v1-minimal-implementation-plan.md)
+12. [12-workspace-ux-redesign-blueprint.md](architecture/12-workspace-ux-redesign-blueprint.md)
 
 ## UI
 

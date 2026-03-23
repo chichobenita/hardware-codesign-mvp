@@ -17,6 +17,7 @@ export type SectionKey =
   | 'decompositionStatus';
 
 export type WorkspaceMode = 'design' | 'review' | 'handoff';
+export type SecondaryWorkspace = 'none' | 'package_editor' | 'review' | 'handoff' | 'validation' | 'project_data';
 
 export type HierarchyBreadcrumbItem = {
   moduleId: string;
@@ -30,6 +31,7 @@ export type HierarchyDecompositionDraft = {
 
 export type DesignUiState = {
   workspaceMode: WorkspaceMode;
+  secondaryWorkspace: SecondaryWorkspace;
   selectedProviderId: string;
   currentHierarchyModuleId: string;
   newModuleName: string;
