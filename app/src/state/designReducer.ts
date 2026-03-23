@@ -244,6 +244,14 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
           workspaceMode: workspaceModeForSecondaryWorkspace(action.payload.workspace)
         }
       };
+    case 'set_diagram_viewport_mode':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          diagramViewportMode: action.payload.mode
+        }
+      };
     case 'set_selected_provider':
       return { ...state, ui: { ...state.ui, selectedProviderId: action.payload.providerId } };
     case 'enter_hierarchy_view':

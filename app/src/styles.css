@@ -100,6 +100,10 @@ body {
   gap: 8px;
 }
 
+.ribbon-workspace-grid-wide {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .ribbon-button {
   width: 100%;
   margin-top: 0;
@@ -187,7 +191,8 @@ body {
   overflow-y: auto;
 }
 
-.secondary-workspace-dock {
+.secondary-workspace-shell,
+.secondary-workspace-empty {
   border: 1px solid #cbd5e1;
   border-radius: 14px;
   background: #ffffff;
@@ -203,6 +208,7 @@ body {
   align-items: flex-start;
 }
 
+.secondary-workspace-header-actions,
 .secondary-workspace-actions {
   display: flex;
   flex-wrap: wrap;
@@ -217,18 +223,32 @@ body {
   border: 1px solid #cbd5e1;
 }
 
-.secondary-workspace-button.active {
+.secondary-workspace-button.active,
+.secondary-workspace-close {
   background: #111827;
   color: #ffffff;
   border-color: #111827;
 }
 
-.secondary-workspace-content .right-panel {
-  max-height: none;
-  overflow: visible;
-  padding: 0;
-  border: 0;
-  background: transparent;
+.secondary-workspace-panel {
+  padding: 16px;
+}
+
+.secondary-workspace-panel-header {
+  margin-bottom: 12px;
+}
+
+.secondary-workspace-panel-header h3 {
+  margin: 0 0 4px;
+}
+
+.secondary-workspace-panel-body {
+  display: grid;
+  gap: 12px;
+}
+
+.secondary-workspace-empty h2 {
+  margin: 0;
 }
 
 .panel {
@@ -536,6 +556,73 @@ button {
   background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
 }
 
+.diagram-surface-header,
+.hierarchy-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.diagram-surface-header {
+  margin-bottom: 10px;
+}
+
+.diagram-surface-header-copy,
+.hierarchy-toolbar-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.diagram-viewport-controls,
+.hierarchy-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.diagram-viewport-button {
+  width: auto;
+  margin-top: 0;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+}
+
+.diagram-viewport-button.active {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
+}
+
+.hierarchy-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.hierarchy-summary-card {
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 8px 10px;
+  display: grid;
+  gap: 2px;
+}
+
+.hierarchy-summary-label {
+  color: #4338ca;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hierarchy-summary-footnote {
+  color: #64748b;
+  font-size: 11px;
+}
+
 .diagram-surface {
   width: 100%;
   height: auto;
@@ -643,20 +730,11 @@ button {
 }
 
 .hierarchy-toolbar {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
   border: 1px solid #dbeafe;
   border-radius: 6px;
   padding: 10px;
   margin-bottom: 10px;
   background: #f8fbff;
-}
-
-.hierarchy-actions {
-  display: flex;
-  gap: 8px;
 }
 
 .breadcrumb-row {
@@ -725,7 +803,21 @@ button {
   }
 
   .workspace-stage-card,
-  .secondary-workspace-header {
+  .secondary-workspace-header,
+  .diagram-surface-header,
+  .hierarchy-toolbar {
     flex-direction: column;
   }
+
+  .hierarchy-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.secondary-workspace-shell .validation-card,
+.secondary-workspace-shell .project-transfer-card,
+.secondary-workspace-shell .lifecycle-card,
+.secondary-workspace-shell .handoff-card,
+.secondary-workspace-shell .payload-preview {
+  background: #f9fafb;
 }

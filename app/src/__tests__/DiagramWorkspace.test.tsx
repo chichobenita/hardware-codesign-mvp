@@ -231,4 +231,65 @@ describe('DiagramWorkspace', () => {
     expect(within(screen.getByTestId('diagram-node-decoder')).getByText('control_fabric / address_decoder')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Hierarchy breadcrumb' })).toBeInTheDocument();
   });
+
+  it('switches diagram viewport framing from reducer-owned controls', () => {
+    renderWorkspace();
+
+    const svg = screen.getByRole('img', { name: 'Hardware module diagram' });
+    const initialViewBox = svg.getAttribute('viewBox');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Focus selection' }));
+
+    expect(svg.getAttribute('viewBox')).not.toEqual(initialViewBox);
+    expect(screen.getByRole('button', { name: 'Focus selection' })).toHaveClass('active');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
+
+    expect(svg.getAttribute('viewBox')).not.toEqual(initialViewBox);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fit scope' }));
+
+    expect(svg.getAttribute('viewBox')).toEqual(initialViewBox);
+  });
+
+  it('allows direct composite entry from the diagram node affordance', () => {
+    const initialState = cloneState();
+    initialState.moduleList = [...initialState.moduleList, { id: 'composite_child', name: 'composite_child', kind: 'composite' }];
+    initialState.packageContentByModuleId.composite_child = {
+      packageId: 'pkg_composite_child',
+      moduleId: 'composite_child',
+      packageVersion: '0.1.0',
+      packageStatus: 'draft',
+      lastUpdatedAt: '2026-03-18T00:00:00.000Z',
+      lastUpdatedBy: 'tester',
+      identity: { name: 'composite_child' },
+      hierarchy: { parentModuleId: 'root', childModuleIds: ['leaf_grandchild'], hierarchyPath: ['top_controller', 'composite_child'] },
+      dependencies: { relevantDependencies: [], links: [] },
+      decompositionStatus: { decompositionStatus: 'composite', decompositionRationale: 'nested block' }
+    };
+    initialState.moduleList.push({ id: 'leaf_grandchild', name: 'leaf_grandchild', kind: 'leaf' });
+    initialState.packageContentByModuleId.leaf_grandchild = {
+      packageId: 'pkg_leaf_grandchild',
+      moduleId: 'leaf_grandchild',
+      packageVersion: '0.1.0',
+      packageStatus: 'draft',
+      lastUpdatedAt: '2026-03-18T00:00:00.000Z',
+      lastUpdatedBy: 'tester',
+      identity: { name: 'leaf_grandchild' },
+      hierarchy: { parentModuleId: 'composite_child', childModuleIds: [], hierarchyPath: ['top_controller', 'composite_child', 'leaf_grandchild'] },
+      dependencies: { relevantDependencies: [], links: [] }
+    };
+    initialState.packageContentByModuleId.root.hierarchy = {
+      parentModuleId: '',
+      childModuleIds: [...(initialState.packageContentByModuleId.root.hierarchy?.childModuleIds ?? []), 'composite_child'],
+      hierarchyPath: ['top_controller']
+    };
+
+    renderWorkspace(initialState);
+
+    fireEvent.doubleClick(screen.getByTestId('diagram-node-composite_child').querySelector('rect') as SVGRectElement);
+
+    expect(screen.getByText('composite_child child-level view')).toBeInTheDocument();
+    expect(screen.getByTestId('diagram-node-leaf_grandchild')).toBeInTheDocument();
+  });
 });

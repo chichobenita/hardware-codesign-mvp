@@ -3,27 +3,27 @@ import { describe, expect, it } from 'vitest';
 import App from '../App';
 
 describe('App', () => {
-  it('renders the redesigned workspace shell', () => {
+  it('renders the redesigned workspace shell with dedicated secondary workspaces', () => {
     render(<App />);
 
     expect(screen.getByRole('banner', { name: 'Workspace command ribbon' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Workspace redesign shell' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'AI Collaboration' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Architecture canvas' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Secondary workspace — Package editor' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Module Package' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Package editor', level: 2 })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Module Package' })).not.toBeInTheDocument();
   }, 10000);
 
-  it('uses the ribbon to switch the transitional secondary workspace surface', () => {
+  it('switches between dedicated secondary workspaces from the ribbon and supports closing them', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /ReviewOpen the focused review surface/i }));
-    expect(screen.getByRole('heading', { name: 'Secondary workspace — Review' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /ValidationSelected-module semantic diagnostics/i }));
+    expect(screen.getByRole('heading', { name: 'Validation', level: 2 })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /HandoffOpen the focused handoff surface/i }));
-    expect(screen.getByRole('heading', { name: 'Secondary workspace — Handoff' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Project dataImport and export the full project JSON snapshot/i }));
+    expect(screen.getByRole('heading', { name: 'Project data', level: 2 })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Package editorTransitional secondary workspace dock/i }));
-    expect(screen.getByRole('heading', { name: 'Secondary workspace — Package editor' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close secondary workspace' }));
+    expect(screen.getByRole('heading', { name: 'No deep-work surface open' })).toBeInTheDocument();
   });
 });

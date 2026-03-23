@@ -674,3 +674,15 @@ The following should remain unresolved until implementation planning for their s
 4. Refine the diagram header, breadcrumbs, and composite/leaf affordances so hierarchy semantics become visually dominant.
 5. Improve connection readability and then add grouped-edge behavior.
 6. Add keyboard shortcuts only after the ribbon command model is stable.
+
+## 16. Implementation progress notes
+
+### Stage 3 status
+
+The current frontend implementation now includes a stronger hierarchy-forward diagram frame:
+
+* scope summary cards reinforce parent/root, child-count, and current selection context
+* viewport controls expose reducer-owned `fit_scope`, `focus_selection`, and `overview` framing modes
+* composite blocks support direct scope entry from the diagram surface in addition to existing command affordances
+
+These updates keep the existing selector-driven hierarchy model intact and deliberately avoid introducing a new diagram engine or effect-driven viewport state.

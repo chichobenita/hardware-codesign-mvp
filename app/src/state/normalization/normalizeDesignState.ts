@@ -74,6 +74,7 @@ function normalizeUiState(state: DesignState): DesignState {
       ...state.ui,
       selectedProviderId: state.ui.selectedProviderId || DEFAULT_PROVIDER_ID,
       secondaryWorkspace: normalizeSecondaryWorkspace(state),
+      diagramViewportMode: state.ui.diagramViewportMode ?? 'fit_scope',
       currentHierarchyModuleId,
       renameDraft: selectedModule?.name ?? '',
       connectionDraft: {
@@ -166,11 +167,12 @@ export function createRestoredDesignState(
     ...persistedState,
     moduleList: normalizedModuleList,
     proposalsByModuleId: {},
-    ui: {
-      workspaceMode: 'design',
-      secondaryWorkspace: 'package_editor',
-      selectedProviderId: DEFAULT_PROVIDER_ID,
-      currentHierarchyModuleId: persistedState.selectedModuleId,
+      ui: {
+        workspaceMode: 'design',
+        secondaryWorkspace: 'package_editor',
+        diagramViewportMode: 'fit_scope',
+        selectedProviderId: DEFAULT_PROVIDER_ID,
+        currentHierarchyModuleId: persistedState.selectedModuleId,
       newModuleName: '',
       newModuleKind: 'leaf',
       renameDraft: '',
@@ -193,6 +195,7 @@ export function createRestoredDesignState(
       ui: {
         workspaceMode: 'design',
         secondaryWorkspace: 'package_editor',
+        diagramViewportMode: 'fit_scope',
         selectedProviderId: DEFAULT_PROVIDER_ID,
         currentHierarchyModuleId: defaultHierarchyId,
         newModuleName: '',

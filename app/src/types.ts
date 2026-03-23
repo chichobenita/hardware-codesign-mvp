@@ -18,6 +18,7 @@ export type SectionKey =
 
 export type WorkspaceMode = 'design' | 'review' | 'handoff';
 export type SecondaryWorkspace = 'none' | 'package_editor' | 'review' | 'handoff' | 'validation' | 'project_data';
+export type DiagramViewportMode = 'fit_scope' | 'focus_selection' | 'overview';
 
 export type HierarchyBreadcrumbItem = {
   moduleId: string;
@@ -32,6 +33,7 @@ export type HierarchyDecompositionDraft = {
 export type DesignUiState = {
   workspaceMode: WorkspaceMode;
   secondaryWorkspace: SecondaryWorkspace;
+  diagramViewportMode: DiagramViewportMode;
   selectedProviderId: string;
   currentHierarchyModuleId: string;
   newModuleName: string;

@@ -1,12 +1,12 @@
 import type { ModuleNode } from '../../../shared/src';
-import type { WorkspaceMode } from '../types';
+import type { SecondaryWorkspace } from '../types';
 
 type AppRibbonProps = {
   selectedModule?: ModuleNode;
   currentHierarchyModule?: ModuleNode;
-  workspaceMode: WorkspaceMode;
-  setWorkspaceMode: (mode: WorkspaceMode) => void;
-  openPackageEditor: () => void;
+  activeSecondaryWorkspace: SecondaryWorkspace;
+  openSecondaryWorkspace: (workspace: Exclude<SecondaryWorkspace, 'none'>) => void;
+  closeSecondaryWorkspace: () => void;
   enterSelectedComposite: () => void;
   navigateToParentHierarchy: () => void;
   canNavigateToParent: boolean;
@@ -15,17 +15,24 @@ type AppRibbonProps = {
 
 type WorkspaceAction = {
   description: string;
-  isActive: boolean;
   label: string;
-  onClick: () => void;
+  workspace: Exclude<SecondaryWorkspace, 'none'>;
 };
 
-function RibbonWorkspaceButton({ action }: { action: WorkspaceAction }): JSX.Element {
+function RibbonWorkspaceButton({
+  action,
+  isActive,
+  onClick
+}: {
+  action: WorkspaceAction;
+  isActive: boolean;
+  onClick: () => void;
+}): JSX.Element {
   return (
     <button
       type="button"
-      className={action.isActive ? 'ribbon-button ribbon-button-active' : 'ribbon-button'}
-      onClick={action.onClick}
+      className={isActive ? 'ribbon-button ribbon-button-active' : 'ribbon-button'}
+      onClick={onClick}
     >
       <strong>{action.label}</strong>
       <span>{action.description}</span>
@@ -36,9 +43,9 @@ function RibbonWorkspaceButton({ action }: { action: WorkspaceAction }): JSX.Ele
 export function AppRibbon({
   selectedModule,
   currentHierarchyModule,
-  workspaceMode,
-  setWorkspaceMode,
-  openPackageEditor,
+  activeSecondaryWorkspace,
+  openSecondaryWorkspace,
+  closeSecondaryWorkspace,
   enterSelectedComposite,
   navigateToParentHierarchy,
   canNavigateToParent,
@@ -47,21 +54,28 @@ export function AppRibbon({
   const workspaceActions: WorkspaceAction[] = [
     {
       label: 'Package editor',
-      description: 'Transitional secondary workspace dock for structured package editing.',
-      isActive: workspaceMode === 'design',
-      onClick: openPackageEditor
+      description: 'Structured package authoring and decomposition editing for the selected module.',
+      workspace: 'package_editor'
     },
     {
       label: 'Review',
-      description: 'Open the focused review surface for readiness and preview checks.',
-      isActive: workspaceMode === 'review',
-      onClick: () => setWorkspaceMode('review')
+      description: 'Focused readiness review with validation and derived previews.',
+      workspace: 'review'
     },
     {
       label: 'Handoff',
-      description: 'Open the focused handoff surface for provider execution and artifact tracking.',
-      isActive: workspaceMode === 'handoff',
-      onClick: () => setWorkspaceMode('handoff')
+      description: 'Provider-facing handoff execution, artifact history, and export context.',
+      workspace: 'handoff'
+    },
+    {
+      label: 'Validation',
+      description: 'Selected-module semantic diagnostics without opening the full package editor.',
+      workspace: 'validation'
+    },
+    {
+      label: 'Project data',
+      description: 'Import and export the full project JSON snapshot in a dedicated utility surface.',
+      workspace: 'project_data'
     }
   ];
 
@@ -71,7 +85,7 @@ export function AppRibbon({
         <p className="ribbon-kicker">Hardware Co-Design Platform</p>
         <h1>Workspace redesign shell</h1>
         <p className="muted">
-          Stage 1 introduces a ribbon-led shell, persistent AI sidebar, dominant diagram canvas, and a transitional secondary workspace dock.
+          Stage 2 formalizes dedicated secondary workspaces so package editing, review, handoff, validation, and project data no longer live inside one bundled dock.
         </p>
       </div>
 
@@ -81,6 +95,7 @@ export function AppRibbon({
           <div className="ribbon-chip-row">
             <span className="ribbon-chip">Scope: {currentHierarchyModule?.name ?? 'workspace'}</span>
             <span className="ribbon-chip">Selection: {selectedModule?.name ?? 'None'}</span>
+            <span className="ribbon-chip">Secondary workspace: {activeSecondaryWorkspace === 'none' ? 'closed' : activeSecondaryWorkspace}</span>
           </div>
         </section>
 
@@ -98,10 +113,21 @@ export function AppRibbon({
 
         <section className="ribbon-group ribbon-group-workspaces" aria-label="Secondary workspace commands">
           <span className="ribbon-group-label">Secondary workspaces</span>
-          <div className="ribbon-workspace-grid">
-            {workspaceActions.map((action) => <RibbonWorkspaceButton key={action.label} action={action} />)}
+          <div className="ribbon-workspace-grid ribbon-workspace-grid-wide">
+            {workspaceActions.map((action) => (
+              <RibbonWorkspaceButton
+                key={action.workspace}
+                action={action}
+                isActive={activeSecondaryWorkspace === action.workspace}
+                onClick={() => openSecondaryWorkspace(action.workspace)}
+              />
+            ))}
           </div>
-          <p className="ribbon-footnote muted">Validation and project data remain in the transitional package dock for Stage 1 and move out in Stage 2.</p>
+          <div className="ribbon-action-row">
+            <button type="button" className="ribbon-button ribbon-button-compact" onClick={closeSecondaryWorkspace}>
+              Close secondary workspace
+            </button>
+          </div>
         </section>
       </div>
     </header>
