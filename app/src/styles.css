@@ -46,7 +46,7 @@ body {
 
 .ribbon-groups {
   display: grid;
-  grid-template-columns: minmax(200px, 0.9fr) minmax(220px, 0.9fr) minmax(320px, 1.5fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -104,6 +104,26 @@ body {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.ribbon-command-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ribbon-command-grid-wide {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ribbon-command-input-row,
+.ribbon-connection-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.ribbon-connection-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .ribbon-button {
   width: 100%;
   margin-top: 0;
@@ -126,6 +146,13 @@ body {
   color: #475569;
 }
 
+.ribbon-shortcut {
+  margin-top: 6px;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .ribbon-button-compact {
   width: auto;
   min-width: 120px;
@@ -146,6 +173,10 @@ body {
 
 .ribbon-button-active span {
   color: #1d4ed8;
+}
+
+.ribbon-button-compact-command {
+  min-height: 88px;
 }
 
 .ribbon-footnote {
@@ -887,7 +918,9 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .ribbon-workspace-grid {
+  .ribbon-workspace-grid,
+  .ribbon-command-grid,
+  .ribbon-connection-grid {
     grid-template-columns: 1fr;
   }
 

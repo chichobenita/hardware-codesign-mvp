@@ -5,20 +5,100 @@ import { SecondaryWorkspaceSurface } from './components/SecondaryWorkspaceSurfac
 import { DesignStoreProvider } from './state/designStore';
 import { useAppWorkspace } from './application/useAppWorkspace';
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return target instanceof HTMLInputElement
+    || target instanceof HTMLTextAreaElement
+    || target instanceof HTMLSelectElement
+    || target.isContentEditable;
+}
+
 export function AppWorkspace(): JSX.Element {
   const { state, viewModel, actions } = useAppWorkspace();
   const selectedIsComposite = viewModel.selectedModule?.kind === 'composite';
+  const currentHierarchyRootModuleId = viewModel.currentHierarchyBreadcrumbs[0]?.moduleId;
+
+  const handleWorkspaceKeyDownCapture = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (isEditableTarget(event.target) || !(event.metaKey || event.ctrlKey)) {
+      return;
+    }
+
+    if (event.shiftKey && event.key.toLowerCase() === 'l') {
+      event.preventDefault();
+      actions.createModuleOfKind('leaf');
+      return;
+    }
+
+    if (event.shiftKey && event.key.toLowerCase() === 'c') {
+      event.preventDefault();
+      actions.createModuleOfKind('composite');
+      return;
+    }
+
+    if (event.shiftKey && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      actions.addConnection();
+      return;
+    }
+
+    if (!event.shiftKey && event.key === '1') {
+      event.preventDefault();
+      actions.setDiagramViewportMode('fit_scope');
+      return;
+    }
+
+    if (!event.shiftKey && event.key === '2') {
+      event.preventDefault();
+      actions.setDiagramViewportMode('focus_selection');
+      return;
+    }
+
+    if (!event.shiftKey && event.key === '3') {
+      event.preventDefault();
+      actions.setDiagramViewportMode('overview');
+      return;
+    }
+
+    if (!event.shiftKey && event.key === 'ArrowUp') {
+      event.preventDefault();
+      actions.navigateToParentHierarchy();
+      return;
+    }
+
+    if (!event.shiftKey && event.key === 'Enter') {
+      event.preventDefault();
+      actions.enterSelectedComposite();
+    }
+  };
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" onKeyDownCapture={handleWorkspaceKeyDownCapture}>
       <AppRibbon
         selectedModule={viewModel.selectedModule}
         currentHierarchyModule={viewModel.currentHierarchyModule}
+        currentHierarchyRootModuleId={currentHierarchyRootModuleId}
         activeSecondaryWorkspace={state.ui.secondaryWorkspace}
+        visibleModules={viewModel.visibleModules}
+        newModuleName={state.ui.newModuleName}
+        connectionDraft={state.ui.connectionDraft}
         openSecondaryWorkspace={actions.setSecondaryWorkspace}
         closeSecondaryWorkspace={() => actions.setSecondaryWorkspace('none')}
+        setNewModuleName={actions.setNewModuleName}
+        createLeafModule={() => actions.createModuleOfKind('leaf')}
+        createCompositeModule={() => actions.createModuleOfKind('composite')}
+        setConnectionDraft={actions.setConnectionDraft}
+        addConnection={actions.addConnection}
+        useSelectedModuleAsConnectionSource={actions.useSelectedModuleAsConnectionSource}
+        setDiagramViewportMode={actions.setDiagramViewportMode}
+        collapseAllEdgeBundles={actions.collapseAllEdgeBundles}
+        diagramViewportMode={state.ui.diagramViewportMode}
         enterSelectedComposite={actions.enterSelectedComposite}
+        jumpToRootHierarchy={actions.jumpToRootHierarchy}
         navigateToParentHierarchy={actions.navigateToParentHierarchy}
+        regenerateProposalsForSelectedModule={actions.regenerateProposalsForSelectedModule}
         canNavigateToParent={Boolean(viewModel.parentHierarchyModuleId)}
         canEnterSelectedComposite={selectedIsComposite}
       />

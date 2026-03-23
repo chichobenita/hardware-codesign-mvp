@@ -77,6 +77,21 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     });
   };
 
+  const createModuleOfKind = (kind: ModuleKind) => {
+    if (!state.ui.newModuleName.trim()) {
+      return;
+    }
+
+    dispatch({
+      type: 'create_module',
+      payload: {
+        name: state.ui.newModuleName,
+        kind,
+        parentModuleId: state.ui.currentHierarchyModuleId
+      }
+    });
+  };
+
   const renameSelectedModule = () => {
     dispatch({ type: 'rename_module', payload: { moduleId: state.selectedModuleId, name: state.ui.renameDraft } });
   };
@@ -212,6 +227,36 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     dispatch({ type: 'enter_hierarchy_view', payload: { moduleId: viewModel.selectedModule.id } });
   };
 
+  const jumpToRootHierarchy = () => {
+    const rootModuleId = viewModel.currentHierarchyBreadcrumbs[0]?.moduleId;
+    if (!rootModuleId) {
+      return;
+    }
+
+    dispatch({ type: 'set_hierarchy_view', payload: { moduleId: rootModuleId } });
+  };
+
+  const useSelectedModuleAsConnectionSource = () => {
+    const selectedModule = viewModel.selectedModule;
+    if (!selectedModule) {
+      return;
+    }
+
+    const fallbackTarget = viewModel.visibleModules.find((moduleNode) => moduleNode.id !== selectedModule.id)?.id
+      ?? state.ui.connectionDraft.toModuleId;
+
+    dispatch({
+      type: 'set_connection_draft',
+      payload: {
+        value: {
+          ...state.ui.connectionDraft,
+          fromModuleId: selectedModule.id,
+          toModuleId: fallbackTarget
+        }
+      }
+    });
+  };
+
   const selectModule = (moduleId: string) => dispatch({ type: 'select_module', payload: { moduleId } });
   const setHierarchyView = (moduleId: string) => dispatch({ type: 'set_hierarchy_view', payload: { moduleId } });
   const navigateToParentHierarchy = () => dispatch({ type: 'navigate_to_parent_hierarchy', payload: {} });
@@ -236,6 +281,7 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     applyProposal,
     moveToNextPackageState,
     createModule,
+    createModuleOfKind,
     renameSelectedModule,
     addConnection,
     markSelectedModuleAsHandedOff,
@@ -246,6 +292,8 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     importProjectFromFile,
     decomposeSelectedModule,
     enterSelectedComposite,
+    jumpToRootHierarchy,
+    useSelectedModuleAsConnectionSource,
     selectModule,
     setHierarchyView,
     navigateToParentHierarchy,
