@@ -568,6 +568,12 @@ button {
   margin-bottom: 10px;
 }
 
+.diagram-surface-controls {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
 .diagram-surface-header-copy,
 .hierarchy-toolbar-copy {
   display: grid;
@@ -635,13 +641,41 @@ button {
 }
 
 .diagram-edge {
-  stroke: #94a3b8;
+  fill: none;
   stroke-width: 2;
 }
 
+.diagram-edge-sibling {
+  stroke: #2563eb;
+}
+
+.diagram-edge-boundary {
+  stroke: #d97706;
+  stroke-dasharray: 7 5;
+}
+
+.diagram-edge-bundle {
+  stroke-width: 3.5;
+}
+
+.diagram-edge-expanded {
+  stroke-width: 2.5;
+}
+
 .diagram-edge-label {
-  fill: #475569;
+  fill: #334155;
   font-size: 11px;
+  font-weight: 600;
+}
+
+.diagram-edge-bundle-badge {
+  fill: rgba(15, 23, 42, 0.88);
+}
+
+.diagram-edge-bundle-text {
+  fill: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .diagram-node-rect {
@@ -680,6 +714,66 @@ button {
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 8px;
+}
+
+.diagram-edge-inspector {
+  margin-top: 12px;
+  border-top: 1px solid #cbd5e1;
+  padding-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.diagram-edge-inspector-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.diagram-edge-inspector-chip,
+.diagram-edge-bundle-chip,
+.diagram-edge-signal-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.diagram-edge-inspector-chip,
+.diagram-edge-bundle-chip {
+  background: #e0f2fe;
+  color: #075985;
+  border: 1px solid #7dd3fc;
+}
+
+.diagram-edge-bundle-list {
+  display: grid;
+  gap: 8px;
+}
+
+.diagram-edge-bundle-card {
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.diagram-edge-bundle-card-actions,
+.diagram-edge-bundle-signals {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.diagram-edge-signal-chip {
+  background: #f8fafc;
+  color: #334155;
+  border: 1px solid #cbd5e1;
 }
 
 .diagram-toolbar-grid {
@@ -809,8 +903,16 @@ button {
     flex-direction: column;
   }
 
+  .diagram-surface-controls {
+    justify-items: stretch;
+  }
+
   .hierarchy-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .diagram-edge-inspector-header {
+    flex-direction: column;
   }
 }
 

@@ -222,6 +222,8 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
   const setWorkspaceMode = (mode: WorkspaceMode) => dispatch({ type: 'set_workspace_mode', payload: { mode } });
   const setSecondaryWorkspace = (workspace: SecondaryWorkspace) => dispatch({ type: 'set_secondary_workspace', payload: { workspace } });
   const setDiagramViewportMode = (mode: DiagramViewportMode) => dispatch({ type: 'set_diagram_viewport_mode', payload: { mode } });
+  const toggleEdgeBundle = (groupKey: string) => dispatch({ type: 'toggle_edge_bundle', payload: { groupKey } });
+  const collapseAllEdgeBundles = () => dispatch({ type: 'collapse_all_edge_bundles', payload: {} });
   const setSelectedProvider = (providerId: string) => dispatch({ type: 'set_selected_provider', payload: { providerId } });
   const setDecompositionNamesText = (value: string) => dispatch({ type: 'set_decomposition_names_text', payload: { value } });
   const setDecompositionChildKind = (value: ModuleKind) => dispatch({ type: 'set_decomposition_child_kind', payload: { value } });
@@ -254,6 +256,8 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     setWorkspaceMode,
     setSecondaryWorkspace,
     setDiagramViewportMode,
+    toggleEdgeBundle,
+    collapseAllEdgeBundles,
     setSelectedProvider,
     setDecompositionNamesText,
     setDecompositionChildKind

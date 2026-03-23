@@ -56,6 +56,8 @@ export function AppWorkspace(): JSX.Element {
             diagramViewportMode={state.ui.diagramViewportMode}
             setHierarchyView={actions.setHierarchyView}
             setDiagramViewportMode={actions.setDiagramViewportMode}
+            toggleEdgeBundle={actions.toggleEdgeBundle}
+            collapseAllEdgeBundles={actions.collapseAllEdgeBundles}
             navigateToParentHierarchy={actions.navigateToParentHierarchy}
             setNewModuleName={actions.setNewModuleName}
             setNewModuleKind={actions.setNewModuleKind}

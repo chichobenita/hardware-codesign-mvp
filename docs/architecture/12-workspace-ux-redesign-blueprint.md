@@ -686,3 +686,11 @@ The current frontend implementation now includes a stronger hierarchy-forward di
 * composite blocks support direct scope entry from the diagram surface in addition to existing command affordances
 
 These updates keep the existing selector-driven hierarchy model intact and deliberately avoid introducing a new diagram engine or effect-driven viewport state.
+
+### Stage 4 status
+
+The current frontend implementation now treats repeated endpoint pairs as explicit connection bundles:
+
+* sibling-to-sibling paths stay visually distinct from parent-boundary paths
+* repeated directed pairs collapse into one bundle until explicitly expanded
+* bundle inspection happens through focused expand/collapse affordances instead of drawing every signal path all the time

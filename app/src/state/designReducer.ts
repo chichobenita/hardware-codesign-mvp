@@ -252,6 +252,24 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
           diagramViewportMode: action.payload.mode
         }
       };
+    case 'toggle_edge_bundle':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          expandedEdgeBundleKeys: state.ui.expandedEdgeBundleKeys.includes(action.payload.groupKey)
+            ? state.ui.expandedEdgeBundleKeys.filter((groupKey) => groupKey !== action.payload.groupKey)
+            : [...state.ui.expandedEdgeBundleKeys, action.payload.groupKey]
+        }
+      };
+    case 'collapse_all_edge_bundles':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          expandedEdgeBundleKeys: []
+        }
+      };
     case 'set_selected_provider':
       return { ...state, ui: { ...state.ui, selectedProviderId: action.payload.providerId } };
     case 'enter_hierarchy_view':

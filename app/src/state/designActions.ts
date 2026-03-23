@@ -13,6 +13,8 @@ export type DesignAction =
   | { type: 'set_workspace_mode'; payload: { mode: WorkspaceMode } }
   | { type: 'set_secondary_workspace'; payload: { workspace: SecondaryWorkspace } }
   | { type: 'set_diagram_viewport_mode'; payload: { mode: DiagramViewportMode } }
+  | { type: 'toggle_edge_bundle'; payload: { groupKey: string } }
+  | { type: 'collapse_all_edge_bundles'; payload: {} }
   | { type: 'set_selected_provider'; payload: { providerId: string } }
   | { type: 'enter_hierarchy_view'; payload: { moduleId: string } }
   | { type: 'navigate_to_parent_hierarchy'; payload: {} }

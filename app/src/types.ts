@@ -34,6 +34,7 @@ export type DesignUiState = {
   workspaceMode: WorkspaceMode;
   secondaryWorkspace: SecondaryWorkspace;
   diagramViewportMode: DiagramViewportMode;
+  expandedEdgeBundleKeys: string[];
   selectedProviderId: string;
   currentHierarchyModuleId: string;
   newModuleName: string;

@@ -12,6 +12,8 @@ type DiagramWorkspaceProps = {
   diagramViewportMode: DiagramViewportMode;
   setHierarchyView: (moduleId: string) => void;
   setDiagramViewportMode: (mode: DiagramViewportMode) => void;
+  toggleEdgeBundle: (groupKey: string) => void;
+  collapseAllEdgeBundles: () => void;
   navigateToParentHierarchy: () => void;
   setNewModuleName: (value: string) => void;
   setNewModuleKind: (value: ModuleKind) => void;
@@ -35,6 +37,8 @@ export function DiagramWorkspace({
   diagramViewportMode,
   setHierarchyView,
   setDiagramViewportMode,
+  toggleEdgeBundle,
+  collapseAllEdgeBundles,
   navigateToParentHierarchy,
   setNewModuleName,
   setNewModuleKind,
@@ -47,7 +51,13 @@ export function DiagramWorkspace({
   setConnectionDraft,
   addConnection
 }: DiagramWorkspaceProps): JSX.Element {
-  const layout = createDiagramLayout(visibleModules, state.packageContentByModuleId, visibleConnections);
+  const layout = createDiagramLayout(
+    visibleModules,
+    state.packageContentByModuleId,
+    visibleConnections,
+    currentHierarchyModule?.id,
+    state.ui.expandedEdgeBundleKeys
+  );
   const selectedIsComposite = selectedModule?.kind === 'composite';
   const selectedVisibleNode = layout.nodes.find((node) => node.module.id === selectedModule?.id);
   const scopeNode = layout.nodes.find((node) => node.module.id === currentHierarchyModule?.id) ?? layout.nodes[0];
@@ -61,6 +71,8 @@ export function DiagramWorkspace({
     : selectedVisibleNode
       ? 'visible child'
       : 'outside visible scope';
+  const bundledEdgeGroups = layout.edgeGroups.filter((group) => group.connections.length > 1);
+  const expandedBundleCount = bundledEdgeGroups.filter((group) => group.isExpanded).length;
 
   return (
     <section className="panel center-panel">
@@ -71,7 +83,8 @@ export function DiagramWorkspace({
         </div>
         <div className="diagram-stats" aria-label="Diagram statistics">
           <span>{layout.nodes.length} modules</span>
-          <span>{layout.edges.length} connections</span>
+          <span>{visibleConnections.length} connections</span>
+          <span>{bundledEdgeGroups.length} bundles</span>
         </div>
       </div>
 
@@ -129,31 +142,38 @@ export function DiagramWorkspace({
       <div className="diagram-surface-card">
         <div className="diagram-surface-header">
           <div className="diagram-surface-header-copy">
-            <strong>Hierarchy framing</strong>
-            <p className="muted">Use scope-fit for the current composite, selection-focus for quick inspection, or overview for a wider hierarchy read.</p>
+            <strong>Hierarchy framing and connections</strong>
+            <p className="muted">Use scope-fit for the current composite, selection-focus for quick inspection, or overview for a wider hierarchy read. Bundles collapse repeated endpoint pairs until you expand them for signal-level inspection.</p>
           </div>
-          <div className="diagram-viewport-controls" aria-label="Diagram viewport controls">
-            <button
-              type="button"
-              className={diagramViewportMode === 'fit_scope' ? 'diagram-viewport-button active' : 'diagram-viewport-button'}
-              onClick={() => setDiagramViewportMode('fit_scope')}
-            >
-              Fit scope
-            </button>
-            <button
-              type="button"
-              className={diagramViewportMode === 'focus_selection' ? 'diagram-viewport-button active' : 'diagram-viewport-button'}
-              onClick={() => setDiagramViewportMode('focus_selection')}
-            >
-              Focus selection
-            </button>
-            <button
-              type="button"
-              className={diagramViewportMode === 'overview' ? 'diagram-viewport-button active' : 'diagram-viewport-button'}
-              onClick={() => setDiagramViewportMode('overview')}
-            >
-              Overview
-            </button>
+          <div className="diagram-surface-controls">
+            <div className="diagram-viewport-controls" aria-label="Diagram viewport controls">
+              <button
+                type="button"
+                className={diagramViewportMode === 'fit_scope' ? 'diagram-viewport-button active' : 'diagram-viewport-button'}
+                onClick={() => setDiagramViewportMode('fit_scope')}
+              >
+                Fit scope
+              </button>
+              <button
+                type="button"
+                className={diagramViewportMode === 'focus_selection' ? 'diagram-viewport-button active' : 'diagram-viewport-button'}
+                onClick={() => setDiagramViewportMode('focus_selection')}
+              >
+                Focus selection
+              </button>
+              <button
+                type="button"
+                className={diagramViewportMode === 'overview' ? 'diagram-viewport-button active' : 'diagram-viewport-button'}
+                onClick={() => setDiagramViewportMode('overview')}
+              >
+                Overview
+              </button>
+            </div>
+            <div className="diagram-viewport-controls" aria-label="Edge bundle controls">
+              <button type="button" className="diagram-viewport-button" onClick={collapseAllEdgeBundles} disabled={expandedBundleCount === 0}>
+                Collapse bundles
+              </button>
+            </div>
           </div>
         </div>
         <svg
@@ -170,21 +190,34 @@ export function DiagramWorkspace({
 
           <g aria-label="Diagram edges">
             {layout.edges.map((edge) => {
-              const midX = (edge.fromX + edge.toX) / 2;
-              const midY = (edge.fromY + edge.toY) / 2;
               return (
-                <g key={edge.key} data-testid={`diagram-edge-${edge.connection.fromModuleId}-${edge.connection.toModuleId}`}>
-                  <line
-                    x1={edge.fromX}
-                    y1={edge.fromY}
-                    x2={edge.toX}
-                    y2={edge.toY}
-                    className="diagram-edge"
+                <g
+                  key={edge.key}
+                  data-testid={`diagram-edge-${edge.groupKey.replace(/[^a-z0-9_-]+/gi, '_')}`}
+                  className={edge.isBundle ? 'diagram-edge-group' : undefined}
+                  onClick={() => edge.connections.length > 1 ? toggleEdgeBundle(edge.groupKey) : undefined}
+                >
+                  <path
+                    d={edge.path}
+                    className={[
+                      'diagram-edge',
+                      edge.kind === 'cross_boundary' ? 'diagram-edge-boundary' : 'diagram-edge-sibling',
+                      edge.isBundle ? 'diagram-edge-bundle' : '',
+                      edge.isExpanded ? 'diagram-edge-expanded' : ''
+                    ].filter(Boolean).join(' ')}
                     markerEnd="url(#diagram-arrow)"
                   />
-                  <text x={midX} y={midY - 8} className="diagram-edge-label" textAnchor="middle">
-                    {edge.signal}
+                  <text x={edge.labelX} y={edge.labelY} className="diagram-edge-label" textAnchor="middle">
+                    {edge.label}
                   </text>
+                  {edge.isBundle ? (
+                    <>
+                      <rect x={edge.badgeX - 52} y={edge.badgeY - 12} width="104" height="20" rx="10" className="diagram-edge-bundle-badge" />
+                      <text x={edge.badgeX} y={edge.badgeY + 2} className="diagram-edge-bundle-text" textAnchor="middle">
+                        Expand bundle
+                      </text>
+                    </>
+                  ) : null}
                 </g>
               );
             })}
@@ -227,6 +260,45 @@ export function DiagramWorkspace({
           <span><strong>Badge</strong> = parent/child/top cue</span>
           <span><strong>Scope</strong> = selected composite and direct children</span>
           <span><strong>Viewport</strong> = reducer-owned fit/focus mode</span>
+          <span><strong>Blue</strong> = sibling wiring</span>
+          <span><strong>Amber dashed</strong> = scope boundary wiring</span>
+        </div>
+        <div className="diagram-edge-inspector" aria-label="Connection bundle inspector">
+          <div className="diagram-edge-inspector-header">
+            <div>
+              <strong>Connection bundles</strong>
+              <p className="muted">Repeated endpoint pairs collapse into one bundle. Expand only the path you need to inspect.</p>
+            </div>
+            <span className="diagram-edge-inspector-chip">{bundledEdgeGroups.length} grouped paths</span>
+          </div>
+          {bundledEdgeGroups.length === 0 ? (
+            <p className="muted">No bundled edge groups in this scope.</p>
+          ) : (
+            <div className="diagram-edge-bundle-list">
+              {bundledEdgeGroups.map((group) => (
+                <div key={group.groupKey} className="diagram-edge-bundle-card">
+                  <div>
+                    <strong>{group.fromLabel} → {group.toLabel}</strong>
+                    <p className="muted">{group.kind === 'sibling' ? 'Sibling-to-sibling connectivity inside this parent scope.' : 'Crosses the current scope boundary through the parent module.'}</p>
+                  </div>
+                  <div className="diagram-edge-bundle-card-actions">
+                    <span className="diagram-edge-bundle-chip">{group.connections.length} signals</span>
+                    <button type="button" className="diagram-viewport-button" onClick={() => toggleEdgeBundle(group.groupKey)}>
+                      {group.isExpanded ? 'Collapse signals' : 'Expand signals'}
+                    </button>
+                  </div>
+                  <div className="diagram-edge-bundle-signals">
+                    {(group.isExpanded ? group.connections : group.connections.slice(0, 3)).map((connection) => (
+                      <span key={`${group.groupKey}-${connection.signal}`} className="diagram-edge-signal-chip">{connection.signal}</span>
+                    ))}
+                    {!group.isExpanded && group.connections.length > 3 ? (
+                      <span className="diagram-edge-signal-chip">+{group.connections.length - 3} more</span>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

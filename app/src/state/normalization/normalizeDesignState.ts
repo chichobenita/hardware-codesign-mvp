@@ -75,6 +75,7 @@ function normalizeUiState(state: DesignState): DesignState {
       selectedProviderId: state.ui.selectedProviderId || DEFAULT_PROVIDER_ID,
       secondaryWorkspace: normalizeSecondaryWorkspace(state),
       diagramViewportMode: state.ui.diagramViewportMode ?? 'fit_scope',
+      expandedEdgeBundleKeys: state.ui.expandedEdgeBundleKeys ?? [],
       currentHierarchyModuleId,
       renameDraft: selectedModule?.name ?? '',
       connectionDraft: {
@@ -166,11 +167,13 @@ export function createRestoredDesignState(
   const defaultHierarchyId = selectHierarchyModuleId({
     ...persistedState,
     moduleList: normalizedModuleList,
+    providerJobs: [],
     proposalsByModuleId: {},
       ui: {
         workspaceMode: 'design',
         secondaryWorkspace: 'package_editor',
         diagramViewportMode: 'fit_scope',
+        expandedEdgeBundleKeys: [],
         selectedProviderId: DEFAULT_PROVIDER_ID,
         currentHierarchyModuleId: persistedState.selectedModuleId,
       newModuleName: '',
@@ -196,6 +199,7 @@ export function createRestoredDesignState(
         workspaceMode: 'design',
         secondaryWorkspace: 'package_editor',
         diagramViewportMode: 'fit_scope',
+        expandedEdgeBundleKeys: [],
         selectedProviderId: DEFAULT_PROVIDER_ID,
         currentHierarchyModuleId: defaultHierarchyId,
         newModuleName: '',

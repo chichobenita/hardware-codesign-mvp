@@ -32,10 +32,10 @@ describe('DiagramWorkspace', () => {
   it('renders edges from connection state limited to the visible scope', () => {
     renderWorkspace();
 
-    expect(screen.getByTestId('diagram-edge-child_a-root')).toBeInTheDocument();
-    expect(screen.getByTestId('diagram-edge-root-child_b')).toBeInTheDocument();
-    expect(screen.getByTestId('diagram-edge-example_uart_rx-root')).toBeInTheDocument();
-    expect(within(screen.getByTestId('diagram-edge-root-child_b')).getByText('dispatch_cmd')).toBeInTheDocument();
+    expect(screen.getByTestId('diagram-edge-cross_boundary_child_a-_root')).toBeInTheDocument();
+    expect(screen.getByTestId('diagram-edge-cross_boundary_root-_child_b')).toBeInTheDocument();
+    expect(screen.getByTestId('diagram-edge-cross_boundary_example_uart_rx-_root')).toBeInTheDocument();
+    expect(within(screen.getByTestId('diagram-edge-cross_boundary_root-_child_b')).getByText('dispatch_cmd')).toBeInTheDocument();
   });
 
   it('selecting a node updates selected module path through the store-backed workspace', () => {
@@ -225,7 +225,7 @@ describe('DiagramWorkspace', () => {
 
     expect(screen.getByTestId('diagram-node-fabric')).toBeInTheDocument();
     expect(screen.getByTestId('diagram-node-decoder')).toBeInTheDocument();
-    expect(screen.getByTestId('diagram-edge-fabric-decoder')).toBeInTheDocument();
+    expect(screen.getByTestId('diagram-edge-cross_boundary_fabric-_decoder')).toBeInTheDocument();
     expect(within(screen.getByTestId('diagram-node-decoder')).getByText('address_decoder')).toBeInTheDocument();
     expect(screen.getByText('Selection: address_decoder')).toBeInTheDocument();
     expect(within(screen.getByTestId('diagram-node-decoder')).getByText('control_fabric / address_decoder')).toBeInTheDocument();
@@ -291,5 +291,42 @@ describe('DiagramWorkspace', () => {
 
     expect(screen.getByText('composite_child child-level view')).toBeInTheDocument();
     expect(screen.getByTestId('diagram-node-leaf_grandchild')).toBeInTheDocument();
+  });
+
+  it('collapses repeated endpoint pairs into an inspectable edge bundle', () => {
+    const initialState = cloneState();
+    initialState.connections = [
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_valid' },
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_data' },
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_last' }
+    ];
+
+    renderWorkspace(initialState);
+
+    expect(screen.getAllByText('3 signals')).toHaveLength(2);
+    expect(screen.getByText('Sibling-to-sibling connectivity inside this parent scope.')).toBeInTheDocument();
+    expect(screen.queryByText('fifo_data', { selector: 'svg text' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand signals' }));
+
+    expect(screen.getByRole('button', { name: 'Collapse signals' })).toBeInTheDocument();
+    expect(screen.getAllByText('fifo_data')).toHaveLength(2);
+    expect(screen.getAllByText('fifo_last')).toHaveLength(2);
+    expect(screen.getAllByText('fifo_valid')).toHaveLength(2);
+  });
+
+  it('collapses expanded bundles with the global bundle control', () => {
+    const initialState = cloneState();
+    initialState.connections = [
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_valid' },
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_data' }
+    ];
+
+    renderWorkspace(initialState);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand signals' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse bundles' }));
+
+    expect(screen.getByRole('button', { name: 'Expand signals' })).toBeInTheDocument();
   });
 });
