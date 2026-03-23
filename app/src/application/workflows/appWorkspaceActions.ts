@@ -13,7 +13,7 @@ import {
 import { exportProjectSnapshot, getProjectImportErrorMessage, importProjectSnapshot, triggerProjectDownload } from '../../state/designTransfer';
 import type { DesignAction } from '../../state/designActions';
 import type { AppWorkspaceViewModel } from '../viewModels/appWorkspaceViewModel';
-import type { Connection, DesignState, WorkspaceMode } from '../../types';
+import type { Connection, DesignState, DiagramViewportMode, SecondaryWorkspace, WorkspaceMode } from '../../types';
 
 function parseDecompositionNames(value: string): string[] {
   return value
@@ -72,6 +72,21 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
       payload: {
         name: state.ui.newModuleName,
         kind: state.ui.newModuleKind,
+        parentModuleId: state.ui.currentHierarchyModuleId
+      }
+    });
+  };
+
+  const createModuleOfKind = (kind: ModuleKind) => {
+    if (!state.ui.newModuleName.trim()) {
+      return;
+    }
+
+    dispatch({
+      type: 'create_module',
+      payload: {
+        name: state.ui.newModuleName,
+        kind,
         parentModuleId: state.ui.currentHierarchyModuleId
       }
     });
@@ -212,6 +227,36 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     dispatch({ type: 'enter_hierarchy_view', payload: { moduleId: viewModel.selectedModule.id } });
   };
 
+  const jumpToRootHierarchy = () => {
+    const rootModuleId = viewModel.currentHierarchyBreadcrumbs[0]?.moduleId;
+    if (!rootModuleId) {
+      return;
+    }
+
+    dispatch({ type: 'set_hierarchy_view', payload: { moduleId: rootModuleId } });
+  };
+
+  const useSelectedModuleAsConnectionSource = () => {
+    const selectedModule = viewModel.selectedModule;
+    if (!selectedModule) {
+      return;
+    }
+
+    const fallbackTarget = viewModel.visibleModules.find((moduleNode) => moduleNode.id !== selectedModule.id)?.id
+      ?? state.ui.connectionDraft.toModuleId;
+
+    dispatch({
+      type: 'set_connection_draft',
+      payload: {
+        value: {
+          ...state.ui.connectionDraft,
+          fromModuleId: selectedModule.id,
+          toModuleId: fallbackTarget
+        }
+      }
+    });
+  };
+
   const selectModule = (moduleId: string) => dispatch({ type: 'select_module', payload: { moduleId } });
   const setHierarchyView = (moduleId: string) => dispatch({ type: 'set_hierarchy_view', payload: { moduleId } });
   const navigateToParentHierarchy = () => dispatch({ type: 'navigate_to_parent_hierarchy', payload: {} });
@@ -220,6 +265,10 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
   const setRenameDraft = (value: string) => dispatch({ type: 'set_rename_draft', payload: { value } });
   const setConnectionDraft = (value: Connection) => dispatch({ type: 'set_connection_draft', payload: { value } });
   const setWorkspaceMode = (mode: WorkspaceMode) => dispatch({ type: 'set_workspace_mode', payload: { mode } });
+  const setSecondaryWorkspace = (workspace: SecondaryWorkspace) => dispatch({ type: 'set_secondary_workspace', payload: { workspace } });
+  const setDiagramViewportMode = (mode: DiagramViewportMode) => dispatch({ type: 'set_diagram_viewport_mode', payload: { mode } });
+  const toggleEdgeBundle = (groupKey: string) => dispatch({ type: 'toggle_edge_bundle', payload: { groupKey } });
+  const collapseAllEdgeBundles = () => dispatch({ type: 'collapse_all_edge_bundles', payload: {} });
   const setSelectedProvider = (providerId: string) => dispatch({ type: 'set_selected_provider', payload: { providerId } });
   const setDecompositionNamesText = (value: string) => dispatch({ type: 'set_decomposition_names_text', payload: { value } });
   const setDecompositionChildKind = (value: ModuleKind) => dispatch({ type: 'set_decomposition_child_kind', payload: { value } });
@@ -232,6 +281,7 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     applyProposal,
     moveToNextPackageState,
     createModule,
+    createModuleOfKind,
     renameSelectedModule,
     addConnection,
     markSelectedModuleAsHandedOff,
@@ -242,6 +292,8 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     importProjectFromFile,
     decomposeSelectedModule,
     enterSelectedComposite,
+    jumpToRootHierarchy,
+    useSelectedModuleAsConnectionSource,
     selectModule,
     setHierarchyView,
     navigateToParentHierarchy,
@@ -250,6 +302,10 @@ export function createAppWorkspaceActions(state: DesignState, dispatch: Dispatch
     setRenameDraft,
     setConnectionDraft,
     setWorkspaceMode,
+    setSecondaryWorkspace,
+    setDiagramViewportMode,
+    toggleEdgeBundle,
+    collapseAllEdgeBundles,
     setSelectedProvider,
     setDecompositionNamesText,
     setDecompositionChildKind
