@@ -40,7 +40,11 @@ describe('handoff artifacts', () => {
   });
 
   it('uses the mock provider seam deterministically', () => {
+<<<<<<< HEAD
     const result = mockLocalHdlProvider.buildPreparedResult(createProviderInvocationRequest({
+=======
+    const result = mockLocalHdlProvider.buildResultSnapshot({
+>>>>>>> origin/main
       artifactId: 'handoff_test',
       schemaVersion: 'handoff-artifact/v1',
       moduleId: 'example_uart_rx',

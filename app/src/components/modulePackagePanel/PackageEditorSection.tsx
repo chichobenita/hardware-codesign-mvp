@@ -91,10 +91,19 @@ export function PackageEditorSection({
           Inout ports (comma-separated)
           <input value={stringifyList(portsForDirection(currentPackageContent, 'inout'))} onChange={(event) => updateCurrentPackage((current) => replaceDirectionPorts(current, 'inout', parseList(event.target.value)))} placeholder="io_bus" />
         </label>
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
         <label>
           Interface notes
           <textarea value={currentPackageContent.interfaces?.interfaceNotes ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, interfaces: { ...current.interfaces, interfaceNotes: event.target.value } }))} rows={2} placeholder="integration notes for the exposed ports" />
         </label>
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> origin/main
+>>>>>>> origin/main
       </ModulePackageSection>
 
       <ModulePackageSection title="Purpose" status={currentSectionStatuses.purpose}>
@@ -117,6 +126,10 @@ export function PackageEditorSection({
           Clock / reset notes
           <textarea value={currentPackageContent.behavior?.clockResetNotes ?? ''} onChange={(event) => updateCurrentPackage((current) => ({ ...current, behavior: { ...current.behavior, clockResetNotes: event.target.value } }))} rows={2} placeholder="clock and reset behavior" />
         </label>
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
         <label>
           Corner cases (comma-separated)
           <input value={stringifyList(currentPackageContent.behavior?.cornerCases ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, behavior: { ...current.behavior, cornerCases: parseList(event.target.value) } }))} placeholder="invalid frame, reset mid-transaction" />
@@ -125,6 +138,11 @@ export function PackageEditorSection({
           Implementation notes (comma-separated)
           <input value={stringifyList(currentPackageContent.behavior?.implementationNotes ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, behavior: { ...current.behavior, implementationNotes: parseList(event.target.value) } }))} placeholder="single-clocked FSM, shared counter" />
         </label>
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> origin/main
+>>>>>>> origin/main
       </ModulePackageSection>
 
       <ModulePackageSection title="Constraints" status={currentSectionStatuses.constraints}>
@@ -143,10 +161,19 @@ export function PackageEditorSection({
           Relevant dependencies (comma-separated)
           <input value={stringifyList(currentPackageContent.dependencies?.relevantDependencies ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, dependencies: { ...current.dependencies, relevantDependencies: parseList(event.target.value) } }))} placeholder="system clock, upstream block" />
         </label>
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> origin/main
         <label>
           Integration assumptions (comma-separated)
           <input value={stringifyList(currentPackageContent.dependencies?.integrationAssumptions ?? [])} onChange={(event) => updateCurrentPackage((current) => ({ ...current, dependencies: { ...current.dependencies, integrationAssumptions: parseList(event.target.value) } }))} placeholder="upstream honors ready/valid, reset is synchronous" />
         </label>
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> origin/main
+>>>>>>> origin/main
         <div className="connection-list">
           <strong>Current interactions from connections</strong>
           {moduleConnections.length === 0 ? <p className="muted">No connections for this module.</p> : (

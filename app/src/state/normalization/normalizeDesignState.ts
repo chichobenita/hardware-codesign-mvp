@@ -3,7 +3,15 @@ import { DEFAULT_PROVIDER_ID } from '../../ai/providers/providerRegistry';
 import { normalizeHandoffArtifacts } from '../../ai/handoffArtifacts';
 import type { ModuleNode } from '../../../../shared/src';
 import type { Connection, DesignState } from '../../types';
+<<<<<<< HEAD
 import { createMockProposals } from '../../ai/proposals/proposalFactory';
+=======
+<<<<<<< HEAD
+import { createMockProposals } from '../../ai/proposals/proposalFactory';
+=======
+import { createMockSuggestions } from '../reducerHelpers/suggestionSync';
+>>>>>>> origin/main
+>>>>>>> origin/main
 import { normalizeHierarchyForPackages, selectHierarchyModuleId, selectVisibleHierarchyModuleIds } from '../hierarchy/hierarchyHelpers';
 import { defaultConnectionDraft } from '../reducerHelpers/seedState';
 import { normalizeDependencies } from './normalizeDependencies';
@@ -170,7 +178,15 @@ export function createRestoredDesignState(
       handedOffAtByModuleId: persistedState.handedOffAtByModuleId,
       handoffArtifacts: persistedState.handoffArtifacts,
       providerJobs: [],
+<<<<<<< HEAD
       proposalsByModuleId: {},
+=======
+<<<<<<< HEAD
+      proposalsByModuleId: {},
+=======
+      suggestionsByModuleId: {},
+>>>>>>> origin/main
+>>>>>>> origin/main
       ui: {
         workspaceMode: 'design',
         selectedProviderId: DEFAULT_PROVIDER_ID,
