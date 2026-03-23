@@ -1,11 +1,10 @@
-import type { GenerationPayloadMinimal } from '../../../shared/src';
-import type { ModuleNode } from '../types';
+import type { GenerationPayloadMinimal, ModuleKind, ModulePackage } from '../../../shared/src';
 
 export type PromptHierarchyContext = {
   parentModuleName: string;
   hierarchyPath: string[];
   roleSummary: string;
-  moduleKind: ModuleNode['kind'];
+  moduleKind: ModuleKind;
 };
 
 export type PromptBuildInput = {
@@ -15,6 +14,7 @@ export type PromptBuildInput = {
   purposeSummary: string;
   behaviorSummary: string;
   operationalDescription: string;
+  modulePackage: ModulePackage;
   payload: GenerationPayloadMinimal;
   hierarchyContext?: PromptHierarchyContext;
 };

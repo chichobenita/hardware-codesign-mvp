@@ -241,15 +241,15 @@ describe('designReducer', () => {
     expect(renamed.ui.renameDraft).toBe('dispatch_scheduler');
   });
 
-  it('bootstraps mock suggestions for the selected module and generates fresh suggestions for new modules', () => {
-    const initialSuggestions = seedState.suggestionsByModuleId.example_uart_rx ?? [];
+  it('bootstraps mock proposals for the selected module and generates fresh proposals for new modules', () => {
+    const initialProposals = seedState.proposalsByModuleId.example_uart_rx ?? [];
 
-    expect(initialSuggestions).toHaveLength(4);
-    expect(initialSuggestions.map((suggestion) => suggestion.type)).toEqual([
-      'purpose_proposal',
-      'behavior_summary',
-      'ports_suggestion',
-      'decomposition_suggestion'
+    expect(initialProposals).toHaveLength(4);
+    expect(initialProposals.map((proposal) => proposal.proposedChange.kind)).toEqual([
+      'purpose_update',
+      'behavior_update',
+      'ports_update',
+      'decomposition_update'
     ]);
 
     const created = designReducer(seedState, {
@@ -257,10 +257,10 @@ describe('designReducer', () => {
       payload: { name: 'packet_parser', kind: 'leaf', parentModuleId: 'root', nextId: 'packet_parser', nowIso: '2026-01-01T00:00:00.000Z' }
     });
 
-    const createdSuggestions = created.suggestionsByModuleId.packet_parser ?? [];
-    expect(createdSuggestions).toHaveLength(4);
-    expect(createdSuggestions.every((suggestion) => suggestion.status === 'pending')).toBe(true);
-    expect(createdSuggestions[0]?.draft.summaryText).toContain('packet_parser');
+    const createdProposals = created.proposalsByModuleId.packet_parser ?? [];
+    expect(createdProposals).toHaveLength(4);
+    expect(createdProposals.every((proposal) => proposal.status === 'proposed')).toBe(true);
+    expect(createdProposals[0]?.proposedChange.kind === 'purpose_update' && createdProposals[0].proposedChange.purposeSummary).toContain('packet_parser');
   });
 
   it('supports structured decomposition by creating child modules and packages through the store', () => {
@@ -292,51 +292,53 @@ describe('designReducer', () => {
     expect(decomposed.ui.currentHierarchyModuleId).toBe('root');
   });
 
-  it('keeps suggestion state module-scoped across selection changes and supports reducer-driven refresh', () => {
+  it('keeps proposal state module-scoped across selection changes and supports reducer-driven refresh', () => {
     const forRoot = designReducer(seedState, {
       type: 'select_module',
       payload: { moduleId: 'root' }
     });
-    const rootSuggestions = forRoot.suggestionsByModuleId.root ?? [];
+    const rootProposals = forRoot.proposalsByModuleId.root ?? [];
 
-    expect(rootSuggestions).toHaveLength(4);
-    expect(rootSuggestions[0]?.draft.summaryText).toContain('top_controller');
+    expect(rootProposals).toHaveLength(4);
+    expect(rootProposals[0]?.proposedChange.kind === 'purpose_update' && rootProposals[0].proposedChange.purposeSummary).toContain('top_controller');
 
     const backToUart = designReducer(forRoot, {
       type: 'select_module',
       payload: { moduleId: 'example_uart_rx' }
     });
-    expect(backToUart.suggestionsByModuleId.example_uart_rx?.[0]?.draft.summaryText).toContain('uart_rx');
-    expect(backToUart.suggestionsByModuleId.root?.[0]?.draft.summaryText).toContain('top_controller');
+    expect(backToUart.proposalsByModuleId.example_uart_rx?.[0]?.proposedChange.kind === 'purpose_update' && backToUart.proposalsByModuleId.example_uart_rx[0].proposedChange.purposeSummary).toContain('uart_rx');
+    expect(backToUart.proposalsByModuleId.root?.[0]?.proposedChange.kind === 'purpose_update' && backToUart.proposalsByModuleId.root[0].proposedChange.purposeSummary).toContain('top_controller');
 
-    const refreshedRootSuggestions = rootSuggestions.map((suggestion) => ({
-      ...suggestion,
-      title: `${suggestion.title} refreshed`
+    const refreshedRootProposals = rootProposals.map((proposal) => ({
+      ...proposal,
+      rationale: `${proposal.rationale} refreshed`
     }));
     const refreshed = designReducer(backToUart, {
-      type: 'set_suggestions_for_module',
-      payload: { moduleId: 'root', suggestions: refreshedRootSuggestions }
+      type: 'set_proposals_for_module',
+      payload: { moduleId: 'root', proposals: refreshedRootProposals }
     });
 
-    expect(refreshed.suggestionsByModuleId.root?.every((suggestion) => suggestion.title.endsWith('refreshed'))).toBe(true);
-    expect(refreshed.suggestionsByModuleId.example_uart_rx?.[0]?.title).toBe('Purpose proposal');
+    expect(refreshed.proposalsByModuleId.root?.every((proposal) => proposal.rationale.endsWith('refreshed'))).toBe(true);
+    expect(refreshed.proposalsByModuleId.example_uart_rx?.[0]?.proposedChange.kind).toBe('purpose_update');
   });
 
-  it('applies accepted suggestions and marks the accepted card status', () => {
-    const suggestion = seedState.suggestionsByModuleId.example_uart_rx?.find((item) => item.type === 'behavior_summary');
-    expect(suggestion).toBeDefined();
+  it('applies proposals and marks the applied proposal status', () => {
+    const proposal = seedState.proposalsByModuleId.example_uart_rx?.find((item) => item.proposedChange.kind === 'behavior_update');
+    expect(proposal).toBeDefined();
 
     const state = designReducer(seedState, {
-      type: 'apply_accepted_suggestion',
+      type: 'apply_proposal',
       payload: {
         moduleId: 'example_uart_rx',
-        suggestion: suggestion!,
+        proposal: proposal!,
         nowIso: '2026-01-01T00:00:00.000Z'
       }
     });
 
-    expect(state.packageContentByModuleId.example_uart_rx.behavior?.behaviorSummary).toBe(suggestion?.draft.summaryText);
-    expect(state.suggestionsByModuleId.example_uart_rx?.find((item) => item.id === suggestion?.id)?.status).toBe('accepted');
+    expect(state.packageContentByModuleId.example_uart_rx.behavior?.behaviorSummary).toBe(
+      proposal?.proposedChange.kind === 'behavior_update' ? proposal.proposedChange.behaviorSummary : undefined
+    );
+    expect(state.proposalsByModuleId.example_uart_rx?.find((item) => item.proposalId === proposal?.proposalId)?.status).toBe('applied');
   });
 
   it('connects modules and records structured dependency links + display entries', () => {

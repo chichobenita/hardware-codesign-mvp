@@ -1,6 +1,7 @@
 import type { ModulePackage } from '../../../../shared/src';
 import { DEFAULT_PROVIDER_ID } from '../../ai/providers/providerRegistry';
-import type { Connection, DesignState, ModuleNode } from '../../types';
+import type { ModuleNode } from '../../../../shared/src';
+import type { Connection, DesignState } from '../../types';
 
 export function nowIso(value?: string): string {
   return value ?? new Date().toISOString();
@@ -39,11 +40,11 @@ export function createModulePackage(nextId: string, cleanName: string, timestamp
       childModuleIds: [],
       hierarchyPath: hierarchy?.hierarchyPath ?? [cleanName]
     },
-    interfaces: { ports: [] },
+    interfaces: { ports: [], interfaceNotes: '' },
     purpose: { summary: '' },
     constraints: { basicConstraints: [] },
-    dependencies: { relevantDependencies: [], links: [] },
-    behavior: { behaviorRules: [], clockResetNotes: '' },
+    dependencies: { relevantDependencies: [], integrationAssumptions: [], links: [] },
+    behavior: { behaviorRules: [], clockResetNotes: '', cornerCases: [], implementationNotes: [] },
     decompositionStatus: { decompositionStatus: 'under_decomposition', decompositionRationale: '' }
   };
 }
@@ -71,7 +72,10 @@ export const baseSeedState: DesignState = {
       lastUpdatedBy: 'mock_user',
       identity: { name: 'top_controller', description: 'Top-level orchestrator for subsystem coordination.' },
       hierarchy: { parentModuleId: '', childModuleIds: ['child_a', 'child_b', 'example_uart_rx'], hierarchyPath: ['top_controller'] },
-      interfaces: { ports: [{ id: 'cfg_bus', name: 'cfg_bus', direction: 'input', width: '32' }, { id: 'data_out', name: 'data_out', direction: 'output', width: '32' }] },
+      interfaces: {
+        ports: [{ id: 'cfg_bus', name: 'cfg_bus', direction: 'input', width: '32' }, { id: 'data_out', name: 'data_out', direction: 'output', width: '32' }],
+        interfaceNotes: 'cfg_bus is sampled by the control path and data_out drives the top-level response path.'
+      },
       purpose: { summary: 'Coordinates data flow and control decisions.' },
       decompositionStatus: { decompositionStatus: 'under_decomposition', decompositionRationale: 'Still splitting control and data scheduling.', furtherDecompositionNotes: 'Need one more refinement pass.' }
     },
@@ -84,7 +88,10 @@ export const baseSeedState: DesignState = {
       lastUpdatedBy: 'mock_user',
       identity: { name: 'input_fifo' },
       hierarchy: { parentModuleId: 'root', childModuleIds: [], hierarchyPath: ['top_controller', 'input_fifo'] },
-      interfaces: { ports: [{ id: 'data_in', name: 'data_in', direction: 'input' }, { id: 'fifo_out', name: 'fifo_out', direction: 'output' }] },
+      interfaces: {
+        ports: [{ id: 'data_in', name: 'data_in', direction: 'input' }, { id: 'fifo_out', name: 'fifo_out', direction: 'output' }],
+        interfaceNotes: ''
+      },
       purpose: { summary: '' }
     },
     child_b: {
@@ -96,7 +103,7 @@ export const baseSeedState: DesignState = {
       lastUpdatedBy: 'mock_user',
       identity: { name: 'scheduler' },
       hierarchy: { parentModuleId: 'root', childModuleIds: [], hierarchyPath: ['top_controller', 'scheduler'] },
-      interfaces: { ports: [] },
+      interfaces: { ports: [], interfaceNotes: '' },
       purpose: { summary: '' }
     },
     example_uart_rx: {
@@ -114,22 +121,30 @@ export const baseSeedState: DesignState = {
           { id: 'rst_n', name: 'rst_n', direction: 'input', width: '1', description: 'Active-low reset' },
           { id: 'rx_i', name: 'rx_i', direction: 'input', width: '1', description: 'UART serial input' },
           { id: 'data_o', name: 'data_o', direction: 'output', width: '8', description: 'Received byte' }
-        ]
+        ],
+        interfaceNotes: 'clk and rst_n are shared system signals; data_o is emitted once a full frame is decoded.'
       },
       purpose: { summary: 'Receives UART serial data and emits decoded bytes.' },
       constraints: { basicConstraints: ['115200 baud nominal', '8-N-1 format'] },
-      dependencies: { relevantDependencies: ['system clock', 'upstream UART TX timing assumptions'], links: [] },
+      dependencies: {
+        relevantDependencies: ['system clock', 'upstream UART TX timing assumptions'],
+        integrationAssumptions: ['Upstream serial source follows nominal 8-N-1 framing', 'Top-level logic samples data_o after the receive-complete condition'],
+        links: []
+      },
       behavior: {
         behaviorSummary: 'Detect start bit, sample 8 data bits, emit output byte.',
         behaviorRules: ['Sample start bit midpoint before data bits', 'Assert data_o only after a full valid frame'],
-        clockResetNotes: 'Synchronous to clk. rst_n clears RX state machine and output valid flags.'
+        clockResetNotes: 'Synchronous to clk. rst_n clears RX state machine and output valid flags.',
+        cornerCases: ['Ignore frames with invalid stop bit', 'Return to idle cleanly after reset during an active frame'],
+        implementationNotes: ['Use a baud-rate counter derived from clk', 'Keep RX state transitions simple and single-clocked']
       },
       decompositionStatus: { decompositionStatus: 'approved_leaf', decompositionRationale: 'Simple block with clear fixed behavior.', stopRecommendedBy: 'system' }
     }
   },
   handedOffAtByModuleId: {},
   handoffArtifacts: [],
-  suggestionsByModuleId: {},
+  providerJobs: [],
+  proposalsByModuleId: {},
   ui: {
     workspaceMode: 'design',
     selectedProviderId: DEFAULT_PROVIDER_ID,

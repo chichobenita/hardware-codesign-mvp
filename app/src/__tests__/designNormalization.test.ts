@@ -16,7 +16,7 @@ describe('shared design normalization', () => {
       identity: { ...state.packageContentByModuleId.child_a.identity, name: 'authoritative_fifo' }
     };
 
-    const normalized = normalizeDesignState(state, { ensureUi: true, ensureSuggestions: true });
+    const normalized = normalizeDesignState(state, { ensureUi: true, ensureProposals: true });
 
     expect(normalized.moduleList.find((moduleNode) => moduleNode.id === 'child_a')?.name).toBe('authoritative_fifo');
     expect(normalized.ui.renameDraft).toBe(normalized.moduleList.find((moduleNode) => moduleNode.id === normalized.selectedModuleId)?.name ?? '');

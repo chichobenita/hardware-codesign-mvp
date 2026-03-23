@@ -1,48 +1,54 @@
-import type { ModulePackage } from '../../../shared/src';
-import type { ModuleNode, PortDraft, SuggestionCard } from '../types';
+import type { ModuleNode, ModulePackage, ModulePort } from '../../../shared/src';
+import { getProposalDescription, getProposalTitle } from '../ai/proposals/proposalApplication';
+import type { AiProposal } from '../ai/proposals/proposalTypes';
 
 type AISuggestionsPanelProps = {
   selectedModule?: ModuleNode;
-  regenerateSuggestionsForSelectedModule: () => void;
-  selectedSuggestions: SuggestionCard[];
-  updateSuggestion: (suggestionId: string, updater: (current: SuggestionCard) => SuggestionCard) => void;
-  acceptSuggestion: (suggestion: SuggestionCard) => void;
-  rejectSuggestion: (suggestionId: string) => void;
+  regenerateProposalsForSelectedModule: () => void;
+  selectedProposals: AiProposal[];
+  updateProposal: (proposalId: string, updater: (current: AiProposal) => AiProposal) => void;
+  applyProposal: (proposal: AiProposal) => void;
+  rejectProposal: (proposalId: string) => void;
 };
 
 export function AISuggestionsPanel({
   selectedModule,
-  regenerateSuggestionsForSelectedModule,
-  selectedSuggestions,
-  updateSuggestion,
-  acceptSuggestion,
-  rejectSuggestion
+  regenerateProposalsForSelectedModule,
+  selectedProposals,
+  updateProposal,
+  applyProposal,
+  rejectProposal
 }: AISuggestionsPanelProps): JSX.Element {
   return (
     <section className="panel left-panel">
       <h2>AI Collaboration</h2>
-      <p className="muted">Mock suggestions for selected module: <strong>{selectedModule?.name}</strong></p>
-      <p className="suggestions-note">Suggestions are not committed until you click <strong>Accept</strong>.</p>
-      <button type="button" onClick={regenerateSuggestionsForSelectedModule}>Regenerate mock suggestions</button>
+      <p className="muted">Mock proposals for selected module: <strong>{selectedModule?.name}</strong></p>
+      <p className="suggestions-note">Proposals are not committed until you click <strong>Accept</strong>.</p>
+      <button type="button" onClick={regenerateProposalsForSelectedModule}>Regenerate mock proposals</button>
       <div className="suggestions-list">
-        {selectedSuggestions.map((suggestion) => (
-          <article key={suggestion.id} className="suggestion-card">
+        {selectedProposals.map((proposal) => (
+          <article key={proposal.proposalId} className="suggestion-card">
             <div className="suggestion-header-row">
-              <h3>{suggestion.title}</h3>
-              <span className={`suggestion-status suggestion-${suggestion.status}`}>{suggestion.status}</span>
+              <h3>{getProposalTitle(proposal.proposedChange)}</h3>
+              <span className={`suggestion-status suggestion-${proposal.status}`}>{proposal.status}</span>
             </div>
-            <p className="muted">{suggestion.description}</p>
+            <p className="muted">{getProposalDescription(proposal.proposedChange)}</p>
+            <p className="muted">{proposal.rationale}</p>
 
-            {(suggestion.type === 'purpose_proposal' || suggestion.type === 'behavior_summary') && (
+            {(proposal.proposedChange.kind === 'purpose_update' || proposal.proposedChange.kind === 'behavior_update') && (
               <label>
                 Suggested text (editable before accept)
                 <textarea
-                  value={suggestion.draft.summaryText ?? ''}
+                  value={proposal.proposedChange.kind === 'purpose_update' ? proposal.proposedChange.purposeSummary : proposal.proposedChange.behaviorSummary}
                   onChange={(event) =>
-                    updateSuggestion(suggestion.id, (current) => ({
+                    updateProposal(proposal.proposalId, (current) => ({
                       ...current,
-                      draft: { ...current.draft, summaryText: event.target.value },
-                      status: current.status === 'accepted' ? 'pending' : current.status
+                      proposedChange: current.proposedChange.kind === 'purpose_update'
+                        ? { ...current.proposedChange, purposeSummary: event.target.value }
+                        : current.proposedChange.kind === 'behavior_update'
+                          ? { ...current.proposedChange, behaviorSummary: event.target.value }
+                          : current.proposedChange,
+                      status: current.status === 'applied' ? 'proposed' : current.status
                     }))
                   }
                   rows={3}
@@ -50,23 +56,25 @@ export function AISuggestionsPanel({
               </label>
             )}
 
-            {suggestion.type === 'ports_suggestion' && (
+            {proposal.proposedChange.kind === 'ports_update' && (
               <div className="ports-suggestion-grid">
-                {(suggestion.draft.ports ?? []).map((port, index) => (
+                {proposal.proposedChange.ports.map((port, index) => (
                   <div key={port.id} className="port-edit-row">
                     <input
                       aria-label={`Port ${index + 1} name`}
                       value={port.name}
                       onChange={(event) =>
-                        updateSuggestion(suggestion.id, (current) => ({
+                        updateProposal(proposal.proposalId, (current) => ({
                           ...current,
-                          draft: {
-                            ...current.draft,
-                            ports: (current.draft.ports ?? []).map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, name: event.target.value } : item
-                            )
-                          },
-                          status: current.status === 'accepted' ? 'pending' : current.status
+                          proposedChange: current.proposedChange.kind === 'ports_update'
+                            ? {
+                                ...current.proposedChange,
+                                ports: current.proposedChange.ports.map((item, itemIndex) =>
+                                  itemIndex === index ? { ...item, name: event.target.value } : item
+                                )
+                              }
+                            : current.proposedChange,
+                          status: current.status === 'applied' ? 'proposed' : current.status
                         }))
                       }
                       placeholder="name"
@@ -75,15 +83,17 @@ export function AISuggestionsPanel({
                       aria-label={`Port ${index + 1} direction`}
                       value={port.direction}
                       onChange={(event) =>
-                        updateSuggestion(suggestion.id, (current) => ({
+                        updateProposal(proposal.proposalId, (current) => ({
                           ...current,
-                          draft: {
-                            ...current.draft,
-                            ports: (current.draft.ports ?? []).map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, direction: event.target.value as PortDraft['direction'] } : item
-                            )
-                          },
-                          status: current.status === 'accepted' ? 'pending' : current.status
+                          proposedChange: current.proposedChange.kind === 'ports_update'
+                            ? {
+                                ...current.proposedChange,
+                                ports: current.proposedChange.ports.map((item, itemIndex) =>
+                                  itemIndex === index ? { ...item, direction: event.target.value as ModulePort['direction'] } : item
+                                )
+                              }
+                            : current.proposedChange,
+                          status: current.status === 'applied' ? 'proposed' : current.status
                         }))
                       }
                     >
@@ -95,15 +105,17 @@ export function AISuggestionsPanel({
                       aria-label={`Port ${index + 1} width`}
                       value={port.width ?? ''}
                       onChange={(event) =>
-                        updateSuggestion(suggestion.id, (current) => ({
+                        updateProposal(proposal.proposalId, (current) => ({
                           ...current,
-                          draft: {
-                            ...current.draft,
-                            ports: (current.draft.ports ?? []).map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, width: event.target.value } : item
-                            )
-                          },
-                          status: current.status === 'accepted' ? 'pending' : current.status
+                          proposedChange: current.proposedChange.kind === 'ports_update'
+                            ? {
+                                ...current.proposedChange,
+                                ports: current.proposedChange.ports.map((item, itemIndex) =>
+                                  itemIndex === index ? { ...item, width: event.target.value } : item
+                                )
+                              }
+                            : current.proposedChange,
+                          status: current.status === 'applied' ? 'proposed' : current.status
                         }))
                       }
                       placeholder="width"
@@ -113,20 +125,22 @@ export function AISuggestionsPanel({
               </div>
             )}
 
-            {suggestion.type === 'decomposition_suggestion' && (
+            {proposal.proposedChange.kind === 'decomposition_update' && (
               <>
                 <label>
                   Suggested status
                   <select
-                    value={suggestion.draft.decompositionStatus ?? 'under_decomposition'}
+                    value={proposal.proposedChange.decompositionStatus}
                     onChange={(event) =>
-                      updateSuggestion(suggestion.id, (current) => ({
+                      updateProposal(proposal.proposalId, (current) => ({
                         ...current,
-                        draft: {
-                          ...current.draft,
-                          decompositionStatus: event.target.value as NonNullable<ModulePackage['decompositionStatus']>['decompositionStatus']
-                        },
-                        status: current.status === 'accepted' ? 'pending' : current.status
+                        proposedChange: current.proposedChange.kind === 'decomposition_update'
+                          ? {
+                              ...current.proposedChange,
+                              decompositionStatus: event.target.value as NonNullable<ModulePackage['decompositionStatus']>['decompositionStatus']
+                            }
+                          : current.proposedChange,
+                        status: current.status === 'applied' ? 'proposed' : current.status
                       }))
                     }
                   >
@@ -139,15 +153,17 @@ export function AISuggestionsPanel({
                 <label>
                   Rationale (editable before accept)
                   <textarea
-                    value={suggestion.draft.decompositionRationale ?? ''}
+                    value={proposal.proposedChange.decompositionRationale}
                     onChange={(event) =>
-                      updateSuggestion(suggestion.id, (current) => ({
+                      updateProposal(proposal.proposalId, (current) => ({
                         ...current,
-                        draft: {
-                          ...current.draft,
-                          decompositionRationale: event.target.value
-                        },
-                        status: current.status === 'accepted' ? 'pending' : current.status
+                        proposedChange: current.proposedChange.kind === 'decomposition_update'
+                          ? {
+                              ...current.proposedChange,
+                              decompositionRationale: event.target.value
+                            }
+                          : current.proposedChange,
+                        status: current.status === 'applied' ? 'proposed' : current.status
                       }))
                     }
                     rows={2}
@@ -157,8 +173,8 @@ export function AISuggestionsPanel({
             )}
 
             <div className="suggestion-actions">
-              <button type="button" onClick={() => acceptSuggestion(suggestion)} disabled={suggestion.status === 'accepted'}>Accept</button>
-              <button type="button" onClick={() => rejectSuggestion(suggestion.id)} disabled={suggestion.status === 'rejected'}>Reject</button>
+              <button type="button" onClick={() => applyProposal(proposal)} disabled={proposal.status === 'applied'}>Accept</button>
+              <button type="button" onClick={() => rejectProposal(proposal.proposalId)} disabled={proposal.status === 'rejected'}>Reject</button>
             </div>
           </article>
         ))}

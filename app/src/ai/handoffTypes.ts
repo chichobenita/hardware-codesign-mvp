@@ -20,7 +20,7 @@ export type HandoffArtifact = {
   };
   providerResponse: {
     providerId: string;
-    status: HandoffStatus;
+    status: 'prepared' | 'handed_off';
     summary: string;
   };
 };
