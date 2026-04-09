@@ -7,6 +7,9 @@ export function ProjectDataWorkspace({ state, exportCurrentProject, importProjec
     <WorkspaceFrame
       title="Project data workspace"
       description="Import and export the full project JSON snapshot without mixing those controls into package editing, review, or handoff flows."
+      statusChips={[
+        state.ui.projectImportError ? 'Last import needs attention' : 'Import/export ready'
+      ]}
     >
       <ProjectTransferSection
         projectImportError={state.ui.projectImportError}

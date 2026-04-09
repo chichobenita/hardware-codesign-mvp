@@ -31,6 +31,11 @@ export function HandoffWorkspace({
     <WorkspaceFrame
       title="Handoff workspace"
       description="Focused provider handoff surface for ready leaf modules, artifact inspection, local history, and prompt export."
+      statusChips={[
+        approvedLeafReadyModules.length === 0 ? 'No approved leaf modules yet' : `${approvedLeafReadyModules.length} approved leaf module${approvedLeafReadyModules.length === 1 ? '' : 's'}`,
+        isSelectedModuleHandoffReady ? 'Selected module can hand off' : 'Selected module not handoff-ready',
+        currentProviderJob ? `Provider job: ${currentProviderJob.status}` : 'No active provider job'
+      ]}
     >
       <section className="project-transfer-card">
         <h3>Handoff provider</h3>

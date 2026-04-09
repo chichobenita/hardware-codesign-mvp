@@ -329,4 +329,37 @@ describe('DiagramWorkspace', () => {
 
     expect(screen.getByRole('button', { name: 'Expand signals' })).toBeInTheDocument();
   });
+  it('exposes accessible pressed and expanded states for viewport and bundle controls', () => {
+    const initialState = cloneState();
+    initialState.connections = [
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_valid' },
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_data' }
+    ];
+
+    renderWorkspace(initialState);
+
+    expect(screen.getByRole('button', { name: 'Fit scope' })).toHaveAttribute('aria-pressed', 'true');
+
+    const bundleButton = screen.getByRole('button', { name: 'Expand signals' });
+    expect(bundleButton).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(bundleButton);
+
+    expect(screen.getByRole('button', { name: 'Collapse signals' })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('allows keyboard interaction for bundled edges', () => {
+    const initialState = cloneState();
+    initialState.connections = [
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_valid' },
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_data' }
+    ];
+
+    renderWorkspace(initialState);
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Expand bundle for input_fifo to scheduler' }), { key: 'Enter' });
+
+    expect(screen.queryByRole('button', { name: 'Expand bundle for input_fifo to scheduler' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('fifo_data')).toHaveLength(2);
+  });
 });

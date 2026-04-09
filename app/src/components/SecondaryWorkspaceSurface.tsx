@@ -14,6 +14,40 @@ type SecondaryWorkspaceSurfaceProps = SecondaryWorkspaceSharedProps & {
   onOpenWorkspace: (workspace: Exclude<SecondaryWorkspace, 'none'>) => void;
 };
 
+type WorkspaceLauncher = {
+  description: string;
+  title: string;
+  workspace: Exclude<SecondaryWorkspace, 'none'>;
+};
+
+const WORKSPACE_LAUNCHERS: WorkspaceLauncher[] = [
+  {
+    workspace: 'package_editor',
+    title: 'Package editor',
+    description: 'Structured authoring for the selected module package.'
+  },
+  {
+    workspace: 'review',
+    title: 'Review',
+    description: 'Lifecycle readiness, diagnostics, payload, and prompt preview.'
+  },
+  {
+    workspace: 'handoff',
+    title: 'Handoff',
+    description: 'Provider execution, artifact history, and export tools.'
+  },
+  {
+    workspace: 'validation',
+    title: 'Validation',
+    description: 'Focused semantic diagnostics without opening the full editor.'
+  },
+  {
+    workspace: 'project_data',
+    title: 'Project data',
+    description: 'Import or export the full design snapshot.'
+  }
+];
+
 function getWorkspaceLabel(workspace: SecondaryWorkspace): string {
   switch (workspace) {
     case 'package_editor':
@@ -40,6 +74,17 @@ export function SecondaryWorkspaceSurface({
   canShowPayloadPreview,
   ...sharedProps
 }: SecondaryWorkspaceSurfaceProps): JSX.Element {
+  const selectedModuleName = selectedModule?.name ?? 'None';
+  const validationSummary = sharedProps.moduleValidationIssues.length === 0
+    ? 'Validation clean'
+    : `${sharedProps.moduleValidationIssues.length} validation issue${sharedProps.moduleValidationIssues.length === 1 ? '' : 's'}`;
+  const reviewSummary = sharedProps.isSelectedModuleValidForReviewOrHandoff
+    ? 'Review payloads available'
+    : 'Review remains gated by readiness';
+  const handoffSummary = sharedProps.isSelectedModuleHandoffReady
+    ? 'Ready for handoff flow'
+    : 'Handoff remains gated';
+
   if (activeWorkspace === 'none') {
     return (
       <section className="secondary-workspace-empty" aria-label="Secondary workspace launcher">
@@ -48,12 +93,25 @@ export function SecondaryWorkspaceSurface({
           <h2>No deep-work surface open</h2>
           <p className="muted">Open package editing, review, handoff, validation, or project data intentionally from the ribbon or the launcher below.</p>
         </div>
-        <div className="secondary-workspace-actions" aria-label="Secondary workspace quick launch">
-          <button type="button" className="secondary-workspace-button" onClick={() => onOpenWorkspace('package_editor')}>Package editor</button>
-          <button type="button" className="secondary-workspace-button" onClick={() => onOpenWorkspace('review')}>Review</button>
-          <button type="button" className="secondary-workspace-button" onClick={() => onOpenWorkspace('handoff')}>Handoff</button>
-          <button type="button" className="secondary-workspace-button" onClick={() => onOpenWorkspace('validation')}>Validation</button>
-          <button type="button" className="secondary-workspace-button" onClick={() => onOpenWorkspace('project_data')}>Project data</button>
+        <div className="secondary-workspace-meta" aria-label="Secondary workspace readiness summary">
+          <span className="secondary-workspace-chip">Selection: {selectedModuleName}</span>
+          <span className="secondary-workspace-chip">{validationSummary}</span>
+          <span className="secondary-workspace-chip">{reviewSummary}</span>
+          <span className="secondary-workspace-chip">{handoffSummary}</span>
+        </div>
+        <div className="secondary-workspace-launcher-grid" aria-label="Secondary workspace quick launch">
+          {WORKSPACE_LAUNCHERS.map((launcher) => (
+            <button
+              key={launcher.workspace}
+              type="button"
+              className="secondary-workspace-launcher"
+              aria-label={launcher.title}
+              onClick={() => onOpenWorkspace(launcher.workspace)}
+            >
+              <strong>{launcher.title}</strong>
+              <span>{launcher.description}</span>
+            </button>
+          ))}
         </div>
       </section>
     );
@@ -65,16 +123,28 @@ export function SecondaryWorkspaceSurface({
         <div>
           <p className="secondary-workspace-kicker">Focused deep-work surface</p>
           <h2>{getWorkspaceLabel(activeWorkspace)}</h2>
-          <p className="muted">Selection: <strong>{selectedModule?.name ?? 'None'}</strong> · Scope: <strong>{currentHierarchyModuleName ?? 'workspace'}</strong></p>
+          <p className="muted">Selection: <strong>{selectedModuleName}</strong> · Scope: <strong>{currentHierarchyModuleName ?? 'workspace'}</strong></p>
         </div>
         <div className="secondary-workspace-header-actions">
-          <button type="button" className="secondary-workspace-button" onClick={() => onOpenWorkspace('package_editor')}>Package</button>
-          <button type="button" className="secondary-workspace-button" onClick={() => onOpenWorkspace('review')}>Review</button>
-          <button type="button" className="secondary-workspace-button" onClick={() => onOpenWorkspace('handoff')}>Handoff</button>
-          <button type="button" className="secondary-workspace-button" onClick={() => onOpenWorkspace('validation')}>Validation</button>
-          <button type="button" className="secondary-workspace-button" onClick={() => onOpenWorkspace('project_data')}>Project data</button>
+          {WORKSPACE_LAUNCHERS.map((launcher) => (
+            <button
+              key={launcher.workspace}
+              type="button"
+              className={launcher.workspace === activeWorkspace ? 'secondary-workspace-button active' : 'secondary-workspace-button'}
+              aria-pressed={launcher.workspace === activeWorkspace}
+              onClick={() => onOpenWorkspace(launcher.workspace)}
+            >
+              {launcher.title}
+            </button>
+          ))}
           <button type="button" className="secondary-workspace-button secondary-workspace-close" onClick={onClose}>Close</button>
         </div>
+      </div>
+
+      <div className="secondary-workspace-meta" aria-label="Secondary workspace state summary">
+        <span className="secondary-workspace-chip">{validationSummary}</span>
+        <span className="secondary-workspace-chip">{reviewSummary}</span>
+        <span className="secondary-workspace-chip">{handoffSummary}</span>
       </div>
 
       {activeWorkspace === 'package_editor' ? <PackageEditorWorkspace {...sharedProps} /> : null}

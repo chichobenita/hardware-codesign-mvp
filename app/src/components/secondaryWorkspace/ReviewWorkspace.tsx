@@ -21,6 +21,11 @@ export function ReviewWorkspace({
     <WorkspaceFrame
       title="Review workspace"
       description="Focused readiness review for the selected module, with lifecycle state, semantic diagnostics, payload preview, and prompt preview."
+      statusChips={[
+        `Package: ${currentPackageContent.packageStatus}`,
+        isSelectedModuleValidForReviewOrHandoff ? 'Review payloads unlocked' : 'Review remains gated',
+        designHasValidationIssues ? 'Design has open validation issues' : 'Design validation clean'
+      ]}
     >
       <PackageLifecycleSection
         packageStatus={currentPackageContent.packageStatus}
