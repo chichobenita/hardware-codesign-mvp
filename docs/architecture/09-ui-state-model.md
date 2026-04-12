@@ -137,6 +137,8 @@ The system should present this as guidance rather than as a rigid form-validatio
 
 AI-generated suggestions should not overwrite package content silently.
 
+For MVP implementation, the source-of-truth should be an explicit proposal model in application/runtime state, while suggestion cards remain presentation over those proposals.
+
 The MVP should support a simple suggestion workflow:
 
 * AI proposes content
@@ -171,6 +173,9 @@ In this mode, the interface should:
 
 * highlight the remaining leaf-ready fields
 * show the future generation payload preview
+* show the prompt snapshot derived from the same normalized source
+* create and display a concrete handoff artifact record when handoff occurs
+* clearly indicate when a previously created artifact is stale after later module edits
 * allow the engineer to review the final compact handoff content
 * make the handoff decision explicit
 

@@ -32,10 +32,10 @@ describe('DiagramWorkspace', () => {
   it('renders edges from connection state limited to the visible scope', () => {
     renderWorkspace();
 
-    expect(screen.getByTestId('diagram-edge-child_a-root')).toBeInTheDocument();
-    expect(screen.getByTestId('diagram-edge-root-child_b')).toBeInTheDocument();
-    expect(screen.getByTestId('diagram-edge-example_uart_rx-root')).toBeInTheDocument();
-    expect(within(screen.getByTestId('diagram-edge-root-child_b')).getByText('dispatch_cmd')).toBeInTheDocument();
+    expect(screen.getByTestId('diagram-edge-cross_boundary_child_a-_root')).toBeInTheDocument();
+    expect(screen.getByTestId('diagram-edge-cross_boundary_root-_child_b')).toBeInTheDocument();
+    expect(screen.getByTestId('diagram-edge-cross_boundary_example_uart_rx-_root')).toBeInTheDocument();
+    expect(within(screen.getByTestId('diagram-edge-cross_boundary_root-_child_b')).getByText('dispatch_cmd')).toBeInTheDocument();
   });
 
   it('selecting a node updates selected module path through the store-backed workspace', () => {
@@ -44,8 +44,8 @@ describe('DiagramWorkspace', () => {
     fireEvent.click(screen.getByTestId('diagram-node-root').querySelector('rect') as SVGRectElement);
 
     expect(screen.getByText('top_controller', { selector: '.left-panel strong' })).toBeInTheDocument();
-    expect(screen.getByText(/Selected module:/)).toHaveTextContent('top_controller (root)');
-    expect(screen.getByLabelText('Name')).toHaveValue('top_controller');
+    expect(screen.getByText(/Selection:\s*top_controller/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
   });
 
   it('applies selected node visual state', () => {
@@ -121,7 +121,8 @@ describe('DiagramWorkspace', () => {
           dependencies: { relevantDependencies: [], links: [] }
         }
       },
-      handedOffAtByModuleId: {}
+      handedOffAtByModuleId: {},
+      handoffArtifacts: []
     });
 
     renderWorkspace(nestedState);
@@ -134,7 +135,7 @@ describe('DiagramWorkspace', () => {
     expect(screen.getByTestId('diagram-node-child_a')).toBeInTheDocument();
     expect(screen.getByTestId('diagram-node-nested_decoder')).toBeInTheDocument();
     expect(screen.queryByTestId('diagram-node-child_b')).not.toBeInTheDocument();
-    expect(screen.getByText(/Selected module:/)).toHaveTextContent('input_fifo (child_a)');
+    expect(screen.getByText(/Selection:\s*input_fifo/)).toBeInTheDocument();
   });
 
   it('navigates back to the parent via breadcrumb and preserves selection sync', () => {
@@ -180,7 +181,7 @@ describe('DiagramWorkspace', () => {
     expect(screen.getByText('top_controller child-level view')).toBeInTheDocument();
     expect(screen.getByTestId('diagram-node-composite_child')).toBeInTheDocument();
     expect(screen.queryByTestId('diagram-node-leaf_grandchild')).not.toBeInTheDocument();
-    expect(screen.getByText(/Selected module:/)).toHaveTextContent('top_controller (root)');
+    expect(screen.getByText(/Selection:\s*top_controller/)).toBeInTheDocument();
   });
 
   it('remains hierarchy-compatible after import/restore of state', () => {
@@ -216,17 +217,149 @@ describe('DiagramWorkspace', () => {
           dependencies: { relevantDependencies: [], links: [] }
         }
       },
-      handedOffAtByModuleId: {}
+      handedOffAtByModuleId: {},
+      handoffArtifacts: []
     });
 
     renderWorkspace(restored);
 
     expect(screen.getByTestId('diagram-node-fabric')).toBeInTheDocument();
     expect(screen.getByTestId('diagram-node-decoder')).toBeInTheDocument();
-    expect(screen.getByTestId('diagram-edge-fabric-decoder')).toBeInTheDocument();
+    expect(screen.getByTestId('diagram-edge-cross_boundary_fabric-_decoder')).toBeInTheDocument();
     expect(within(screen.getByTestId('diagram-node-decoder')).getByText('address_decoder')).toBeInTheDocument();
-    expect(screen.getByText(/Selected module:/)).toHaveTextContent('address_decoder (decoder)');
+    expect(screen.getByText(/Selection:\s*address_decoder/)).toBeInTheDocument();
     expect(within(screen.getByTestId('diagram-node-decoder')).getByText('control_fabric / address_decoder')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Hierarchy breadcrumb' })).toBeInTheDocument();
+  });
+
+  it('switches diagram viewport framing from reducer-owned controls', () => {
+    renderWorkspace();
+
+    const svg = screen.getByRole('img', { name: 'Hardware module diagram' });
+    const initialViewBox = svg.getAttribute('viewBox');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Focus selection' }));
+
+    expect(svg.getAttribute('viewBox')).not.toEqual(initialViewBox);
+    expect(screen.getByRole('button', { name: 'Focus selection' })).toHaveClass('active');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
+
+    expect(svg.getAttribute('viewBox')).not.toEqual(initialViewBox);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fit scope' }));
+
+    expect(svg.getAttribute('viewBox')).toEqual(initialViewBox);
+  });
+
+  it('allows direct composite entry from the diagram node affordance', () => {
+    const initialState = cloneState();
+    initialState.moduleList = [...initialState.moduleList, { id: 'composite_child', name: 'composite_child', kind: 'composite' }];
+    initialState.packageContentByModuleId.composite_child = {
+      packageId: 'pkg_composite_child',
+      moduleId: 'composite_child',
+      packageVersion: '0.1.0',
+      packageStatus: 'draft',
+      lastUpdatedAt: '2026-03-18T00:00:00.000Z',
+      lastUpdatedBy: 'tester',
+      identity: { name: 'composite_child' },
+      hierarchy: { parentModuleId: 'root', childModuleIds: ['leaf_grandchild'], hierarchyPath: ['top_controller', 'composite_child'] },
+      dependencies: { relevantDependencies: [], links: [] },
+      decompositionStatus: { decompositionStatus: 'composite', decompositionRationale: 'nested block' }
+    };
+    initialState.moduleList.push({ id: 'leaf_grandchild', name: 'leaf_grandchild', kind: 'leaf' });
+    initialState.packageContentByModuleId.leaf_grandchild = {
+      packageId: 'pkg_leaf_grandchild',
+      moduleId: 'leaf_grandchild',
+      packageVersion: '0.1.0',
+      packageStatus: 'draft',
+      lastUpdatedAt: '2026-03-18T00:00:00.000Z',
+      lastUpdatedBy: 'tester',
+      identity: { name: 'leaf_grandchild' },
+      hierarchy: { parentModuleId: 'composite_child', childModuleIds: [], hierarchyPath: ['top_controller', 'composite_child', 'leaf_grandchild'] },
+      dependencies: { relevantDependencies: [], links: [] }
+    };
+    initialState.packageContentByModuleId.root.hierarchy = {
+      parentModuleId: '',
+      childModuleIds: [...(initialState.packageContentByModuleId.root.hierarchy?.childModuleIds ?? []), 'composite_child'],
+      hierarchyPath: ['top_controller']
+    };
+
+    renderWorkspace(initialState);
+
+    fireEvent.doubleClick(screen.getByTestId('diagram-node-composite_child').querySelector('rect') as SVGRectElement);
+
+    expect(screen.getByText('composite_child child-level view')).toBeInTheDocument();
+    expect(screen.getByTestId('diagram-node-leaf_grandchild')).toBeInTheDocument();
+  });
+
+  it('collapses repeated endpoint pairs into an inspectable edge bundle', () => {
+    const initialState = cloneState();
+    initialState.connections = [
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_valid' },
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_data' },
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_last' }
+    ];
+
+    renderWorkspace(initialState);
+
+    expect(screen.getAllByText('3 signals')).toHaveLength(2);
+    expect(screen.getByText('Sibling-to-sibling connectivity inside this parent scope.')).toBeInTheDocument();
+    expect(screen.queryByText('fifo_data', { selector: 'svg text' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand signals' }));
+
+    expect(screen.getByRole('button', { name: 'Collapse signals' })).toBeInTheDocument();
+    expect(screen.getAllByText('fifo_data')).toHaveLength(2);
+    expect(screen.getAllByText('fifo_last')).toHaveLength(2);
+    expect(screen.getAllByText('fifo_valid')).toHaveLength(2);
+  });
+
+  it('collapses expanded bundles with the global bundle control', () => {
+    const initialState = cloneState();
+    initialState.connections = [
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_valid' },
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_data' }
+    ];
+
+    renderWorkspace(initialState);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand signals' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse bundles' }));
+
+    expect(screen.getByRole('button', { name: 'Expand signals' })).toBeInTheDocument();
+  });
+  it('exposes accessible pressed and expanded states for viewport and bundle controls', () => {
+    const initialState = cloneState();
+    initialState.connections = [
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_valid' },
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_data' }
+    ];
+
+    renderWorkspace(initialState);
+
+    expect(screen.getByRole('button', { name: 'Fit scope' })).toHaveAttribute('aria-pressed', 'true');
+
+    const bundleButton = screen.getByRole('button', { name: 'Expand signals' });
+    expect(bundleButton).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(bundleButton);
+
+    expect(screen.getByRole('button', { name: 'Collapse signals' })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('allows keyboard interaction for bundled edges', () => {
+    const initialState = cloneState();
+    initialState.connections = [
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_valid' },
+      { fromModuleId: 'child_a', toModuleId: 'child_b', signal: 'fifo_data' }
+    ];
+
+    renderWorkspace(initialState);
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Expand bundle for input_fifo to scheduler' }), { key: 'Enter' });
+
+    expect(screen.queryByRole('button', { name: 'Expand bundle for input_fifo to scheduler' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('fifo_data')).toHaveLength(2);
   });
 });

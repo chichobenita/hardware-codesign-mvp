@@ -1,7 +1,9 @@
-import { type ModulePackage } from '../../../shared/src';
-import type { DesignState, ModuleNode } from '../types';
+import { type ModuleKind, type ModuleNode, type ModulePackage } from '../../../shared/src';
+import { applyProviderResultToArtifact, createHandoffArtifactFromState } from '../ai/handoffArtifacts';
+import type { DesignState } from '../types';
 import type { DesignAction } from './designActions';
 import { normalizeDesignState } from './normalization/normalizeDesignState';
+import { normalizeHierarchyForPackages } from './hierarchy/hierarchyHelpers';
 import {
   baseSeedState,
   createModulePackage,
@@ -10,11 +12,11 @@ import {
   sanitizeModuleIdSegment
 } from './reducerHelpers/seedState';
 import {
-  applyAcceptedSuggestion
-} from './reducerHelpers/suggestionSync';
+  applyProposal
+} from './reducerHelpers/proposalSync';
 
 function normalizeInteractiveState(state: DesignState): DesignState {
-  return normalizeDesignState(state, { ensureUi: true, ensureSuggestions: true });
+  return normalizeDesignState(state, { ensureUi: true, ensureProposals: true });
 }
 
 function buildUniqueModuleId(state: DesignState, parentModuleId: string | undefined, cleanName: string, index = 0): string {
@@ -24,11 +26,6 @@ function buildUniqueModuleId(state: DesignState, parentModuleId: string | undefi
   const withIndex = index > 0 ? `${base}_${index + 1}` : base;
   const existingIds = new Set(state.moduleList.map((moduleNode) => moduleNode.id));
   return existingIds.has(withIndex) ? buildUniqueModuleId(state, parentModuleId, cleanName, index + 1) : withIndex;
-}
-
-function updateHierarchyPath(parentPackage: ModulePackage | undefined, cleanName: string): string[] {
-  const parentPath = parentPackage?.hierarchy?.hierarchyPath?.filter((segment) => segment.trim().length > 0) ?? [];
-  return [...parentPath, cleanName];
 }
 
 function applyModulePackageUpdate(
@@ -51,15 +48,39 @@ function applyModulePackageUpdate(
 
   return normalizeInteractiveState({
     ...state,
-    packageContentByModuleId: {
+    packageContentByModuleId: normalizeHierarchyForPackages(state.moduleList, {
       ...state.packageContentByModuleId,
       [moduleId]: nextPackage
-    }
+    })
   });
 }
 
-function createModuleNode(kind: ModuleNode['kind'], nextId: string, cleanName: string): ModuleNode {
+function createModuleNode(kind: ModuleKind, nextId: string, cleanName: string): ModuleNode {
   return { id: nextId, name: cleanName, kind };
+}
+
+function workspaceModeForSecondaryWorkspace(workspace: DesignState['ui']['secondaryWorkspace']): DesignState['ui']['workspaceMode'] {
+  if (workspace === 'review') {
+    return 'review';
+  }
+
+  if (workspace === 'handoff') {
+    return 'handoff';
+  }
+
+  return 'design';
+}
+
+function secondaryWorkspaceForWorkspaceMode(mode: DesignState['ui']['workspaceMode']): DesignState['ui']['secondaryWorkspace'] {
+  if (mode === 'review') {
+    return 'review';
+  }
+
+  if (mode === 'handoff') {
+    return 'handoff';
+  }
+
+  return 'none';
 }
 
 export { defaultConnectionDraft };
@@ -74,9 +95,10 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       const parentModuleId = action.payload.parentModuleId;
       const parentPackage = parentModuleId ? state.packageContentByModuleId[parentModuleId] : undefined;
       const nextId = action.payload.nextId ?? buildUniqueModuleId(state, parentModuleId, cleanName);
+      const parentPath = parentPackage?.hierarchy?.hierarchyPath;
       const newPackage = createModulePackage(nextId, cleanName, timestamp, {
         parentModuleId,
-        hierarchyPath: parentModuleId ? updateHierarchyPath(parentPackage, cleanName) : [cleanName]
+        hierarchyPath: parentModuleId ? [...(parentPath ?? []), cleanName] : [cleanName]
       });
 
       const nextPackageContentByModuleId: DesignState['packageContentByModuleId'] = {
@@ -146,7 +168,7 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
         const nextId = buildUniqueModuleId({ ...state, moduleList: [...state.moduleList, ...nextModuleList.filter((item) => !state.moduleList.some((existing) => existing.id === item.id))] }, parentId, cleanName, newChildIds.length);
         const childPackage = createModulePackage(nextId, cleanName, timestamp, {
           parentModuleId: parentId,
-          hierarchyPath: updateHierarchyPath(parentPackage, cleanName)
+          hierarchyPath: [...(parentPackage.hierarchy?.hierarchyPath ?? []), cleanName]
         });
         nextModuleList.push(createModuleNode(action.payload.childKind, nextId, cleanName));
         nextPackageContentByModuleId[nextId] = childPackage;
@@ -195,22 +217,61 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       return applyModulePackageUpdate(
         state,
         action.payload.moduleId,
-        (current) => {
-          const currentPath = current.hierarchy?.hierarchyPath ?? [];
-          const nextPath = currentPath.length > 0 ? [...currentPath.slice(0, -1), cleanName] : [cleanName];
-          return {
-            ...current,
-            identity: { ...current.identity, name: cleanName },
-            hierarchy: { ...current.hierarchy, hierarchyPath: nextPath }
-          };
-        },
+        (current) => ({
+          ...current,
+          identity: { ...current.identity, name: cleanName }
+        }),
         nowIso(action.payload.nowIso)
       );
     }
     case 'select_module':
       return normalizeInteractiveState({ ...state, selectedModuleId: action.payload.moduleId });
     case 'set_workspace_mode':
-      return { ...state, ui: { ...state.ui, workspaceMode: action.payload.mode } };
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          workspaceMode: action.payload.mode,
+          secondaryWorkspace: secondaryWorkspaceForWorkspaceMode(action.payload.mode)
+        }
+      };
+    case 'set_secondary_workspace':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          secondaryWorkspace: action.payload.workspace,
+          workspaceMode: workspaceModeForSecondaryWorkspace(action.payload.workspace)
+        }
+      };
+    case 'set_diagram_viewport_mode':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          diagramViewportMode: action.payload.mode
+        }
+      };
+    case 'toggle_edge_bundle':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          expandedEdgeBundleKeys: state.ui.expandedEdgeBundleKeys.includes(action.payload.groupKey)
+            ? state.ui.expandedEdgeBundleKeys.filter((groupKey) => groupKey !== action.payload.groupKey)
+            : [...state.ui.expandedEdgeBundleKeys, action.payload.groupKey]
+        }
+      };
+    case 'collapse_all_edge_bundles':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          expandedEdgeBundleKeys: []
+        }
+      };
+    case 'set_selected_provider':
+      return { ...state, ui: { ...state.ui, selectedProviderId: action.payload.providerId } };
     case 'enter_hierarchy_view':
       return normalizeInteractiveState({
         ...state,
@@ -289,64 +350,64 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       return applyModulePackageUpdate(state, state.selectedModuleId, action.payload.updater, nowIso(action.payload.nowIso));
     case 'update_module_package':
       return applyModulePackageUpdate(state, action.payload.moduleId, action.payload.updater, nowIso(action.payload.nowIso));
-    case 'apply_accepted_suggestion': {
+    case 'apply_proposal': {
       const withPackageUpdate = applyModulePackageUpdate(
         state,
         action.payload.moduleId,
-        (current) => applyAcceptedSuggestion(current, action.payload.suggestion),
+        (current) => applyProposal(current, action.payload.proposal),
         nowIso(action.payload.nowIso)
       );
-      const suggestions = withPackageUpdate.suggestionsByModuleId[action.payload.moduleId] ?? [];
+      const proposals = withPackageUpdate.proposalsByModuleId[action.payload.moduleId] ?? [];
 
       return {
         ...withPackageUpdate,
-        suggestionsByModuleId: {
-          ...withPackageUpdate.suggestionsByModuleId,
-          [action.payload.moduleId]: suggestions.map((item) =>
-            item.id === action.payload.suggestion.id ? { ...item, status: 'accepted' } : item
+        proposalsByModuleId: {
+          ...withPackageUpdate.proposalsByModuleId,
+          [action.payload.moduleId]: proposals.map((item) =>
+            item.proposalId === action.payload.proposal.proposalId ? { ...item, status: 'applied' } : item
           )
         }
       };
     }
-    case 'update_suggestion': {
-      const moduleSuggestions = state.suggestionsByModuleId[action.payload.moduleId] ?? [];
+    case 'update_proposal': {
+      const moduleProposals = state.proposalsByModuleId[action.payload.moduleId] ?? [];
       return {
         ...state,
-        suggestionsByModuleId: {
-          ...state.suggestionsByModuleId,
-          [action.payload.moduleId]: moduleSuggestions.map((suggestion) =>
-            suggestion.id === action.payload.suggestionId ? action.payload.updater(suggestion) : suggestion
+        proposalsByModuleId: {
+          ...state.proposalsByModuleId,
+          [action.payload.moduleId]: moduleProposals.map((proposal) =>
+            proposal.proposalId === action.payload.proposalId ? action.payload.updater(proposal) : proposal
           )
         }
       };
     }
-    case 'reject_suggestion': {
-      const moduleSuggestions = state.suggestionsByModuleId[action.payload.moduleId] ?? [];
+    case 'reject_proposal': {
+      const moduleProposals = state.proposalsByModuleId[action.payload.moduleId] ?? [];
       return {
         ...state,
-        suggestionsByModuleId: {
-          ...state.suggestionsByModuleId,
-          [action.payload.moduleId]: moduleSuggestions.map((suggestion) =>
-            suggestion.id === action.payload.suggestionId ? { ...suggestion, status: 'rejected' } : suggestion
+        proposalsByModuleId: {
+          ...state.proposalsByModuleId,
+          [action.payload.moduleId]: moduleProposals.map((proposal) =>
+            proposal.proposalId === action.payload.proposalId ? { ...proposal, status: 'rejected' } : proposal
           )
         }
       };
     }
-    case 'set_suggestions_for_module':
+    case 'set_proposals_for_module':
       return {
         ...state,
-        suggestionsByModuleId: {
-          ...state.suggestionsByModuleId,
-          [action.payload.moduleId]: action.payload.suggestions
+        proposalsByModuleId: {
+          ...state.proposalsByModuleId,
+          [action.payload.moduleId]: action.payload.proposals
         }
       };
-    case 'remove_suggestion': {
-      const moduleSuggestions = state.suggestionsByModuleId[action.payload.moduleId] ?? [];
+    case 'remove_proposal': {
+      const moduleProposals = state.proposalsByModuleId[action.payload.moduleId] ?? [];
       return {
         ...state,
-        suggestionsByModuleId: {
-          ...state.suggestionsByModuleId,
-          [action.payload.moduleId]: moduleSuggestions.filter((suggestion) => suggestion.id !== action.payload.suggestionId)
+        proposalsByModuleId: {
+          ...state.proposalsByModuleId,
+          [action.payload.moduleId]: moduleProposals.filter((proposal) => proposal.proposalId !== action.payload.proposalId)
         }
       };
     }
@@ -357,8 +418,73 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
         (current) => ({ ...current, packageStatus: action.payload.to }),
         nowIso(action.payload.nowIso)
       );
+    case 'queue_handoff_artifact':
+      return {
+        ...state,
+        handoffArtifacts: [action.payload.artifact, ...state.handoffArtifacts]
+      };
+    case 'start_provider_job':
+      return {
+        ...state,
+        providerJobs: [action.payload.job, ...state.providerJobs]
+      };
+    case 'complete_provider_job_success': {
+      const artifact = state.handoffArtifacts.find((item) => item.artifactId === action.payload.artifactId);
+      if (!artifact) {
+        return state;
+      }
+      const withPackageUpdate = applyModulePackageUpdate(
+        state,
+        artifact.moduleId,
+        (current) => ({ ...current, packageStatus: 'handed_off' }),
+        action.payload.completedAt
+      );
+      return {
+        ...withPackageUpdate,
+        handedOffAtByModuleId: {
+          ...withPackageUpdate.handedOffAtByModuleId,
+          [artifact.moduleId]: action.payload.completedAt
+        },
+        handoffArtifacts: withPackageUpdate.handoffArtifacts.map((item) => (
+          item.artifactId === artifact.artifactId
+            ? applyProviderResultToArtifact(item, action.payload.response)
+            : item
+        )),
+        providerJobs: withPackageUpdate.providerJobs.map((job) => (
+          job.jobId === action.payload.jobId
+            ? {
+                ...job,
+                status: 'success',
+                completedAt: action.payload.completedAt,
+                retryable: false,
+                result: action.payload.response,
+                error: undefined
+              }
+            : job
+        ))
+      };
+    }
+    case 'complete_provider_job_failure':
+      return {
+        ...state,
+        providerJobs: state.providerJobs.map((job) => (
+          job.jobId === action.payload.jobId
+            ? {
+                ...job,
+                status: 'failure',
+                completedAt: action.payload.completedAt,
+                retryable: action.payload.error.retryable,
+                error: action.payload.error
+              }
+            : job
+        ))
+      };
     case 'mark_selected_module_handed_off': {
       const timestamp = nowIso(action.payload.nowIso);
+      const artifact = createHandoffArtifactFromState(state, state.selectedModuleId, state.ui.selectedProviderId, timestamp);
+      if (!artifact) {
+        return state;
+      }
       const withPackageUpdate = applyModulePackageUpdate(
         state,
         state.selectedModuleId,
@@ -370,7 +496,25 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
         handedOffAtByModuleId: {
           ...withPackageUpdate.handedOffAtByModuleId,
           [state.selectedModuleId]: timestamp
-        }
+        },
+        handoffArtifacts: [artifact, ...withPackageUpdate.handoffArtifacts],
+        providerJobs: [{
+          jobId: `legacy_${artifact.artifactId}`,
+          artifactId: artifact.artifactId,
+          moduleId: artifact.moduleId,
+          targetProviderId: artifact.targetProviderId,
+          status: 'success',
+          createdAt: timestamp,
+          startedAt: timestamp,
+          completedAt: timestamp,
+          attemptCount: 1,
+          retryable: false,
+          result: {
+            providerId: artifact.providerResponse.providerId,
+            status: 'handed_off',
+            summary: artifact.providerResponse.summary
+          }
+        }, ...withPackageUpdate.providerJobs]
       };
     }
     case 'load_persisted_design_state':

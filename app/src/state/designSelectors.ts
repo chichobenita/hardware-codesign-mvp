@@ -5,12 +5,23 @@ import {
   validateSemanticDesign,
   type SemanticValidationIssue
 } from '../../../shared/src';
+import { evaluateModuleWorkflowPolicy, selectStructurallyReadyHandoffModules, summarizeWorkflowIssues } from '../application/policies/workflowReadinessPolicy';
+import { buildHdlGenerationPromptFromState } from '../ai/promptBuilder';
+import type { HandoffArtifact } from '../ai/handoffTypes';
+import type { ProviderJob } from '../ai/providerJobTypes';
+import type { PromptBuildResult } from '../ai/promptTypes';
 import { getTransitionReadiness, type TransitionReadiness } from '../packageLifecycle';
+import {
+  selectCurrentHierarchyModuleFromState,
+  selectCurrentHierarchyPackageFromState,
+  selectHierarchyBreadcrumbsFromState,
+  selectNormalizedHierarchyPackages,
+  selectVisibleModulesFromState
+} from './hierarchy/hierarchySelectors';
+import type { ModuleNode } from '../../../shared/src';
 import type {
   Connection,
   DesignState,
-  HierarchyBreadcrumbItem,
-  ModuleNode,
   PackageSectionStatus,
   SectionKey,
   WorkspaceMode
@@ -47,60 +58,19 @@ export function selectSelectedModulePackage(state: DesignState): ModulePackage {
 }
 
 export function selectCurrentHierarchyModule(state: DesignState): ModuleNode | undefined {
-  return state.moduleList.find((moduleNode) => moduleNode.id === state.ui.currentHierarchyModuleId) ?? state.moduleList[0];
+  return selectCurrentHierarchyModuleFromState(state);
 }
 
 export function selectCurrentHierarchyPackage(state: DesignState): ModulePackage | undefined {
-  const currentHierarchyModule = selectCurrentHierarchyModule(state);
-  return currentHierarchyModule ? state.packageContentByModuleId[currentHierarchyModule.id] : undefined;
+  return selectCurrentHierarchyPackageFromState(state);
 }
 
-export function selectHierarchyBreadcrumbs(state: DesignState): HierarchyBreadcrumbItem[] {
-  const currentHierarchyModule = selectCurrentHierarchyModule(state);
-  if (!currentHierarchyModule) {
-    return [];
-  }
-
-  const hierarchyPath = state.packageContentByModuleId[currentHierarchyModule.id]?.hierarchy?.hierarchyPath ?? [currentHierarchyModule.name];
-  const breadcrumbs: HierarchyBreadcrumbItem[] = [];
-
-  hierarchyPath.forEach((label, index) => {
-    const moduleId = index === 0
-      ? currentHierarchyModule.id
-      : breadcrumbs[index - 1]?.moduleId ?? currentHierarchyModule.id;
-    breadcrumbs.push({
-      moduleId,
-      label
-    });
-  });
-
-  let cursorId = currentHierarchyModule.id;
-  for (let index = breadcrumbs.length - 1; index >= 0; index -= 1) {
-    breadcrumbs[index] = {
-      ...breadcrumbs[index],
-      moduleId: cursorId
-    };
-    const parentId = state.packageContentByModuleId[cursorId]?.hierarchy?.parentModuleId?.trim();
-    if (parentId) {
-      cursorId = parentId;
-    }
-  }
-
-  return breadcrumbs;
+export function selectHierarchyBreadcrumbs(state: DesignState) {
+  return selectHierarchyBreadcrumbsFromState(state);
 }
 
 export function selectVisibleModules(state: DesignState): ModuleNode[] {
-  const currentHierarchyModule = selectCurrentHierarchyModule(state);
-  if (!currentHierarchyModule) {
-    return state.moduleList;
-  }
-
-  const childIds = state.packageContentByModuleId[currentHierarchyModule.id]?.hierarchy?.childModuleIds ?? [];
-  const inferredChildIds = state.moduleList
-    .filter((moduleNode) => state.packageContentByModuleId[moduleNode.id]?.hierarchy?.parentModuleId === currentHierarchyModule.id)
-    .map((moduleNode) => moduleNode.id);
-  const visibleIds = new Set<string>([currentHierarchyModule.id, ...childIds, ...inferredChildIds]);
-  return state.moduleList.filter((moduleNode) => visibleIds.has(moduleNode.id));
+  return selectVisibleModulesFromState(state);
 }
 
 export function selectVisibleConnections(state: DesignState): Connection[] {
@@ -113,20 +83,30 @@ export function selectIsModuleVisibleInHierarchy(state: DesignState, moduleId: s
 }
 
 export function selectParentHierarchyModuleId(state: DesignState): string | null {
-  const currentHierarchyPackage = selectCurrentHierarchyPackage(state);
-  const parentId = currentHierarchyPackage?.hierarchy?.parentModuleId?.trim();
+  const currentHierarchyModule = selectCurrentHierarchyModule(state);
+  if (!currentHierarchyModule) {
+    return null;
+  }
+
+  const parentId = selectNormalizedHierarchyPackages(state)[currentHierarchyModule.id]?.hierarchy?.parentModuleId?.trim();
   return parentId ? parentId : null;
 }
+
 
 export function selectSectionStatuses(modulePackage: ModulePackage): Record<SectionKey, PackageSectionStatus> {
   const reviewMode = modulePackage.packageStatus === 'under_review';
 
-  const interfaceValues = (modulePackage.interfaces?.ports ?? []).flatMap((port) => [port.name ?? '', port.direction ?? '', port.width ?? '']);
+  const interfaceValues = [
+    ...(modulePackage.interfaces?.ports ?? []).flatMap((port) => [port.name ?? '', port.direction ?? '', port.width ?? '']),
+    modulePackage.interfaces?.interfaceNotes ?? ''
+  ];
   const behaviorValues = [
     modulePackage.behavior?.behaviorSummary ?? '',
     modulePackage.behavior?.operationalDescription ?? '',
     modulePackage.behavior?.clockResetNotes ?? '',
-    ...(modulePackage.behavior?.behaviorRules ?? [])
+    ...(modulePackage.behavior?.behaviorRules ?? []),
+    ...(modulePackage.behavior?.cornerCases ?? []),
+    ...(modulePackage.behavior?.implementationNotes ?? [])
   ];
   const constraintValues = [
     ...(modulePackage.constraints?.timingConstraints ?? []),
@@ -149,7 +129,13 @@ export function selectSectionStatuses(modulePackage: ModulePackage): Record<Sect
     purpose: markNeedsReview(listStatus([modulePackage.purpose?.summary ?? '']), reviewMode),
     behavior: markNeedsReview(listStatus(behaviorValues), reviewMode),
     constraints: markNeedsReview(listStatus(constraintValues), reviewMode),
-    dependenciesAndInteractions: markNeedsReview(listStatus(modulePackage.dependencies?.relevantDependencies ?? []), reviewMode),
+    dependenciesAndInteractions: markNeedsReview(
+      listStatus([
+        ...(modulePackage.dependencies?.relevantDependencies ?? []),
+        ...(modulePackage.dependencies?.integrationAssumptions ?? [])
+      ]),
+      reviewMode
+    ),
     decompositionStatus: markNeedsReview(
       listStatus([
         modulePackage.decompositionStatus?.decompositionStatus ?? '',
@@ -167,16 +153,7 @@ export function selectTransitionReadiness(modulePackage: ModulePackage): Transit
 }
 
 export function selectEligibleLeafReadyModules(state: DesignState): ModuleNode[] {
-  return state.moduleList.filter((moduleNode) => {
-    const modulePackage = state.packageContentByModuleId[moduleNode.id];
-    if (!modulePackage) {
-      return false;
-    }
-
-    const isLeafReadyPackage = modulePackage.packageStatus === 'leaf_ready' || modulePackage.packageStatus === 'handed_off';
-    const isApprovedLeaf = modulePackage.decompositionStatus?.decompositionStatus === 'approved_leaf';
-    return moduleNode.kind === 'leaf' && isLeafReadyPackage && isApprovedLeaf;
-  });
+  return selectStructurallyReadyHandoffModules(state.moduleList, state.packageContentByModuleId);
 }
 
 export function selectValidationIssues(state: DesignState): SemanticValidationIssue[] {
@@ -192,7 +169,7 @@ export function selectValidationIssuesForModule(state: DesignState, moduleId: st
 }
 
 export function selectModuleHasBlockingValidationErrors(state: DesignState, moduleId: string): boolean {
-  return selectValidationIssuesForModule(state, moduleId).some((issue) => issue.severity === 'error');
+  return summarizeWorkflowIssues(selectValidationIssuesForModule(state, moduleId)).hasBlockingIssues;
 }
 
 export function selectDesignHasValidationIssues(state: DesignState): boolean {
@@ -200,18 +177,44 @@ export function selectDesignHasValidationIssues(state: DesignState): boolean {
 }
 
 export function selectModuleIsValidForReviewOrHandoff(state: DesignState, moduleId: string): boolean {
-  return !selectModuleHasBlockingValidationErrors(state, moduleId);
+  const moduleNode = state.moduleList.find((item) => item.id === moduleId);
+  const modulePackage = state.packageContentByModuleId[moduleId];
+  if (!modulePackage) {
+    return false;
+  }
+
+  return evaluateModuleWorkflowPolicy(
+    moduleNode,
+    modulePackage,
+    state.ui.workspaceMode,
+    selectValidationIssuesForModule(state, moduleId)
+  ).review.isEligible || !summarizeWorkflowIssues(selectValidationIssuesForModule(state, moduleId)).hasBlockingIssues;
 }
 
 export function selectCanShowPayloadPreview(mode: WorkspaceMode, selectedModule: ModuleNode | undefined, modulePackage: ModulePackage): boolean {
-  const isReviewOrHandoffMode = mode === 'review' || mode === 'handoff';
-  const isLeafReadyPackage = modulePackage.packageStatus === 'leaf_ready' || modulePackage.packageStatus === 'handed_off';
-  const isApprovedLeaf = modulePackage.decompositionStatus?.decompositionStatus === 'approved_leaf';
-  const isLeafModule = selectedModule?.kind === 'leaf';
-
-  return isReviewOrHandoffMode && isLeafReadyPackage && isApprovedLeaf && isLeafModule;
+  return evaluateModuleWorkflowPolicy(selectedModule, modulePackage, mode, []).structural.isStructurallyReadyForReviewOrHandoff && (mode === 'review' || mode === 'handoff');
 }
 
 export function selectGenerationPayloadSource(modulePackage: ModulePackage): GenerationPayloadMinimal {
   return deriveGenerationPayloadMinimalV1(modulePackage);
+}
+
+export function selectGenerationPromptSource(state: DesignState, moduleId: string): PromptBuildResult | null {
+  return buildHdlGenerationPromptFromState(state, moduleId);
+}
+
+export function selectHandoffArtifactsForModule(state: DesignState, moduleId: string): HandoffArtifact[] {
+  return state.handoffArtifacts.filter((artifact) => artifact.moduleId === moduleId);
+}
+
+export function selectLatestHandoffArtifactForModule(state: DesignState, moduleId: string): HandoffArtifact | null {
+  return selectHandoffArtifactsForModule(state, moduleId)[0] ?? null;
+}
+
+export function selectProviderJobsForArtifact(state: DesignState, artifactId: string): ProviderJob[] {
+  return state.providerJobs.filter((job) => job.artifactId === artifactId);
+}
+
+export function selectLatestProviderJobForArtifact(state: DesignState, artifactId: string): ProviderJob | null {
+  return selectProviderJobsForArtifact(state, artifactId)[0] ?? null;
 }

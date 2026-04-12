@@ -1,5 +1,5 @@
 import { getAuthoritativeModuleName, type ModuleDependencyLink, type ModulePackage, type PackageStatus } from '../../../../shared/src';
-import type { ModuleNode } from '../../types';
+import type { ModuleNode } from '../../../../shared/src';
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
@@ -44,11 +44,14 @@ export function normalizeModulePackage(moduleNode: ModuleNode, existingPackage?:
     },
     hierarchy: {
       parentModuleId: existingPackage?.hierarchy?.parentModuleId ?? '',
-      childModuleIds: isStringArray(existingPackage?.hierarchy?.childModuleIds) ? existingPackage.hierarchy.childModuleIds : [],
-      hierarchyPath: isStringArray(existingPackage?.hierarchy?.hierarchyPath) ? existingPackage.hierarchy.hierarchyPath : [moduleName]
+      childModuleIds: isStringArray(existingPackage?.hierarchy?.childModuleIds) ? [...new Set(existingPackage.hierarchy.childModuleIds.filter((item) => item.trim().length > 0))] : [],
+      hierarchyPath: isStringArray(existingPackage?.hierarchy?.hierarchyPath)
+        ? existingPackage.hierarchy.hierarchyPath.filter((item) => item.trim().length > 0)
+        : [moduleName]
     },
     interfaces: {
-      ports: Array.isArray(existingPackage?.interfaces?.ports) ? existingPackage.interfaces?.ports ?? [] : []
+      ports: Array.isArray(existingPackage?.interfaces?.ports) ? existingPackage.interfaces?.ports ?? [] : [],
+      interfaceNotes: existingPackage?.interfaces?.interfaceNotes ?? ''
     },
     purpose: {
       summary: existingPackage?.purpose?.summary ?? ''
@@ -62,13 +65,18 @@ export function normalizeModulePackage(moduleNode: ModuleNode, existingPackage?:
         : [],
       relevantDependencies: isStringArray(existingPackage?.dependencies?.relevantDependencies)
         ? existingPackage.dependencies.relevantDependencies
+        : [],
+      integrationAssumptions: isStringArray(existingPackage?.dependencies?.integrationAssumptions)
+        ? existingPackage.dependencies.integrationAssumptions
         : []
     },
     behavior: {
       behaviorSummary: existingPackage?.behavior?.behaviorSummary ?? '',
       operationalDescription: existingPackage?.behavior?.operationalDescription ?? '',
       behaviorRules: isStringArray(existingPackage?.behavior?.behaviorRules) ? existingPackage.behavior.behaviorRules : [],
-      clockResetNotes: existingPackage?.behavior?.clockResetNotes ?? ''
+      clockResetNotes: existingPackage?.behavior?.clockResetNotes ?? '',
+      cornerCases: isStringArray(existingPackage?.behavior?.cornerCases) ? existingPackage.behavior.cornerCases : [],
+      implementationNotes: isStringArray(existingPackage?.behavior?.implementationNotes) ? existingPackage.behavior.implementationNotes : []
     },
     decompositionStatus: existingPackage?.decompositionStatus
       ? {

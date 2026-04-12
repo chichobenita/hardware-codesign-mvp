@@ -22,6 +22,10 @@ This screen should remain lightweight. Its role is to start or resume a design p
 
 ---
 
+## Redesign status note
+
+The screen descriptions below capture the original MVP shell. For the upcoming workspace redesign, `docs/architecture/12-workspace-ux-redesign-blueprint.md` becomes the source of truth for app-shell allocation, hierarchy navigation, secondary workspace behavior, and command-surface planning. This file remains useful as historical MVP screen context, but it should not override the redesign blueprint.
+
 ## 2. Main Co-Design Workspace
 
 ### Purpose
