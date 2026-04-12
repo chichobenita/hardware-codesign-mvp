@@ -114,18 +114,6 @@ export function AppWorkspace(): JSX.Element {
         />
 
         <section className="workspace-main">
-          <div className="workspace-stage-card">
-            <div>
-              <p className="workspace-stage-kicker">Diagram-first workspace</p>
-              <h2>Architecture canvas</h2>
-              <p className="muted">The diagram remains the primary planning surface while deep-work screens open intentionally as focused secondary workspaces.</p>
-            </div>
-            <div className="workspace-stage-meta">
-              <span className="workspace-stage-chip">Current scope: {viewModel.currentHierarchyModule?.name ?? 'workspace'}</span>
-              <span className="workspace-stage-chip">Selected block: {viewModel.selectedModule?.name ?? 'None'}</span>
-            </div>
-          </div>
-
           <DiagramWorkspace
             state={state}
             visibleModules={viewModel.visibleModules}
@@ -151,48 +139,52 @@ export function AppWorkspace(): JSX.Element {
             addConnection={actions.addConnection}
           />
 
-          <SecondaryWorkspaceSurface
-            activeWorkspace={state.ui.secondaryWorkspace}
-            selectedModule={viewModel.selectedModule}
-            state={state}
-            currentPackageContent={viewModel.currentPackageContent}
-            transitionReadiness={viewModel.transitionReadiness}
-            currentSectionStatuses={viewModel.currentSectionStatuses}
-            updateCurrentPackage={actions.updateCurrentPackage}
-            moduleConnections={viewModel.moduleConnections}
-            generatedPayload={viewModel.generatedPayload}
-            generatedPrompt={viewModel.generatedPrompt}
-            handoffArtifacts={viewModel.handoffArtifacts}
-            latestHandoffArtifact={viewModel.latestHandoffArtifact}
-            approvedLeafReadyModules={viewModel.approvedLeafReadyModules}
-            handoffProviders={viewModel.handoffProviders}
-            selectedProviderId={state.ui.selectedProviderId}
-            setSelectedProvider={actions.setSelectedProvider}
-            currentProviderJob={viewModel.currentProviderJob}
-            copyGeneratedPrompt={actions.copyGeneratedPrompt}
-            exportGeneratedPrompt={actions.exportGeneratedPrompt}
-            exportLatestHandoffArtifact={actions.exportLatestHandoffArtifact}
-            exportCurrentProject={actions.exportCurrentProject}
-            importProjectFromFile={actions.importProjectFromFile}
-            moveToNextPackageState={actions.moveToNextPackageState}
-            isSelectedModuleHandoffReady={viewModel.isSelectedModuleHandoffReady}
-            hasCurrentSelectedArtifact={viewModel.hasCurrentSelectedArtifact}
-            moduleValidationIssues={viewModel.moduleValidationIssues}
-            designHasValidationIssues={viewModel.designHasValidationIssues || viewModel.validationIssues.length > 0}
-            isSelectedModuleValidForReviewOrHandoff={viewModel.isSelectedModuleValidForReviewOrHandoff}
-            currentHierarchyModule={viewModel.currentHierarchyModule}
-            currentHierarchyModuleName={viewModel.currentHierarchyModule?.name}
-            decompositionDraftNamesText={state.ui.decompositionDraft.namesText}
-            decompositionDraftChildKind={state.ui.decompositionDraft.childKind}
-            setDecompositionNamesText={actions.setDecompositionNamesText}
-            setDecompositionChildKind={actions.setDecompositionChildKind}
-            decomposeSelectedModule={actions.decomposeSelectedModule}
-            selectModule={actions.selectModule}
-            markSelectedModuleAsHandedOff={actions.markSelectedModuleAsHandedOff}
-            canShowPayloadPreview={viewModel.canShowPayloadPreview}
-            onClose={() => actions.setSecondaryWorkspace('none')}
-            onOpenWorkspace={actions.setSecondaryWorkspace}
-          />
+          {state.ui.secondaryWorkspace !== 'none' ? (
+            <div className="secondary-workspace-overlay" aria-live="polite">
+              <SecondaryWorkspaceSurface
+                activeWorkspace={state.ui.secondaryWorkspace}
+                selectedModule={viewModel.selectedModule}
+                state={state}
+                currentPackageContent={viewModel.currentPackageContent}
+                transitionReadiness={viewModel.transitionReadiness}
+                currentSectionStatuses={viewModel.currentSectionStatuses}
+                updateCurrentPackage={actions.updateCurrentPackage}
+                moduleConnections={viewModel.moduleConnections}
+                generatedPayload={viewModel.generatedPayload}
+                generatedPrompt={viewModel.generatedPrompt}
+                handoffArtifacts={viewModel.handoffArtifacts}
+                latestHandoffArtifact={viewModel.latestHandoffArtifact}
+                approvedLeafReadyModules={viewModel.approvedLeafReadyModules}
+                handoffProviders={viewModel.handoffProviders}
+                selectedProviderId={state.ui.selectedProviderId}
+                setSelectedProvider={actions.setSelectedProvider}
+                currentProviderJob={viewModel.currentProviderJob}
+                copyGeneratedPrompt={actions.copyGeneratedPrompt}
+                exportGeneratedPrompt={actions.exportGeneratedPrompt}
+                exportLatestHandoffArtifact={actions.exportLatestHandoffArtifact}
+                exportCurrentProject={actions.exportCurrentProject}
+                importProjectFromFile={actions.importProjectFromFile}
+                moveToNextPackageState={actions.moveToNextPackageState}
+                isSelectedModuleHandoffReady={viewModel.isSelectedModuleHandoffReady}
+                hasCurrentSelectedArtifact={viewModel.hasCurrentSelectedArtifact}
+                moduleValidationIssues={viewModel.moduleValidationIssues}
+                designHasValidationIssues={viewModel.designHasValidationIssues || viewModel.validationIssues.length > 0}
+                isSelectedModuleValidForReviewOrHandoff={viewModel.isSelectedModuleValidForReviewOrHandoff}
+                currentHierarchyModule={viewModel.currentHierarchyModule}
+                currentHierarchyModuleName={viewModel.currentHierarchyModule?.name}
+                decompositionDraftNamesText={state.ui.decompositionDraft.namesText}
+                decompositionDraftChildKind={state.ui.decompositionDraft.childKind}
+                setDecompositionNamesText={actions.setDecompositionNamesText}
+                setDecompositionChildKind={actions.setDecompositionChildKind}
+                decomposeSelectedModule={actions.decomposeSelectedModule}
+                selectModule={actions.selectModule}
+                markSelectedModuleAsHandedOff={actions.markSelectedModuleAsHandedOff}
+                canShowPayloadPreview={viewModel.canShowPayloadPreview}
+                onClose={() => actions.setSecondaryWorkspace('none')}
+                onOpenWorkspace={actions.setSecondaryWorkspace}
+              />
+            </div>
+          ) : null}
         </section>
       </main>
     </div>

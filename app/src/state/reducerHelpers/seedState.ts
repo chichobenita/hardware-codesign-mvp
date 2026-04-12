@@ -147,7 +147,7 @@ export const baseSeedState: DesignState = {
   proposalsByModuleId: {},
   ui: {
     workspaceMode: 'design',
-    secondaryWorkspace: 'package_editor',
+    secondaryWorkspace: 'none',
     diagramViewportMode: 'fit_scope',
     expandedEdgeBundleKeys: [],
     selectedProviderId: DEFAULT_PROVIDER_ID,

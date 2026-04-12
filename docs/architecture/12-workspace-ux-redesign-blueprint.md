@@ -689,6 +689,21 @@ The following should remain unresolved until implementation planning for their s
 
 ## 16. Implementation progress notes
 
+### Stage 1 shell simplification status
+
+The default workspace shell now prioritizes only the primary panes during initial load:
+
+* top command ribbon remains visible
+* left AI collaboration pane remains visible
+* diagram workspace remains the primary right-side surface
+* focused secondary workspaces are hidden by default and open only through explicit commands
+
+This preserves existing deep-work capabilities while removing always-visible deep-work competition from the default main screen.
+
+### Stage 2 menu-bar simplification status
+
+The top command surface now follows a lightweight menu taxonomy (`File`, `Edit`, `View`, `Insert`, `Navigate`, `Validation`, `Review`, `Handoff`, `Tools`) and no longer presents dense always-expanded command blocks in the main shell.
+
 ### Stage 3 status
 
 The current frontend implementation now includes a stronger hierarchy-forward diagram frame:

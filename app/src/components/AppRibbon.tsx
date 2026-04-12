@@ -28,41 +28,24 @@ type AppRibbonProps = {
   canEnterSelectedComposite: boolean;
 };
 
-type CommandAction = {
-  description: string;
+type MenuAction = {
+  description?: string;
   label: string;
-  shortcut?: string;
+  onClick: () => void;
+  disabled?: boolean;
 };
 
-function RibbonCommandButton({
-  action,
-  isActive,
-  compact = false,
-  disabled = false,
-  onClick
-}: {
-  action: CommandAction;
-  isActive: boolean;
-  compact?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-}): JSX.Element {
+function MenuActionButton({ action }: { action: MenuAction }): JSX.Element {
   return (
     <button
       type="button"
-      className={[
-        'ribbon-button',
-        compact ? 'ribbon-button-compact-command' : '',
-        isActive ? 'ribbon-button-active' : ''
-      ].filter(Boolean).join(' ')}
-      onClick={onClick}
-      disabled={disabled}
+      className="menu-panel-action"
+      onClick={action.onClick}
+      disabled={action.disabled}
       aria-label={action.label}
-      aria-pressed={isActive}
     >
       <strong>{action.label}</strong>
-      <span>{action.description}</span>
-      {action.shortcut ? <span className="ribbon-shortcut" aria-hidden="true">{action.shortcut}</span> : null}
+      {action.description ? <span>{action.description}</span> : null}
     </button>
   );
 }
@@ -80,7 +63,7 @@ function getWorkspaceLabel(workspace: SecondaryWorkspace): string {
     case 'project_data':
       return 'Project data';
     default:
-      return 'Closed';
+      return 'None';
   }
 }
 
@@ -117,64 +100,129 @@ export function AppRibbon({
   const canCommitConnection = Boolean(connectionDraft.fromModuleId && connectionDraft.toModuleId && connectionSignal);
   const activeWorkspaceLabel = getWorkspaceLabel(activeSecondaryWorkspace);
 
-  const workspaceActions: Array<CommandAction & { workspace: Exclude<SecondaryWorkspace, 'none'> }> = [
+  const fileActions: MenuAction[] = [
     {
-      label: 'Package',
-      description: 'Open structured package authoring for the selection.',
-      workspace: 'package_editor'
+      label: 'Open project data',
+      description: 'Open import/export workspace.',
+      onClick: () => openSecondaryWorkspace('project_data')
     },
     {
-      label: 'Validation',
-      description: 'Inspect semantic issues for the active module.',
-      workspace: 'validation'
+      label: 'Close workspace',
+      description: `Current: ${activeWorkspaceLabel}`,
+      onClick: closeSecondaryWorkspace,
+      disabled: activeSecondaryWorkspace === 'none'
+    }
+  ];
+
+  const editActions: MenuAction[] = [
+    {
+      label: 'Package editor',
+      description: 'Open structured package authoring.',
+      onClick: () => openSecondaryWorkspace('package_editor')
     },
     {
-      label: 'Review',
-      description: 'Open the focused readiness review workspace.',
-      workspace: 'review'
+      label: 'Use selected as source',
+      description: 'Prime connection source from current selection.',
+      onClick: useSelectedModuleAsConnectionSource,
+      disabled: !selectedModuleIsVisible
     },
     {
-      label: 'Handoff',
-      description: 'Open provider-facing handoff tools.',
-      workspace: 'handoff'
+      label: 'Refresh AI suggestions',
+      description: 'Regenerate proposals for selection.',
+      onClick: regenerateProposalsForSelectedModule
+    }
+  ];
+
+  const insertActions: MenuAction[] = [
+    {
+      label: 'Add leaf block',
+      description: 'Create a leaf in current scope.',
+      onClick: createLeafModule,
+      disabled: !hasModuleNameDraft
+    },
+    {
+      label: 'Add composite block',
+      description: 'Create a composite in current scope.',
+      onClick: createCompositeModule,
+      disabled: !hasModuleNameDraft
+    }
+  ];
+
+  const viewActions: MenuAction[] = [
+    {
+      label: 'Set scope fit',
+      description: diagramViewportMode === 'fit_scope' ? 'Active framing mode.' : 'Frame current hierarchy scope.',
+      onClick: () => setDiagramViewportMode('fit_scope')
+    },
+    {
+      label: 'Set selection focus',
+      description: diagramViewportMode === 'focus_selection' ? 'Active framing mode.' : 'Center selected visible module.',
+      onClick: () => setDiagramViewportMode('focus_selection')
+    },
+    {
+      label: 'Set overview',
+      description: diagramViewportMode === 'overview' ? 'Active framing mode.' : 'Show full diagram extent.',
+      onClick: () => setDiagramViewportMode('overview')
+    },
+    {
+      label: 'Collapse all bundles',
+      description: 'Reset expanded edge bundles.',
+      onClick: collapseAllEdgeBundles
+    }
+  ];
+
+  const navigateActions: MenuAction[] = [
+    {
+      label: 'Go to root',
+      description: 'Jump to top hierarchy scope.',
+      onClick: jumpToRootHierarchy,
+      disabled: Boolean(currentHierarchyModule && currentHierarchyRootModuleId === currentHierarchyModule.id)
+    },
+    {
+      label: 'Back to parent',
+      description: 'Step one scope up.',
+      onClick: navigateToParentHierarchy,
+      disabled: !canNavigateToParent
+    },
+    {
+      label: 'Enter composite',
+      description: 'Enter selected composite scope.',
+      onClick: enterSelectedComposite,
+      disabled: !canEnterSelectedComposite
     }
   ];
 
   return (
     <header className="app-ribbon" aria-label="Workspace command ribbon">
-      <div className="ribbon-title-group">
-        <p className="ribbon-kicker">Hardware Co-Design Platform</p>
-        <h1>Workspace redesign shell</h1>
-        <p className="muted">
-          Stage 6 tightens the Stage 5 shell with clearer command states, polished deep-work integration, and stronger baseline accessibility without changing the reducer-driven workspace model.
-        </p>
-      </div>
+      <div className="menu-bar" role="menubar" aria-label="Workspace menu bar">
+        <span className="menu-bar-title">Hardware Co-Design</span>
+        <span className="menu-bar-context">Scope: {currentHierarchyModule?.name ?? 'workspace'} · Selection: {selectedModule?.name ?? 'None'} · Workspace: {activeWorkspaceLabel}</span>
 
-      <div className="ribbon-groups">
-        <section className="ribbon-group" aria-label="Project context">
-          <span className="ribbon-group-label">Project</span>
-          <div className="ribbon-chip-row">
-            <span className="ribbon-chip">Scope: {currentHierarchyModule?.name ?? 'workspace'}</span>
-            <span className="ribbon-chip">Selection: {selectedModule?.name ?? 'None'}</span>
-            <span className="ribbon-chip">Workspace: {activeWorkspaceLabel}</span>
+        <details className="menu-group">
+          <summary role="menuitem">File</summary>
+          <div className="menu-panel" role="menu" aria-label="File menu">
+            {fileActions.map((action) => <MenuActionButton key={action.label} action={action} />)}
           </div>
-          <p className="ribbon-footnote muted">
-            The ribbon launches focused secondary workspaces while keeping the current hierarchy scope and selection intact.
-          </p>
-          <div className="ribbon-action-row">
-            <button type="button" className="ribbon-button ribbon-button-compact" onClick={() => openSecondaryWorkspace('project_data')}>
-              Project data
-            </button>
-            <button type="button" className="ribbon-button ribbon-button-compact" onClick={closeSecondaryWorkspace} disabled={activeSecondaryWorkspace === 'none'}>
-              Close workspace
-            </button>
-          </div>
-        </section>
+        </details>
 
-        <section className="ribbon-group" aria-label="Insert commands">
-          <span className="ribbon-group-label">Insert</span>
-          <div className="ribbon-command-input-row">
-            <label className="field-label">
+        <details className="menu-group">
+          <summary role="menuitem">Edit</summary>
+          <div className="menu-panel" role="menu" aria-label="Edit menu">
+            {editActions.map((action) => <MenuActionButton key={action.label} action={action} />)}
+          </div>
+        </details>
+
+        <details className="menu-group">
+          <summary role="menuitem">View</summary>
+          <div className="menu-panel" role="menu" aria-label="View menu">
+            {viewActions.map((action) => <MenuActionButton key={action.label} action={action} />)}
+          </div>
+        </details>
+
+        <details className="menu-group">
+          <summary role="menuitem">Insert</summary>
+          <div className="menu-panel" role="menu" aria-label="Insert menu">
+            <label className="field-label menu-input-label">
               New module name
               <input
                 value={newModuleName}
@@ -183,56 +231,88 @@ export function AppRibbon({
                 aria-label="New module name"
               />
             </label>
-            <p className="ribbon-footnote muted">Name the block first, then choose whether it should start as a leaf or a composite container.</p>
+            {insertActions.map((action) => <MenuActionButton key={action.label} action={action} />)}
           </div>
-          <div className="ribbon-command-grid">
-            <RibbonCommandButton
-              action={{ label: 'Add leaf block', description: 'Create a leaf module in the current scope.', shortcut: 'Cmd/Ctrl+Shift+L' }}
-              isActive={false}
-              compact
-              disabled={!hasModuleNameDraft}
-              onClick={createLeafModule}
-            />
-            <RibbonCommandButton
-              action={{ label: 'Add composite', description: 'Create a composite module in the current scope.', shortcut: 'Cmd/Ctrl+Shift+C' }}
-              isActive={false}
-              compact
-              disabled={!hasModuleNameDraft}
-              onClick={createCompositeModule}
-            />
-          </div>
-        </section>
+        </details>
 
-        <section className="ribbon-group" aria-label="Connect commands">
-          <span className="ribbon-group-label">Connect</span>
-          <div className="ribbon-connection-grid">
-            <label className="field-label">
-              Source
-              <select
-                value={connectionDraft.fromModuleId}
-                onChange={(event) => setConnectionDraft({ ...connectionDraft, fromModuleId: event.target.value })}
-                aria-label="Ribbon connection source"
-                disabled={!hasConnectionEndpoints}
-              >
-                {visibleModules.map((moduleNode) => (
-                  <option key={`ribbon-from-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field-label">
-              Target
-              <select
-                value={connectionDraft.toModuleId}
-                onChange={(event) => setConnectionDraft({ ...connectionDraft, toModuleId: event.target.value })}
-                aria-label="Ribbon connection target"
-                disabled={!hasConnectionEndpoints}
-              >
-                {visibleModules.map((moduleNode) => (
-                  <option key={`ribbon-to-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field-label">
+        <details className="menu-group">
+          <summary role="menuitem">Navigate</summary>
+          <div className="menu-panel" role="menu" aria-label="Navigate menu">
+            {navigateActions.map((action) => <MenuActionButton key={action.label} action={action} />)}
+          </div>
+        </details>
+
+        <details className="menu-group">
+          <summary role="menuitem">Validation</summary>
+          <div className="menu-panel" role="menu" aria-label="Validation menu">
+            <MenuActionButton
+              action={{
+                label: 'Open validation workspace',
+                description: 'Inspect semantic issues for selection.',
+                onClick: () => openSecondaryWorkspace('validation')
+              }}
+            />
+          </div>
+        </details>
+
+        <details className="menu-group">
+          <summary role="menuitem">Review</summary>
+          <div className="menu-panel" role="menu" aria-label="Review menu">
+            <MenuActionButton
+              action={{
+                label: 'Open review workspace',
+                description: 'Open readiness + payload preview flow.',
+                onClick: () => openSecondaryWorkspace('review')
+              }}
+            />
+          </div>
+        </details>
+
+        <details className="menu-group">
+          <summary role="menuitem">Handoff</summary>
+          <div className="menu-panel" role="menu" aria-label="Handoff menu">
+            <MenuActionButton
+              action={{
+                label: 'Open handoff workspace',
+                description: 'Launch provider execution tools.',
+                onClick: () => openSecondaryWorkspace('handoff')
+              }}
+            />
+          </div>
+        </details>
+
+        <details className="menu-group">
+          <summary role="menuitem">Tools</summary>
+          <div className="menu-panel" role="menu" aria-label="Tools menu">
+            <div className="menu-form-grid">
+              <label className="field-label menu-input-label">
+                Source
+                <select
+                  value={connectionDraft.fromModuleId}
+                  onChange={(event) => setConnectionDraft({ ...connectionDraft, fromModuleId: event.target.value })}
+                  aria-label="Ribbon connection source"
+                  disabled={!hasConnectionEndpoints}
+                >
+                  {visibleModules.map((moduleNode) => (
+                    <option key={`ribbon-from-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-label menu-input-label">
+                Target
+                <select
+                  value={connectionDraft.toModuleId}
+                  onChange={(event) => setConnectionDraft({ ...connectionDraft, toModuleId: event.target.value })}
+                  aria-label="Ribbon connection target"
+                  disabled={!hasConnectionEndpoints}
+                >
+                  {visibleModules.map((moduleNode) => (
+                    <option key={`ribbon-to-${moduleNode.id}`} value={moduleNode.id}>{moduleNode.name}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="field-label menu-input-label">
               Signal
               <input
                 value={connectionDraft.signal}
@@ -242,114 +322,16 @@ export function AppRibbon({
                 disabled={!hasConnectionEndpoints}
               />
             </label>
-          </div>
-          <p className="ribbon-footnote muted">
-            {hasConnectionEndpoints
-              ? 'Pick two visible blocks and a signal name, or prime the source from the current selection.'
-              : 'Connection commands unlock when the current scope shows at least two visible modules.'}
-          </p>
-          <div className="ribbon-command-grid">
-            <RibbonCommandButton
-              action={{ label: 'Use selected as source', description: 'Prime the connection draft from the selected visible block.' }}
-              isActive={selectedModuleIsVisible}
-              compact
-              disabled={!selectedModuleIsVisible}
-              onClick={useSelectedModuleAsConnectionSource}
-            />
-            <RibbonCommandButton
-              action={{ label: 'Connect now', description: 'Commit the current connection draft in this scope.', shortcut: 'Cmd/Ctrl+Shift+K' }}
-              isActive={false}
-              compact
-              disabled={!canCommitConnection || !hasConnectionEndpoints}
-              onClick={addConnection}
+            <MenuActionButton
+              action={{
+                label: 'Connect now',
+                description: 'Commit connection draft in current scope.',
+                onClick: addConnection,
+                disabled: !canCommitConnection || !hasConnectionEndpoints
+              }}
             />
           </div>
-        </section>
-
-        <section className="ribbon-group" aria-label="View commands">
-          <span className="ribbon-group-label">View</span>
-          <p className="ribbon-footnote muted">Viewport framing is reducer-owned so the shell, shortcuts, and diagram controls always stay in sync.</p>
-          <div className="ribbon-command-grid">
-            <RibbonCommandButton
-              action={{ label: 'Scope fit', description: 'Frame the current hierarchy scope.', shortcut: 'Cmd/Ctrl+1' }}
-              isActive={diagramViewportMode === 'fit_scope'}
-              compact
-              onClick={() => setDiagramViewportMode('fit_scope')}
-            />
-            <RibbonCommandButton
-              action={{ label: 'Selection focus', description: selectedModuleIsVisible ? 'Center the selected visible block.' : 'Focus falls back to the current scope when the selection is outside view.', shortcut: 'Cmd/Ctrl+2' }}
-              isActive={diagramViewportMode === 'focus_selection'}
-              compact
-              onClick={() => setDiagramViewportMode('focus_selection')}
-            />
-            <RibbonCommandButton
-              action={{ label: 'Canvas overview', description: 'Show the full current diagram layout.', shortcut: 'Cmd/Ctrl+3' }}
-              isActive={diagramViewportMode === 'overview'}
-              compact
-              onClick={() => setDiagramViewportMode('overview')}
-            />
-            <RibbonCommandButton
-              action={{ label: 'Collapse edge bundles', description: 'Return expanded edge bundles to their grouped state.' }}
-              isActive={false}
-              compact
-              onClick={collapseAllEdgeBundles}
-            />
-          </div>
-        </section>
-
-        <section className="ribbon-group" aria-label="Navigate commands">
-          <span className="ribbon-group-label">Navigate</span>
-          <div className="ribbon-command-grid">
-            <RibbonCommandButton
-              action={{ label: 'Go to root', description: 'Jump to the top-level hierarchy scope.' }}
-              isActive={Boolean(currentHierarchyModule && currentHierarchyRootModuleId === currentHierarchyModule.id)}
-              compact
-              onClick={jumpToRootHierarchy}
-            />
-            <RibbonCommandButton
-              action={{ label: 'Back to parent', description: 'Step up one hierarchy level.', shortcut: 'Cmd/Ctrl+↑' }}
-              isActive={false}
-              compact
-              disabled={!canNavigateToParent}
-              onClick={navigateToParentHierarchy}
-            />
-            <RibbonCommandButton
-              action={{ label: 'Enter composite', description: 'Open the selected composite scope.', shortcut: 'Cmd/Ctrl+Enter' }}
-              isActive={false}
-              compact
-              disabled={!canEnterSelectedComposite}
-              onClick={enterSelectedComposite}
-            />
-            <RibbonCommandButton
-              action={{ label: 'Refresh AI suggestions', description: 'Rebuild mock proposals for the current selection.' }}
-              isActive={false}
-              compact
-              onClick={regenerateProposalsForSelectedModule}
-            />
-          </div>
-        </section>
-
-        <section className="ribbon-group" aria-label="Focused workspace commands">
-          <span className="ribbon-group-label">Focused workspaces</span>
-          <div className="ribbon-workspace-grid ribbon-workspace-grid-wide">
-            {workspaceActions.map((workspaceAction) => (
-              <RibbonCommandButton
-                key={workspaceAction.workspace}
-                action={workspaceAction}
-                isActive={activeSecondaryWorkspace === workspaceAction.workspace}
-                compact
-                onClick={() => openSecondaryWorkspace(workspaceAction.workspace)}
-              />
-            ))}
-            <RibbonCommandButton
-              action={{ label: 'Project data', description: 'Import or export the full project snapshot.' }}
-              isActive={activeSecondaryWorkspace === 'project_data'}
-              compact
-              onClick={() => openSecondaryWorkspace('project_data')}
-            />
-          </div>
-          <p className="ribbon-footnote muted">Open a task surface when you need detail, then return to the diagram with scope and selection preserved.</p>
-        </section>
+        </details>
       </div>
     </header>
   );
