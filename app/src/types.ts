@@ -1,4 +1,7 @@
 import type { ModulePackage, SemanticConnection } from '../../shared/src';
+import type { HandoffArtifact } from './ai/handoffTypes';
+import type { ProviderJob } from './ai/providerJobTypes';
+import type { AiProposal } from './ai/proposals/proposalTypes';
 
 export type ModuleNode = {
   id: string;
@@ -24,6 +27,8 @@ export type SectionKey =
   | 'decompositionStatus';
 
 export type WorkspaceMode = 'design' | 'review' | 'handoff';
+export type SecondaryWorkspace = 'none' | 'package_editor' | 'review' | 'handoff' | 'validation' | 'project_data';
+export type DiagramViewportMode = 'fit_scope' | 'focus_selection' | 'overview';
 
 export type SuggestionType = 'purpose_proposal' | 'behavior_summary' | 'ports_suggestion' | 'decomposition_suggestion';
 export type SuggestionStatus = 'pending' | 'accepted' | 'rejected';
@@ -65,6 +70,7 @@ export type HierarchyDecompositionDraft = {
 
 export type DesignUiState = {
   workspaceMode: WorkspaceMode;
+  secondaryWorkspace: SecondaryWorkspace;
   currentHierarchyModuleId: string;
   newModuleName: string;
   newModuleKind: ModuleNode['kind'];
@@ -73,6 +79,9 @@ export type DesignUiState = {
   decompositionDraft: HierarchyDecompositionDraft;
   projectImportError: string | null;
   aiComposerText: string;
+  selectedProviderId: string;
+  diagramViewportMode: DiagramViewportMode;
+  expandedEdgeBundleKeys: string[];
 };
 
 export type DesignState = {
@@ -81,7 +90,10 @@ export type DesignState = {
   connections: Connection[];
   packageContentByModuleId: Record<string, ModulePackage>;
   handedOffAtByModuleId: Record<string, string>;
+  handoffArtifacts: HandoffArtifact[];
+  providerJobs: ProviderJob[];
   suggestionsByModuleId: Record<string, SuggestionCard[]>;
+  proposalsByModuleId: Record<string, AiProposal[]>;
   aiChatHistory: AiChatMessage[];
   ui: DesignUiState;
 };
@@ -92,4 +104,5 @@ export type PersistedDesignState = {
   connections: Connection[];
   packageContentByModuleId: Record<string, ModulePackage>;
   handedOffAtByModuleId: Record<string, string>;
+  handoffArtifacts: HandoffArtifact[];
 };

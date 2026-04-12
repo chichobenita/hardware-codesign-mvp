@@ -1,4 +1,5 @@
 import type { ModulePackage } from '../../../../shared/src';
+import { DEFAULT_PROVIDER_ID } from '../../ai/providers/providerRegistry';
 import type { Connection, DesignState, ModuleNode } from '../../types';
 
 export function nowIso(value?: string): string {
@@ -127,10 +128,14 @@ export const baseSeedState: DesignState = {
     }
   },
   handedOffAtByModuleId: {},
+  handoffArtifacts: [],
+  providerJobs: [],
   suggestionsByModuleId: {},
+  proposalsByModuleId: {},
   aiChatHistory: [],
   ui: {
     workspaceMode: 'design',
+    secondaryWorkspace: 'none',
     currentHierarchyModuleId: 'root',
     newModuleName: '',
     newModuleKind: 'leaf',
@@ -141,6 +146,9 @@ export const baseSeedState: DesignState = {
       childKind: 'leaf'
     },
     projectImportError: null,
-    aiComposerText: ''
+    aiComposerText: '',
+    selectedProviderId: DEFAULT_PROVIDER_ID,
+    diagramViewportMode: 'fit_scope',
+    expandedEdgeBundleKeys: []
   }
 };

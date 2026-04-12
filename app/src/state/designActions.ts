@@ -1,5 +1,18 @@
 import type { ModulePackage } from '../../../shared/src';
-import type { AiChatMessage, Connection, DesignState, ModuleNode, SuggestionCard, WorkspaceMode } from '../types';
+import type { HandoffArtifact } from '../ai/handoffTypes';
+import type { ProviderJob } from '../ai/providerJobTypes';
+import type { ProviderExecutionFailure, ProviderHandoffResult } from '../ai/providers/providerTypes';
+import type { AiProposal } from '../ai/proposals/proposalTypes';
+import type {
+  AiChatMessage,
+  Connection,
+  DesignState,
+  DiagramViewportMode,
+  ModuleNode,
+  SecondaryWorkspace,
+  SuggestionCard,
+  WorkspaceMode
+} from '../types';
 
 export type DesignAction =
   | { type: 'create_module'; payload: { name: string; kind: ModuleNode['kind']; parentModuleId?: string; nextId?: string; nowIso?: string } }
@@ -7,6 +20,11 @@ export type DesignAction =
   | { type: 'rename_module'; payload: { moduleId: string; name: string; nowIso?: string } }
   | { type: 'select_module'; payload: { moduleId: string } }
   | { type: 'set_workspace_mode'; payload: { mode: WorkspaceMode } }
+  | { type: 'set_secondary_workspace'; payload: { workspace: SecondaryWorkspace } }
+  | { type: 'set_diagram_viewport_mode'; payload: { mode: DiagramViewportMode } }
+  | { type: 'toggle_edge_bundle'; payload: { groupKey: string } }
+  | { type: 'collapse_all_edge_bundles'; payload: {} }
+  | { type: 'set_selected_provider'; payload: { providerId: string } }
   | { type: 'enter_hierarchy_view'; payload: { moduleId: string } }
   | { type: 'navigate_to_parent_hierarchy'; payload: {} }
   | { type: 'set_hierarchy_view'; payload: { moduleId: string } }
@@ -27,7 +45,16 @@ export type DesignAction =
   | { type: 'reject_suggestion'; payload: { moduleId: string; suggestionId: string } }
   | { type: 'set_suggestions_for_module'; payload: { moduleId: string; suggestions: SuggestionCard[] } }
   | { type: 'remove_suggestion'; payload: { moduleId: string; suggestionId: string } }
+  | { type: 'apply_proposal'; payload: { moduleId: string; proposal: AiProposal; nowIso?: string } }
+  | { type: 'update_proposal'; payload: { moduleId: string; proposalId: string; updater: (current: AiProposal) => AiProposal } }
+  | { type: 'reject_proposal'; payload: { moduleId: string; proposalId: string } }
+  | { type: 'set_proposals_for_module'; payload: { moduleId: string; proposals: AiProposal[] } }
+  | { type: 'remove_proposal'; payload: { moduleId: string; proposalId: string } }
   | { type: 'move_selected_package_state_forward'; payload: { to: ModulePackage['packageStatus']; nowIso?: string } }
+  | { type: 'queue_handoff_artifact'; payload: { artifact: HandoffArtifact } }
+  | { type: 'start_provider_job'; payload: { job: ProviderJob } }
+  | { type: 'complete_provider_job_success'; payload: { jobId: string; artifactId: string; response: ProviderHandoffResult; completedAt: string } }
+  | { type: 'complete_provider_job_failure'; payload: { jobId: string; artifactId: string; error: ProviderExecutionFailure; completedAt: string } }
   | { type: 'mark_selected_module_handed_off'; payload: { nowIso?: string } }
   | { type: 'load_persisted_design_state'; payload: { state: DesignState } }
   | { type: 'replace_design_state'; payload: { state: DesignState } };

@@ -1,27 +1,9 @@
-import type { ModulePackage } from '../../shared/src';
+import type { AiProposal } from './ai/proposals/proposalTypes';
+import { useAppWorkspace } from './application/useAppWorkspace';
 import { AISuggestionsPanel } from './components/AISuggestionsPanel';
 import { DiagramWorkspace } from './components/DiagramWorkspace';
 import { ModulePackagePanel } from './components/ModulePackagePanel';
 import { DesignStoreProvider, useDesignStore } from './state/designStore';
-import { exportProjectSnapshot, getProjectImportErrorMessage, importProjectSnapshot, triggerProjectDownload } from './state/designTransfer';
-import {
-  selectCanShowPayloadPreview,
-  selectCurrentHierarchyModule,
-  selectDesignHasValidationIssues,
-  selectEligibleLeafReadyModules,
-  selectGenerationPayloadSource,
-  selectHierarchyBreadcrumbs,
-  selectModuleIsValidForReviewOrHandoff,
-  selectParentHierarchyModuleId,
-  selectSectionStatuses,
-  selectSelectedModule,
-  selectSelectedModulePackage,
-  selectTransitionReadiness,
-  selectValidationIssues,
-  selectValidationIssuesForModule,
-  selectVisibleConnections,
-  selectVisibleModules
-} from './state/designSelectors';
 import { sanitizeModuleIdSegment } from './state/reducerHelpers/seedState';
 import type { AiChatMessage, ModuleNode, SuggestionCard, SuggestionType } from './types';
 
@@ -56,10 +38,6 @@ function promptMatchesHelp(prompt: string): boolean {
   return lowered === 'help' || lowered.includes('what can you do') || lowered.includes('show commands');
 }
 
-function findSuggestionByType(suggestions: SuggestionCard[], type: SuggestionType): SuggestionCard | undefined {
-  return suggestions.find((suggestion) => suggestion.type === type);
-}
-
 function resolveSuggestionType(prompt: string): SuggestionType | null {
   const lowered = prompt.toLowerCase();
 
@@ -77,6 +55,89 @@ function resolveSuggestionType(prompt: string): SuggestionType | null {
   }
 
   return null;
+}
+
+function toProposalKind(type: SuggestionType): AiProposal['proposedChange']['kind'] {
+  if (type === 'purpose_proposal') {
+    return 'purpose_update';
+  }
+  if (type === 'behavior_summary') {
+    return 'behavior_update';
+  }
+  if (type === 'ports_suggestion') {
+    return 'ports_update';
+  }
+  return 'decomposition_update';
+}
+
+function toSuggestionStatus(status: AiProposal['status']): SuggestionCard['status'] {
+  if (status === 'applied') {
+    return 'accepted';
+  }
+  if (status === 'rejected') {
+    return 'rejected';
+  }
+  return 'pending';
+}
+
+function mapProposalToSuggestionCard(proposal: AiProposal): SuggestionCard {
+  const change = proposal.proposedChange;
+
+  if (change.kind === 'purpose_update') {
+    return {
+      id: proposal.proposalId,
+      type: 'purpose_proposal',
+      title: 'Purpose proposal',
+      description: proposal.rationale,
+      status: toSuggestionStatus(proposal.status),
+      draft: {
+        summaryText: change.purposeSummary
+      }
+    };
+  }
+
+  if (change.kind === 'behavior_update') {
+    return {
+      id: proposal.proposalId,
+      type: 'behavior_summary',
+      title: 'Behavior summary',
+      description: proposal.rationale,
+      status: toSuggestionStatus(proposal.status),
+      draft: {
+        summaryText: change.behaviorSummary
+      }
+    };
+  }
+
+  if (change.kind === 'ports_update') {
+    return {
+      id: proposal.proposalId,
+      type: 'ports_suggestion',
+      title: 'Ports proposal',
+      description: proposal.rationale,
+      status: toSuggestionStatus(proposal.status),
+      draft: {
+        ports: change.ports
+      }
+    };
+  }
+
+  return {
+    id: proposal.proposalId,
+    type: 'decomposition_suggestion',
+    title: 'Decomposition proposal',
+    description: proposal.rationale,
+    status: toSuggestionStatus(proposal.status),
+    draft: {
+      decompositionStatus: change.decompositionStatus,
+      decompositionRationale: change.decompositionRationale
+    }
+  };
+}
+
+function findProposalByType(proposals: AiProposal[], type: SuggestionType): AiProposal | undefined {
+  const proposalKind = toProposalKind(type);
+  return proposals.find((proposal) => proposal.proposedChange.kind === proposalKind);
 }
 
 function parseCreateModuleCommand(prompt: string): { name: string; kind: ModuleNode['kind'] } | null {
@@ -142,28 +203,44 @@ function getPromptTextAfterColon(prompt: string): string {
   return separatorIndex === -1 ? '' : prompt.slice(separatorIndex + 1).trim();
 }
 
-function customizeSuggestionFromPrompt(prompt: string, suggestion: SuggestionCard): SuggestionCard {
-  if (suggestion.type === 'purpose_proposal' || suggestion.type === 'behavior_summary') {
-    const summaryText = getPromptTextAfterColon(prompt);
-    if (!summaryText) {
-      return suggestion;
+function customizeProposalFromPrompt(prompt: string, proposal: AiProposal): AiProposal {
+  const promptText = getPromptTextAfterColon(prompt);
+  const change = proposal.proposedChange;
+
+  if (change.kind === 'purpose_update') {
+    if (!promptText) {
+      return proposal;
     }
 
     return {
-      ...suggestion,
-      status: 'pending',
-      draft: {
-        ...suggestion.draft,
-        summaryText
+      ...proposal,
+      status: 'proposed',
+      proposedChange: {
+        ...change,
+        purposeSummary: promptText
       }
     };
   }
 
-  if (suggestion.type !== 'decomposition_suggestion') {
-    return suggestion;
+  if (change.kind === 'behavior_update') {
+    if (!promptText) {
+      return proposal;
+    }
+
+    return {
+      ...proposal,
+      status: 'proposed',
+      proposedChange: {
+        ...change,
+        behaviorSummary: promptText
+      }
+    };
   }
 
-  const promptText = getPromptTextAfterColon(prompt);
+  if (change.kind !== 'decomposition_update') {
+    return proposal;
+  }
+
   const statusSource = (promptText || prompt).toLowerCase();
   const nextStatus = statusSource.includes('approved leaf') || statusSource.includes('approved_leaf')
     ? 'approved_leaf'
@@ -173,70 +250,58 @@ function customizeSuggestionFromPrompt(prompt: string, suggestion: SuggestionCar
         ? 'under_decomposition'
         : statusSource.includes('composite')
           ? 'composite'
-          : suggestion.draft.decompositionStatus ?? 'under_decomposition';
+          : change.decompositionStatus;
   const rationaleFromBecause = promptText.split(/because/i).slice(1).join('because').trim();
-  const nextRationale = rationaleFromBecause || (suggestion.draft.decompositionRationale ?? '');
+  const nextRationale = rationaleFromBecause || change.decompositionRationale;
 
-  if (
-    nextStatus === suggestion.draft.decompositionStatus
-    && nextRationale === (suggestion.draft.decompositionRationale ?? '')
-  ) {
-    return suggestion;
+  if (nextStatus === change.decompositionStatus && nextRationale === change.decompositionRationale) {
+    return proposal;
   }
 
   return {
-    ...suggestion,
-    status: 'pending',
-    draft: {
-      ...suggestion.draft,
+    ...proposal,
+    status: 'proposed',
+    proposedChange: {
+      ...change,
       decompositionStatus: nextStatus,
       decompositionRationale: nextRationale
     }
   };
 }
 
-function formatSuggestionTypeLabel(type: SuggestionType): string {
-  if (type === 'purpose_proposal') {
-    return 'purpose';
-  }
-  if (type === 'behavior_summary') {
-    return 'behavior';
-  }
-  if (type === 'ports_suggestion') {
-    return 'ports';
-  }
-
-  return 'decomposition';
-}
-
-function formatPortsInline(suggestion: SuggestionCard): string {
-  const ports = suggestion.draft.ports ?? [];
-  if (ports.length === 0) {
+function formatPortsInline(proposal: AiProposal): string {
+  if (proposal.proposedChange.kind !== 'ports_update') {
     return 'no ports';
   }
 
-  return ports
+  if (proposal.proposedChange.ports.length === 0) {
+    return 'no ports';
+  }
+
+  return proposal.proposedChange.ports
     .map((port) => `${port.name} (${port.direction}${port.width ? ` ${port.width}` : ''})`)
     .join(', ');
 }
 
-function buildAppliedSuggestionMessage(moduleName: string, suggestion: SuggestionCard): string {
-  if (suggestion.type === 'purpose_proposal') {
-    return `Updated purpose for ${moduleName}: ${suggestion.draft.summaryText ?? ''}`.trim();
+function buildAppliedProposalMessage(moduleName: string, proposal: AiProposal): string {
+  const change = proposal.proposedChange;
+
+  if (change.kind === 'purpose_update') {
+    return `Updated purpose for ${moduleName}: ${change.purposeSummary}`.trim();
   }
 
-  if (suggestion.type === 'behavior_summary') {
-    return `Updated behavior for ${moduleName}: ${suggestion.draft.summaryText ?? ''}`.trim();
+  if (change.kind === 'behavior_update') {
+    return `Updated behavior for ${moduleName}: ${change.behaviorSummary}`.trim();
   }
 
-  if (suggestion.type === 'ports_suggestion') {
-    return `Updated interface ports for ${moduleName}: ${formatPortsInline(suggestion)}.`;
+  if (change.kind === 'ports_update') {
+    return `Updated interface ports for ${moduleName}: ${formatPortsInline(proposal)}.`;
   }
 
-  return `Updated decomposition for ${moduleName}: ${suggestion.draft.decompositionStatus ?? 'under_decomposition'}${suggestion.draft.decompositionRationale ? ` because ${suggestion.draft.decompositionRationale}` : ''}.`;
+  return `Updated decomposition for ${moduleName}: ${change.decompositionStatus}${change.decompositionRationale ? ` because ${change.decompositionRationale}` : ''}.`;
 }
 
-function buildRejectedSuggestionMessage(moduleName: string, suggestionType: SuggestionType): string {
+function buildRejectedProposalMessage(moduleName: string, suggestionType: SuggestionType): string {
   const label = suggestionType === 'purpose_proposal'
     ? 'purpose'
     : suggestionType === 'behavior_summary'
@@ -249,57 +314,9 @@ function buildRejectedSuggestionMessage(moduleName: string, suggestionType: Sugg
 }
 
 export function AppWorkspace(): JSX.Element {
-  const { state, dispatch } = useDesignStore();
-
-  const selectedModule = selectSelectedModule(state);
-  const currentHierarchyModule = selectCurrentHierarchyModule(state);
-  const currentHierarchyBreadcrumbs = selectHierarchyBreadcrumbs(state);
-  const parentHierarchyModuleId = selectParentHierarchyModuleId(state);
-  const visibleModules = selectVisibleModules(state);
-  const visibleConnections = selectVisibleConnections(state);
-  const currentPackageContent = selectSelectedModulePackage(state);
-  const currentSectionStatuses = selectSectionStatuses(currentPackageContent);
-  const moduleConnections = state.connections.filter((connection) => connection.fromModuleId === state.selectedModuleId || connection.toModuleId === state.selectedModuleId);
-  const generatedPayload = selectGenerationPayloadSource(currentPackageContent);
-  const transitionReadiness = selectTransitionReadiness(currentPackageContent);
-  const approvedLeafReadyModules = selectEligibleLeafReadyModules(state);
-  const canShowPayloadPreview = selectCanShowPayloadPreview(state.ui.workspaceMode, selectedModule, currentPackageContent);
-  const validationIssues = selectValidationIssues(state);
-  const moduleValidationIssues = selectValidationIssuesForModule(state, state.selectedModuleId);
-  const designHasValidationIssues = selectDesignHasValidationIssues(state);
-  const isSelectedModuleValidForReviewOrHandoff = selectModuleIsValidForReviewOrHandoff(state, state.selectedModuleId);
-  const selectedSuggestions = state.suggestionsByModuleId[state.selectedModuleId] ?? [];
-
-  const updateCurrentPackage = (updater: (current: ModulePackage) => ModulePackage) => {
-    dispatch({ type: 'update_selected_module_package', payload: { updater } });
-  };
-
-  const regenerateSuggestionsForSelectedModule = () => {
-    if (!selectedModule) {
-      return;
-    }
-
-    dispatch({
-      type: 'set_suggestions_for_module',
-      payload: {
-        moduleId: selectedModule.id,
-        suggestions: []
-      }
-    });
-    dispatch({ type: 'select_module', payload: { moduleId: selectedModule.id } });
-  };
-
-  const updateSuggestion = (suggestionId: string, updater: (current: SuggestionCard) => SuggestionCard) => {
-    dispatch({ type: 'update_suggestion', payload: { moduleId: state.selectedModuleId, suggestionId, updater } });
-  };
-
-  const rejectSuggestion = (suggestionId: string) => {
-    dispatch({ type: 'reject_suggestion', payload: { moduleId: state.selectedModuleId, suggestionId } });
-  };
-
-  const acceptSuggestion = (suggestion: SuggestionCard) => {
-    dispatch({ type: 'apply_accepted_suggestion', payload: { moduleId: state.selectedModuleId, suggestion } });
-  };
+  const { dispatch } = useDesignStore();
+  const { state, viewModel, actions } = useAppWorkspace();
+  const selectedSuggestions = viewModel.selectedProposals.map(mapProposalToSuggestionCard);
 
   const appendAiChatMessages = (messages: AiChatMessage[]) => {
     dispatch({ type: 'append_ai_chat_messages', payload: { messages } });
@@ -315,11 +332,11 @@ export function AppWorkspace(): JSX.Element {
       return;
     }
 
-    const selectedModuleName = selectedModule?.name ?? state.selectedModuleId;
+    const selectedModuleName = viewModel.selectedModule?.name ?? state.selectedModuleId;
     appendAiChatMessages([createAiChatMessage('user', prompt)]);
     setAiComposerText('');
 
-    if (!selectedModule) {
+    if (!viewModel.selectedModule) {
       appendAiChatMessages([createAiChatMessage('assistant', 'Select a module before sending AI commands.', 'guide')]);
       return;
     }
@@ -343,7 +360,7 @@ export function AppWorkspace(): JSX.Element {
       appendAiChatMessages([
         createAiChatMessage(
           'assistant',
-          `Created ${createModuleCommand.kind} module ${createModuleCommand.name} in ${currentHierarchyModule?.name ?? 'the current scope'}.`
+          `Created ${createModuleCommand.kind} module ${createModuleCommand.name} in ${viewModel.currentHierarchyModule?.name ?? 'the current scope'}.`
         )
       ]);
       return;
@@ -407,8 +424,8 @@ export function AppWorkspace(): JSX.Element {
       return;
     }
 
-    if (/(?:refresh|regenerate).*(?:draft|suggestion)|(?:draft|suggestion).*(?:refresh|regenerate)/i.test(prompt)) {
-      regenerateSuggestionsForSelectedModule();
+    if (/(?:refresh|regenerate).*(?:draft|suggestion|proposal)|(?:draft|suggestion|proposal).*(?:refresh|regenerate)/i.test(prompt)) {
+      actions.regenerateProposalsForSelectedModule();
       appendAiChatMessages([
         createAiChatMessage('assistant', `Refreshed the draft suggestions for ${selectedModuleName}.`)
       ]);
@@ -417,27 +434,27 @@ export function AppWorkspace(): JSX.Element {
 
     const suggestionType = resolveSuggestionType(prompt);
     if (suggestionType) {
-      const suggestion = findSuggestionByType(selectedSuggestions, suggestionType);
-      if (!suggestion) {
+      const proposal = findProposalByType(viewModel.selectedProposals, suggestionType);
+      if (!proposal) {
         appendAiChatMessages([
-          createAiChatMessage('assistant', `No ${formatSuggestionTypeLabel(suggestionType)} draft is available right now. Try "refresh drafts".`, 'guide')
+          createAiChatMessage('assistant', `No ${suggestionType === 'ports_suggestion' ? 'ports' : suggestionType === 'behavior_summary' ? 'behavior' : suggestionType === 'purpose_proposal' ? 'purpose' : 'decomposition'} draft is available right now. Try "refresh drafts".`, 'guide')
         ]);
         return;
       }
 
       if (/^(?:reject|ignore|dismiss)\b/i.test(prompt)) {
-        rejectSuggestion(suggestion.id);
+        actions.rejectProposal(proposal.proposalId);
         appendAiChatMessages([
-          createAiChatMessage('assistant', buildRejectedSuggestionMessage(selectedModuleName, suggestionType))
+          createAiChatMessage('assistant', buildRejectedProposalMessage(selectedModuleName, suggestionType))
         ]);
         return;
       }
 
-      const nextSuggestion = customizeSuggestionFromPrompt(prompt, suggestion);
-      updateSuggestion(suggestion.id, () => nextSuggestion);
-      acceptSuggestion(nextSuggestion);
+      const nextProposal = customizeProposalFromPrompt(prompt, proposal);
+      actions.updateProposal(proposal.proposalId, () => nextProposal);
+      actions.applyProposal(nextProposal);
       appendAiChatMessages([
-        createAiChatMessage('assistant', buildAppliedSuggestionMessage(selectedModuleName, nextSuggestion))
+        createAiChatMessage('assistant', buildAppliedProposalMessage(selectedModuleName, nextProposal))
       ]);
       return;
     }
@@ -447,101 +464,12 @@ export function AppWorkspace(): JSX.Element {
     ]);
   };
 
-  const moveToNextPackageState = () => {
-    if (!transitionReadiness || !transitionReadiness.canTransition) {
-      return;
-    }
-
-    dispatch({ type: 'move_selected_package_state_forward', payload: { to: transitionReadiness.to } });
-  };
-
-  const createModule = () => {
-    dispatch({
-      type: 'create_module',
-      payload: {
-        name: state.ui.newModuleName,
-        kind: state.ui.newModuleKind,
-        parentModuleId: state.ui.currentHierarchyModuleId
-      }
-    });
-  };
-
-  const renameSelectedModule = () => {
-    dispatch({ type: 'rename_module', payload: { moduleId: state.selectedModuleId, name: state.ui.renameDraft } });
-  };
-
-  const addConnection = () => {
-    const nextConnection = { ...state.ui.connectionDraft, signal: state.ui.connectionDraft.signal.trim() };
-    if (!nextConnection.fromModuleId || !nextConnection.toModuleId || !nextConnection.signal) {
-      return;
-    }
-
-    dispatch({ type: 'connect_modules', payload: { connection: nextConnection } });
-  };
-
-  const markSelectedModuleAsHandedOff = () => {
-    dispatch({ type: 'mark_selected_module_handed_off', payload: {} });
-  };
-
-  const exportCurrentProject = () => {
-    const exported = exportProjectSnapshot(state);
-    triggerProjectDownload(exported.filename, exported.json);
-    dispatch({ type: 'set_project_import_error', payload: { message: null } });
-  };
-
-  const importProjectFromFile = async (file: File | null) => {
-    if (!file) {
-      return;
-    }
-
-    const raw = await file.text();
-    const imported = importProjectSnapshot(raw);
-    if (!imported.ok) {
-      dispatch({ type: 'set_project_import_error', payload: { message: getProjectImportErrorMessage(imported.reason) } });
-      return;
-    }
-    if (!imported.state) {
-      dispatch({ type: 'set_project_import_error', payload: { message: getProjectImportErrorMessage('invalid_restore_state') } });
-      return;
-    }
-
-    dispatch({ type: 'replace_design_state', payload: { state: imported.state } });
-    dispatch({ type: 'set_project_import_error', payload: { message: null } });
-  };
-
-  const decomposeSelectedModule = () => {
-    const childNames = parseDecompositionNames(state.ui.decompositionDraft.namesText);
-    if (childNames.length === 0) {
-      return;
-    }
-
-    dispatch({
-      type: 'decompose_selected_module',
-      payload: {
-        childNames,
-        childKind: state.ui.decompositionDraft.childKind
-      }
-    });
-  };
-
-  const enterSelectedComposite = () => {
-    if (selectedModule?.kind !== 'composite') {
-      return;
-    }
-
-    dispatch({ type: 'enter_hierarchy_view', payload: { moduleId: selectedModule.id } });
-  };
-
-  const selectedModuleHandedOffAt = state.handedOffAtByModuleId[state.selectedModuleId];
-  const isSelectedModuleHandoffReady = approvedLeafReadyModules.some((moduleNode) => moduleNode.id === state.selectedModuleId)
-    && isSelectedModuleValidForReviewOrHandoff;
-
   return (
     <div className="app-shell">
       <header className="app-header">Hardware Co-Design MVP - Main Workspace</header>
       <main className="workspace-grid">
         <AISuggestionsPanel
-          selectedModule={selectedModule}
+          selectedModule={viewModel.selectedModule}
           selectedSuggestions={selectedSuggestions}
           aiChatHistory={state.aiChatHistory}
           aiComposerText={state.ui.aiComposerText}
@@ -551,53 +479,67 @@ export function AppWorkspace(): JSX.Element {
 
         <DiagramWorkspace
           state={state}
-          visibleModules={visibleModules}
-          visibleConnections={visibleConnections}
-          currentHierarchyModule={currentHierarchyModule}
-          currentHierarchyBreadcrumbs={currentHierarchyBreadcrumbs}
-          parentHierarchyModuleId={parentHierarchyModuleId}
-          setHierarchyView={(moduleId) => dispatch({ type: 'set_hierarchy_view', payload: { moduleId } })}
-          navigateToParentHierarchy={() => dispatch({ type: 'navigate_to_parent_hierarchy', payload: {} })}
-          setNewModuleName={(value) => dispatch({ type: 'set_new_module_name', payload: { value } })}
-          setNewModuleKind={(value) => dispatch({ type: 'set_new_module_kind', payload: { value } })}
-          createModule={createModule}
-          selectModule={(moduleId) => dispatch({ type: 'select_module', payload: { moduleId } })}
-          setRenameDraft={(value) => dispatch({ type: 'set_rename_draft', payload: { value } })}
-          selectedModule={selectedModule}
-          renameSelectedModule={renameSelectedModule}
-          enterSelectedComposite={enterSelectedComposite}
-          setConnectionDraft={(value) => dispatch({ type: 'set_connection_draft', payload: { value } })}
-          addConnection={addConnection}
+          visibleModules={viewModel.visibleModules}
+          visibleConnections={viewModel.visibleConnections}
+          currentHierarchyModule={viewModel.currentHierarchyModule}
+          currentHierarchyBreadcrumbs={viewModel.currentHierarchyBreadcrumbs}
+          parentHierarchyModuleId={viewModel.parentHierarchyModuleId}
+          diagramViewportMode={state.ui.diagramViewportMode}
+          setHierarchyView={actions.setHierarchyView}
+          setDiagramViewportMode={actions.setDiagramViewportMode}
+          toggleEdgeBundle={actions.toggleEdgeBundle}
+          collapseAllEdgeBundles={actions.collapseAllEdgeBundles}
+          navigateToParentHierarchy={actions.navigateToParentHierarchy}
+          setNewModuleName={actions.setNewModuleName}
+          setNewModuleKind={actions.setNewModuleKind}
+          createModule={actions.createModule}
+          selectModule={actions.selectModule}
+          setRenameDraft={actions.setRenameDraft}
+          selectedModule={viewModel.selectedModule}
+          renameSelectedModule={actions.renameSelectedModule}
+          enterSelectedComposite={actions.enterSelectedComposite}
+          setConnectionDraft={actions.setConnectionDraft}
+          addConnection={actions.addConnection}
         />
 
         <ModulePackagePanel
-          selectedModule={selectedModule}
+          selectedModule={viewModel.selectedModule}
           state={state}
-          setWorkspaceMode={(mode) => dispatch({ type: 'set_workspace_mode', payload: { mode } })}
-          currentPackageContent={currentPackageContent}
-          transitionReadiness={transitionReadiness}
-          moveToNextPackageState={moveToNextPackageState}
-          currentSectionStatuses={currentSectionStatuses}
-          updateCurrentPackage={updateCurrentPackage}
-          moduleConnections={moduleConnections}
-          canShowPayloadPreview={canShowPayloadPreview}
-          generatedPayload={generatedPayload}
-          approvedLeafReadyModules={approvedLeafReadyModules}
-          selectModule={(moduleId) => dispatch({ type: 'select_module', payload: { moduleId } })}
-          markSelectedModuleAsHandedOff={markSelectedModuleAsHandedOff}
-          exportCurrentProject={exportCurrentProject}
-          importProjectFromFile={importProjectFromFile}
-          isSelectedModuleHandoffReady={isSelectedModuleHandoffReady}
-          selectedModuleHandedOffAt={selectedModuleHandedOffAt}
-          moduleValidationIssues={moduleValidationIssues}
-          designHasValidationIssues={designHasValidationIssues || validationIssues.length > 0}
-          isSelectedModuleValidForReviewOrHandoff={isSelectedModuleValidForReviewOrHandoff}
-          currentHierarchyModule={currentHierarchyModule}
+          setWorkspaceMode={actions.setWorkspaceMode}
+          handoffProviders={viewModel.handoffProviders}
+          selectedProviderId={state.ui.selectedProviderId}
+          setSelectedProvider={actions.setSelectedProvider}
+          currentPackageContent={viewModel.currentPackageContent}
+          transitionReadiness={viewModel.transitionReadiness}
+          moveToNextPackageState={actions.moveToNextPackageState}
+          currentSectionStatuses={viewModel.currentSectionStatuses}
+          updateCurrentPackage={actions.updateCurrentPackage}
+          moduleConnections={viewModel.moduleConnections}
+          canShowPayloadPreview={viewModel.canShowPayloadPreview}
+          generatedPayload={viewModel.generatedPayload}
+          generatedPrompt={viewModel.generatedPrompt}
+          handoffArtifacts={viewModel.handoffArtifacts}
+          latestHandoffArtifact={viewModel.latestHandoffArtifact}
+          copyGeneratedPrompt={actions.copyGeneratedPrompt}
+          exportGeneratedPrompt={actions.exportGeneratedPrompt}
+          exportLatestHandoffArtifact={actions.exportLatestHandoffArtifact}
+          approvedLeafReadyModules={viewModel.approvedLeafReadyModules}
+          currentProviderJob={viewModel.currentProviderJob}
+          selectModule={actions.selectModule}
+          markSelectedModuleAsHandedOff={actions.markSelectedModuleAsHandedOff}
+          exportCurrentProject={actions.exportCurrentProject}
+          importProjectFromFile={actions.importProjectFromFile}
+          isSelectedModuleHandoffReady={viewModel.isSelectedModuleHandoffReady}
+          hasCurrentSelectedArtifact={viewModel.hasCurrentSelectedArtifact}
+          moduleValidationIssues={viewModel.moduleValidationIssues}
+          designHasValidationIssues={viewModel.designHasValidationIssues}
+          isSelectedModuleValidForReviewOrHandoff={viewModel.isSelectedModuleValidForReviewOrHandoff}
+          currentHierarchyModule={viewModel.currentHierarchyModule}
           decompositionDraftNamesText={state.ui.decompositionDraft.namesText}
           decompositionDraftChildKind={state.ui.decompositionDraft.childKind}
-          setDecompositionNamesText={(value) => dispatch({ type: 'set_decomposition_names_text', payload: { value } })}
-          setDecompositionChildKind={(value) => dispatch({ type: 'set_decomposition_child_kind', payload: { value } })}
-          decomposeSelectedModule={decomposeSelectedModule}
+          setDecompositionNamesText={actions.setDecompositionNamesText}
+          setDecompositionChildKind={actions.setDecompositionChildKind}
+          decomposeSelectedModule={actions.decomposeSelectedModule}
         />
       </main>
     </div>

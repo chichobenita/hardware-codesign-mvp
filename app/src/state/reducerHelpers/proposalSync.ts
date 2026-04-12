@@ -6,7 +6,8 @@ import type { DesignState } from '../../types';
 
 export function ensureSelectedModuleProposals(state: DesignState): DesignState {
   const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === state.selectedModuleId);
-  if (!selectedModule || state.proposalsByModuleId[selectedModule.id]) {
+  const existingProposals = selectedModule ? state.proposalsByModuleId[selectedModule.id] : undefined;
+  if (!selectedModule || (existingProposals && existingProposals.length > 0)) {
     return state;
   }
 

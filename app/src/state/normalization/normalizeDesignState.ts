@@ -1,6 +1,8 @@
 import { getAuthoritativeModuleName, type ModulePackage } from '../../../../shared/src';
-import type { Connection, DesignState, ModuleNode } from '../../types';
-import { createMockSuggestions } from '../reducerHelpers/suggestionSync';
+import { normalizeHandoffArtifacts } from '../../ai/handoffArtifacts';
+import { DEFAULT_PROVIDER_ID } from '../../ai/providers/providerRegistry';
+import type { Connection, DesignState, DiagramViewportMode, ModuleNode, SecondaryWorkspace } from '../../types';
+import { ensureSelectedModuleProposals } from '../reducerHelpers/proposalSync';
 import { defaultConnectionDraft } from '../reducerHelpers/seedState';
 import { normalizeDependencies } from './normalizeDependencies';
 import { normalizeModulePackage } from './normalizeModulePackage';
@@ -8,7 +10,7 @@ import { normalizeModulePackage } from './normalizeModulePackage';
 type NormalizeDesignStateOptions = {
   fallbackUpdatedBy?: string;
   ensureUi?: boolean;
-  ensureSuggestions?: boolean;
+  ensureProposals?: boolean;
 };
 
 function normalizeModuleList(
@@ -43,6 +45,23 @@ function visibleModuleIdsForHierarchy(state: DesignState, hierarchyModuleId: str
   return new Set([hierarchyModuleId, ...childIds, ...inferredChildIds]);
 }
 
+function secondaryWorkspaceForMode(mode: DesignState['ui']['workspaceMode']): SecondaryWorkspace {
+  if (mode === 'review') {
+    return 'review';
+  }
+  if (mode === 'handoff') {
+    return 'handoff';
+  }
+  return 'none';
+}
+
+function normalizeViewportMode(mode: string | undefined): DiagramViewportMode {
+  if (mode === 'focus_selection' || mode === 'overview') {
+    return mode;
+  }
+  return 'fit_scope';
+}
+
 function normalizeUiState(state: DesignState): DesignState {
   const moduleIds = new Set(state.moduleList.map((moduleNode) => moduleNode.id));
   const fallbackHierarchyId = state.moduleList.find((moduleNode) => moduleNode.kind === 'composite')?.id ?? state.moduleList[0]?.id ?? '';
@@ -54,8 +73,7 @@ function normalizeUiState(state: DesignState): DesignState {
     ? state.selectedModuleId
     : currentHierarchyModuleId;
   const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === selectedModuleId);
-  const fallbackFromId = state.moduleList[0]?.id ?? '';
-  const fallbackToId = state.moduleList[1]?.id ?? fallbackFromId;
+  const fallbackDraft = defaultConnectionDraft(state.moduleList);
   const currentDraft = state.ui.connectionDraft;
 
   return {
@@ -63,39 +81,26 @@ function normalizeUiState(state: DesignState): DesignState {
     selectedModuleId,
     ui: {
       ...state.ui,
+      workspaceMode: state.ui.workspaceMode ?? 'design',
+      secondaryWorkspace: state.ui.secondaryWorkspace ?? secondaryWorkspaceForMode(state.ui.workspaceMode ?? 'design'),
       currentHierarchyModuleId,
+      newModuleName: state.ui.newModuleName ?? '',
+      newModuleKind: state.ui.newModuleKind ?? 'leaf',
       renameDraft: selectedModule?.name ?? '',
       connectionDraft: {
         ...currentDraft,
-        fromModuleId: moduleIds.has(currentDraft.fromModuleId) ? currentDraft.fromModuleId : fallbackFromId,
-        toModuleId: moduleIds.has(currentDraft.toModuleId) ? currentDraft.toModuleId : fallbackToId
+        fromModuleId: moduleIds.has(currentDraft.fromModuleId) ? currentDraft.fromModuleId : fallbackDraft.fromModuleId,
+        toModuleId: moduleIds.has(currentDraft.toModuleId) ? currentDraft.toModuleId : fallbackDraft.toModuleId
       },
       decompositionDraft: {
         namesText: state.ui.decompositionDraft?.namesText ?? '',
         childKind: state.ui.decompositionDraft?.childKind ?? 'leaf'
       },
-      projectImportError: state.ui.projectImportError,
-      aiComposerText: state.ui.aiComposerText ?? ''
-    }
-  };
-}
-
-function normalizeSuggestions(state: DesignState): DesignState {
-  const selectedModule = state.moduleList.find((moduleNode) => moduleNode.id === state.selectedModuleId);
-  if (!selectedModule || state.suggestionsByModuleId[selectedModule.id]) {
-    return state;
-  }
-
-  const modulePackage = state.packageContentByModuleId[selectedModule.id];
-  if (!modulePackage) {
-    return state;
-  }
-
-  return {
-    ...state,
-    suggestionsByModuleId: {
-      ...state.suggestionsByModuleId,
-      [selectedModule.id]: createMockSuggestions(selectedModule, modulePackage)
+      projectImportError: state.ui.projectImportError ?? null,
+      aiComposerText: state.ui.aiComposerText ?? '',
+      selectedProviderId: state.ui.selectedProviderId ?? DEFAULT_PROVIDER_ID,
+      diagramViewportMode: normalizeViewportMode(state.ui.diagramViewportMode),
+      expandedEdgeBundleKeys: Array.isArray(state.ui.expandedEdgeBundleKeys) ? state.ui.expandedEdgeBundleKeys : []
     }
   };
 }
@@ -117,24 +122,39 @@ export function normalizeDesignState(
     connections: normalizedConnections,
     packageContentByModuleId: normalizeDependencies(normalizedPackages, normalizedConnections),
     handedOffAtByModuleId: Object.fromEntries(
-      Object.entries(state.handedOffAtByModuleId).filter(([moduleId]) => normalizedPackages[moduleId])
+      Object.entries(state.handedOffAtByModuleId ?? {}).filter(([moduleId]) => normalizedPackages[moduleId])
     ),
+    suggestionsByModuleId: state.suggestionsByModuleId ?? {},
+    proposalsByModuleId: state.proposalsByModuleId ?? {},
+    handoffArtifacts: state.handoffArtifacts ?? [],
+    providerJobs: state.providerJobs ?? [],
     aiChatHistory: state.aiChatHistory ?? []
+  };
+
+  nextState = {
+    ...nextState,
+    handoffArtifacts: normalizeHandoffArtifacts(nextState, nextState.handoffArtifacts)
+  };
+
+  const validArtifactIds = new Set(nextState.handoffArtifacts.map((artifact) => artifact.artifactId));
+  nextState = {
+    ...nextState,
+    providerJobs: nextState.providerJobs.filter((job) => validArtifactIds.has(job.artifactId))
   };
 
   if (options.ensureUi) {
     nextState = normalizeUiState(nextState);
   }
 
-  if (options.ensureSuggestions) {
-    nextState = normalizeSuggestions(nextState);
+  if (options.ensureProposals) {
+    nextState = ensureSelectedModuleProposals(nextState);
   }
 
   return nextState;
 }
 
 export function createRestoredDesignState(
-  persistedState: Pick<DesignState, 'moduleList' | 'selectedModuleId' | 'connections' | 'packageContentByModuleId' | 'handedOffAtByModuleId'>,
+  persistedState: Pick<DesignState, 'moduleList' | 'selectedModuleId' | 'connections' | 'packageContentByModuleId' | 'handedOffAtByModuleId' | 'handoffArtifacts'>,
   fallbackUpdatedBy = 'restored_snapshot'
 ): DesignState {
   const normalizedModuleList = normalizeModuleList(persistedState.moduleList, persistedState.packageContentByModuleId);
@@ -154,10 +174,14 @@ export function createRestoredDesignState(
       connections: persistedState.connections,
       packageContentByModuleId: persistedState.packageContentByModuleId,
       handedOffAtByModuleId: persistedState.handedOffAtByModuleId,
+      handoffArtifacts: persistedState.handoffArtifacts,
+      providerJobs: [],
       suggestionsByModuleId: {},
+      proposalsByModuleId: {},
       aiChatHistory: [],
       ui: {
         workspaceMode: 'design',
+        secondaryWorkspace: 'none',
         currentHierarchyModuleId: defaultHierarchyId,
         newModuleName: '',
         newModuleKind: 'leaf',
@@ -168,9 +192,12 @@ export function createRestoredDesignState(
           childKind: 'leaf'
         },
         projectImportError: null,
-        aiComposerText: ''
+        aiComposerText: '',
+        selectedProviderId: DEFAULT_PROVIDER_ID,
+        diagramViewportMode: 'fit_scope',
+        expandedEdgeBundleKeys: []
       }
     },
-    { fallbackUpdatedBy, ensureUi: true, ensureSuggestions: false }
+    { fallbackUpdatedBy, ensureUi: true, ensureProposals: false }
   );
 }
