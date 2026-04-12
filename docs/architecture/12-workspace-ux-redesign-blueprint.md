@@ -8,6 +8,18 @@ It is intentionally a product and interaction blueprint, not an implementation s
 
 The current MVP workspace proves the semantic-core synchronization loop, but its screen allocation no longer matches the intended product direction. Today, the app keeps AI collaboration on the left, the diagram in the center, and a dense package/review/handoff surface on the right. That is useful for MVP validation, but it over-anchors deep-work utilities in the primary canvas and weakens the hardware-design mental model.
 
+### 1.1 April 2026 simplification directive (current planning override)
+
+For the next redesign phase, the primary workspace target is further simplified:
+
+* only two primary panes remain visible in the main screen: AI chat and diagram/modules
+* a top menu bar is the global command entry point (`File`, `Edit`, `View`, `Insert`, `Navigate`, `Validation`, `Review`, `Handoff`, `Tools`)
+* deep-work utilities stay accessible, but should be opened intentionally from the top menu instead of occupying persistent always-visible workspace area
+* hierarchy reading should prioritize parent/child/sibling semantics with lightweight child-count affordances (for example `+ N children`) on parent blocks
+* connection visuals should default to minimal signal-forward labeling and avoid always-on directional clutter
+
+This directive is intentionally migration-oriented and does not change the semantic source-of-truth rules in this document.
+
 The redesign direction for the next roadmap phase is:
 
 * a top ribbon / command bar for global actions and creation flows
