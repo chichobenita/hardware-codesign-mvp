@@ -80,7 +80,7 @@ function secondaryWorkspaceForWorkspaceMode(mode: DesignState['ui']['workspaceMo
     return 'handoff';
   }
 
-  return 'package_editor';
+  return 'none';
 }
 
 export { defaultConnectionDraft };

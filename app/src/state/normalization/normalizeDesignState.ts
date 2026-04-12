@@ -52,7 +52,7 @@ function normalizeSecondaryWorkspace(state: DesignState): DesignState['ui']['sec
     return requested;
   }
 
-  return 'package_editor';
+  return 'none';
 }
 
 function normalizeUiState(state: DesignState): DesignState {
@@ -171,7 +171,7 @@ export function createRestoredDesignState(
     proposalsByModuleId: {},
       ui: {
         workspaceMode: 'design',
-        secondaryWorkspace: 'package_editor',
+        secondaryWorkspace: 'none',
         diagramViewportMode: 'fit_scope',
         expandedEdgeBundleKeys: [],
         selectedProviderId: DEFAULT_PROVIDER_ID,
@@ -197,7 +197,7 @@ export function createRestoredDesignState(
       proposalsByModuleId: {},
       ui: {
         workspaceMode: 'design',
-        secondaryWorkspace: 'package_editor',
+        secondaryWorkspace: 'none',
         diagramViewportMode: 'fit_scope',
         expandedEdgeBundleKeys: [],
         selectedProviderId: DEFAULT_PROVIDER_ID,

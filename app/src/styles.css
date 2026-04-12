@@ -23,17 +23,99 @@ body {
   border-bottom: 1px solid #cbd5e1;
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(10px);
-  padding: 16px 20px;
+  padding: 8px 14px;
+}
+
+.menu-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.menu-bar-title {
+  font-weight: 700;
+  color: #1f2937;
+  margin-right: 6px;
+}
+
+.menu-bar-context {
+  color: #64748b;
+  font-size: 12px;
+  margin-right: 12px;
+}
+
+.menu-group {
+  position: relative;
+}
+
+.menu-group > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 600;
+  color: #111827;
+  background: #ffffff;
+}
+
+.menu-group[open] > summary {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.menu-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(340px, 80vw);
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+  padding: 10px;
   display: grid;
-  gap: 16px;
+  gap: 8px;
+  z-index: 30;
 }
 
-.ribbon-title-group h1 {
-  margin: 0;
-  font-size: 28px;
+.menu-panel-action {
+  text-align: left;
+  background: #f8fafc;
+  color: #111827;
+  border: 1px solid #cbd5e1;
 }
 
-.ribbon-kicker,
+.menu-panel-action strong {
+  display: block;
+}
+
+.menu-panel-action span {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.menu-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.menu-input-label {
+  color: #475569;
+  font-size: 12px;
+}
+
 .workspace-stage-kicker,
 .secondary-workspace-kicker {
   margin: 0 0 6px;
@@ -42,29 +124,6 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-}
-
-.ribbon-groups {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.ribbon-group {
-  border: 1px solid #dbeafe;
-  border-radius: 12px;
-  background: #f8fbff;
-  padding: 12px;
-  display: grid;
-  gap: 10px;
-}
-
-.ribbon-group-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #1e3a8a;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .ribbon-chip-row,
@@ -194,25 +253,7 @@ body {
 
 .workspace-main {
   min-width: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 16px;
-}
-
-.workspace-stage-card {
-  border: 1px solid #dbeafe;
-  border-radius: 14px;
-  background: #ffffff;
-  padding: 16px;
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.workspace-stage-card h2,
-.secondary-workspace-header h2 {
-  margin: 0;
+  position: relative;
 }
 
 .left-panel {
@@ -232,11 +273,25 @@ body {
   gap: 12px;
 }
 
+.secondary-workspace-overlay {
+  position: fixed;
+  top: 84px;
+  right: 20px;
+  bottom: 20px;
+  width: min(720px, calc(100vw - 40px));
+  overflow: auto;
+  z-index: 20;
+}
+
 .secondary-workspace-header {
   display: flex;
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
+}
+
+.secondary-workspace-header h2 {
+  margin: 0;
 }
 
 .secondary-workspace-header-actions,
@@ -913,15 +968,13 @@ button {
 }
 
 @media (max-width: 1180px) {
-  .ribbon-groups,
   .workspace-shell {
     grid-template-columns: 1fr;
   }
 
-  .ribbon-workspace-grid,
-  .ribbon-command-grid,
-  .ribbon-connection-grid {
-    grid-template-columns: 1fr;
+  .menu-bar {
+    flex-wrap: wrap;
+    white-space: normal;
   }
 
   .left-panel {
@@ -929,7 +982,6 @@ button {
     max-height: none;
   }
 
-  .workspace-stage-card,
   .secondary-workspace-header,
   .diagram-surface-header,
   .hierarchy-toolbar {
@@ -946,6 +998,15 @@ button {
 
   .diagram-edge-inspector-header {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 880px) {
+  .secondary-workspace-overlay {
+    top: 72px;
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
   }
 }
 
@@ -1095,7 +1156,6 @@ select:focus-visible,
 .diagram-edge-bundle-card,
 .secondary-workspace-shell,
 .secondary-workspace-empty,
-.workspace-stage-card,
 .panel,
 .ribbon-group {
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
