@@ -1,168 +1,111 @@
-import type { ModulePackage } from '../../../shared/src';
-import type { ModuleNode, PortDraft, SuggestionCard } from '../types';
+import type { AiChatMessage, ModuleNode, SuggestionCard } from '../types';
 
 type AISuggestionsPanelProps = {
   selectedModule?: ModuleNode;
-  regenerateSuggestionsForSelectedModule: () => void;
   selectedSuggestions: SuggestionCard[];
-  updateSuggestion: (suggestionId: string, updater: (current: SuggestionCard) => SuggestionCard) => void;
-  acceptSuggestion: (suggestion: SuggestionCard) => void;
-  rejectSuggestion: (suggestionId: string) => void;
+  aiChatHistory: AiChatMessage[];
+  aiComposerText: string;
+  setAiComposerText: (value: string) => void;
+  submitAiPrompt: () => void;
 };
+
+function formatPortsSummary(suggestion: SuggestionCard): string {
+  const ports = suggestion.draft.ports ?? [];
+  if (ports.length === 0) {
+    return 'no ports proposed yet';
+  }
+
+  return ports
+    .map((port) => `${port.name} (${port.direction}${port.width ? ` ${port.width}` : ''})`)
+    .join(', ');
+}
+
+function buildCurrentContextMessage(selectedModule: ModuleNode | undefined, selectedSuggestions: SuggestionCard[]): string {
+  if (!selectedModule) {
+    return 'Select a module to start the chat-first AI workflow.';
+  }
+
+  const pendingSuggestions = selectedSuggestions.filter((suggestion) => suggestion.status === 'pending');
+  const intro = `Working on ${selectedModule.name}. Ask for a direct update and I will apply it in place.`;
+
+  if (pendingSuggestions.length === 0) {
+    return `${intro}\nNo pending drafts right now. Say "refresh drafts" for another pass.`;
+  }
+
+  const purposeSuggestion = pendingSuggestions.find((suggestion) => suggestion.type === 'purpose_proposal');
+  const behaviorSuggestion = pendingSuggestions.find((suggestion) => suggestion.type === 'behavior_summary');
+  const portsSuggestion = pendingSuggestions.find((suggestion) => suggestion.type === 'ports_suggestion');
+  const decompositionSuggestion = pendingSuggestions.find((suggestion) => suggestion.type === 'decomposition_suggestion');
+
+  return [
+    intro,
+    'Draft updates ready:',
+    purposeSuggestion ? `Purpose: ${purposeSuggestion.draft.summaryText ?? 'pending'}` : null,
+    behaviorSuggestion ? `Behavior: ${behaviorSuggestion.draft.summaryText ?? 'pending'}` : null,
+    portsSuggestion ? `Ports: ${formatPortsSummary(portsSuggestion)}` : null,
+    decompositionSuggestion
+      ? `Decomposition: ${decompositionSuggestion.draft.decompositionStatus ?? 'under_decomposition'} - ${decompositionSuggestion.draft.decompositionRationale ?? ''}`.trim()
+      : null
+  ].filter(Boolean).join('\n');
+}
+
+function messageClassName(message: AiChatMessage): string {
+  return [
+    'ai-chat-message',
+    message.role === 'user' ? 'ai-chat-message-user' : 'ai-chat-message-assistant',
+    message.tone ? `ai-chat-message-${message.tone}` : ''
+  ].filter(Boolean).join(' ');
+}
 
 export function AISuggestionsPanel({
   selectedModule,
-  regenerateSuggestionsForSelectedModule,
   selectedSuggestions,
-  updateSuggestion,
-  acceptSuggestion,
-  rejectSuggestion
+  aiChatHistory,
+  aiComposerText,
+  setAiComposerText,
+  submitAiPrompt
 }: AISuggestionsPanelProps): JSX.Element {
+  const currentContextMessage = buildCurrentContextMessage(selectedModule, selectedSuggestions);
+
   return (
-    <section className="panel left-panel">
-      <h2>AI Collaboration</h2>
-      <p className="muted">Mock suggestions for selected module: <strong>{selectedModule?.name}</strong></p>
-      <p className="suggestions-note">Suggestions are not committed until you click <strong>Accept</strong>.</p>
-      <button type="button" onClick={regenerateSuggestionsForSelectedModule}>Regenerate mock suggestions</button>
-      <div className="suggestions-list">
-        {selectedSuggestions.map((suggestion) => (
-          <article key={suggestion.id} className="suggestion-card">
-            <div className="suggestion-header-row">
-              <h3>{suggestion.title}</h3>
-              <span className={`suggestion-status suggestion-${suggestion.status}`}>{suggestion.status}</span>
-            </div>
-            <p className="muted">{suggestion.description}</p>
+    <section className="panel left-panel ai-chat-panel">
+      <div className="ai-chat-header">
+        <h2>AI Collaboration</h2>
+        <p className="muted">Selected module: <strong>{selectedModule?.name ?? 'none'}</strong></p>
+      </div>
 
-            {(suggestion.type === 'purpose_proposal' || suggestion.type === 'behavior_summary') && (
-              <label>
-                Suggested text (editable before accept)
-                <textarea
-                  value={suggestion.draft.summaryText ?? ''}
-                  onChange={(event) =>
-                    updateSuggestion(suggestion.id, (current) => ({
-                      ...current,
-                      draft: { ...current.draft, summaryText: event.target.value },
-                      status: current.status === 'accepted' ? 'pending' : current.status
-                    }))
-                  }
-                  rows={3}
-                />
-              </label>
-            )}
-
-            {suggestion.type === 'ports_suggestion' && (
-              <div className="ports-suggestion-grid">
-                {(suggestion.draft.ports ?? []).map((port, index) => (
-                  <div key={port.id} className="port-edit-row">
-                    <input
-                      aria-label={`Port ${index + 1} name`}
-                      value={port.name}
-                      onChange={(event) =>
-                        updateSuggestion(suggestion.id, (current) => ({
-                          ...current,
-                          draft: {
-                            ...current.draft,
-                            ports: (current.draft.ports ?? []).map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, name: event.target.value } : item
-                            )
-                          },
-                          status: current.status === 'accepted' ? 'pending' : current.status
-                        }))
-                      }
-                      placeholder="name"
-                    />
-                    <select
-                      aria-label={`Port ${index + 1} direction`}
-                      value={port.direction}
-                      onChange={(event) =>
-                        updateSuggestion(suggestion.id, (current) => ({
-                          ...current,
-                          draft: {
-                            ...current.draft,
-                            ports: (current.draft.ports ?? []).map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, direction: event.target.value as PortDraft['direction'] } : item
-                            )
-                          },
-                          status: current.status === 'accepted' ? 'pending' : current.status
-                        }))
-                      }
-                    >
-                      <option value="input">input</option>
-                      <option value="output">output</option>
-                      <option value="inout">inout</option>
-                    </select>
-                    <input
-                      aria-label={`Port ${index + 1} width`}
-                      value={port.width ?? ''}
-                      onChange={(event) =>
-                        updateSuggestion(suggestion.id, (current) => ({
-                          ...current,
-                          draft: {
-                            ...current.draft,
-                            ports: (current.draft.ports ?? []).map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, width: event.target.value } : item
-                            )
-                          },
-                          status: current.status === 'accepted' ? 'pending' : current.status
-                        }))
-                      }
-                      placeholder="width"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {suggestion.type === 'decomposition_suggestion' && (
-              <>
-                <label>
-                  Suggested status
-                  <select
-                    value={suggestion.draft.decompositionStatus ?? 'under_decomposition'}
-                    onChange={(event) =>
-                      updateSuggestion(suggestion.id, (current) => ({
-                        ...current,
-                        draft: {
-                          ...current.draft,
-                          decompositionStatus: event.target.value as NonNullable<ModulePackage['decompositionStatus']>['decompositionStatus']
-                        },
-                        status: current.status === 'accepted' ? 'pending' : current.status
-                      }))
-                    }
-                  >
-                    <option value="composite">composite</option>
-                    <option value="under_decomposition">under_decomposition</option>
-                    <option value="candidate_leaf">candidate_leaf</option>
-                    <option value="approved_leaf">approved_leaf</option>
-                  </select>
-                </label>
-                <label>
-                  Rationale (editable before accept)
-                  <textarea
-                    value={suggestion.draft.decompositionRationale ?? ''}
-                    onChange={(event) =>
-                      updateSuggestion(suggestion.id, (current) => ({
-                        ...current,
-                        draft: {
-                          ...current.draft,
-                          decompositionRationale: event.target.value
-                        },
-                        status: current.status === 'accepted' ? 'pending' : current.status
-                      }))
-                    }
-                    rows={2}
-                  />
-                </label>
-              </>
-            )}
-
-            <div className="suggestion-actions">
-              <button type="button" onClick={() => acceptSuggestion(suggestion)} disabled={suggestion.status === 'accepted'}>Accept</button>
-              <button type="button" onClick={() => rejectSuggestion(suggestion.id)} disabled={suggestion.status === 'rejected'}>Reject</button>
-            </div>
+      <div className="ai-chat-transcript" role="log" aria-label="AI chat transcript">
+        {aiChatHistory.map((message) => (
+          <article key={message.id} className={messageClassName(message)}>
+            <span className="ai-chat-speaker">{message.role === 'user' ? 'You' : 'AI'}</span>
+            <p>{message.text}</p>
           </article>
         ))}
+
+        <article className="ai-chat-message ai-chat-message-assistant ai-chat-message-guide">
+          <span className="ai-chat-speaker">AI</span>
+          <p>{currentContextMessage}</p>
+        </article>
       </div>
+
+      <form
+        className="ai-chat-composer"
+        onSubmit={(event) => {
+          event.preventDefault();
+          submitAiPrompt();
+        }}
+      >
+        <label className="ai-chat-input-label" htmlFor="ai-chat-input">Design chat</label>
+        <input
+          id="ai-chat-input"
+          aria-label="Design chat"
+          value={aiComposerText}
+          onChange={(event) => setAiComposerText(event.target.value)}
+          placeholder='Try "purpose: ...", "apply ports", "create module parser", or "connect input_fifo to scheduler with fifo_valid".'
+          disabled={!selectedModule}
+        />
+        <button type="submit" disabled={!selectedModule || aiComposerText.trim().length === 0}>Send</button>
+      </form>
     </section>
   );
 }

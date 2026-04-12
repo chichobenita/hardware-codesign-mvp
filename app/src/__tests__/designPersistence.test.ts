@@ -43,12 +43,17 @@ describe('designPersistence', () => {
         draft: { summaryText: 'ignore me' }
       }
     ];
+    state.aiChatHistory = [
+      { id: 'assistant-1', role: 'assistant', text: 'Ignored chat', createdAt: '2026-01-01T00:00:00.000Z', tone: 'status' }
+    ];
+    state.ui.aiComposerText = 'do not persist';
 
     const snapshot = createPersistedDesignSnapshot(state);
     const serialized = JSON.parse(serializeDesignSnapshot(state));
 
     expect(snapshot.schemaVersion).toBe(PERSISTED_DESIGN_SCHEMA_VERSION);
     expect(snapshot).not.toHaveProperty('suggestionsByModuleId');
+    expect(snapshot).not.toHaveProperty('aiChatHistory');
     expect(serialized).toEqual(snapshot);
   });
 
@@ -238,6 +243,10 @@ describe('designPersistence', () => {
         draft: { summaryText: 'ignore me' }
       }
     ];
+    state.aiChatHistory = [
+      { id: 'assistant-1', role: 'assistant', text: 'Ignored chat', createdAt: '2026-01-01T00:00:00.000Z', tone: 'status' }
+    ];
+    state.ui.aiComposerText = 'do not persist';
 
     const storage = createStorageMock();
     saveDesignState(state, storage);
@@ -246,9 +255,12 @@ describe('designPersistence', () => {
 
     expect(savedSnapshot.schemaVersion).toBe(PERSISTED_DESIGN_SCHEMA_VERSION);
     expect(savedSnapshot.suggestionsByModuleId).toBeUndefined();
+    expect(savedSnapshot.aiChatHistory).toBeUndefined();
 
     const restored = loadDesignState(storage);
     expect(restored.suggestionsByModuleId).toEqual({});
+    expect(restored.aiChatHistory).toEqual([]);
+    expect(restored.ui.aiComposerText).toBe('');
     expect(restored.moduleList).toEqual(seedState.moduleList);
     expect(restored.connections).toEqual(seedState.connections);
     expect(restored.handedOffAtByModuleId).toEqual(seedState.handedOffAtByModuleId);

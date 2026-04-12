@@ -28,6 +28,8 @@ export type WorkspaceMode = 'design' | 'review' | 'handoff';
 export type SuggestionType = 'purpose_proposal' | 'behavior_summary' | 'ports_suggestion' | 'decomposition_suggestion';
 export type SuggestionStatus = 'pending' | 'accepted' | 'rejected';
 export type PortDraft = NonNullable<NonNullable<ModulePackage['interfaces']>['ports']>[number];
+export type AiChatMessageRole = 'user' | 'assistant';
+export type AiChatMessageTone = 'guide' | 'suggestion' | 'status';
 
 export type SuggestionCard = {
   id: string;
@@ -41,6 +43,14 @@ export type SuggestionCard = {
     decompositionStatus?: NonNullable<ModulePackage['decompositionStatus']>['decompositionStatus'];
     decompositionRationale?: string;
   };
+};
+
+export type AiChatMessage = {
+  id: string;
+  role: AiChatMessageRole;
+  text: string;
+  createdAt: string;
+  tone?: AiChatMessageTone;
 };
 
 export type HierarchyBreadcrumbItem = {
@@ -62,6 +72,7 @@ export type DesignUiState = {
   connectionDraft: Connection;
   decompositionDraft: HierarchyDecompositionDraft;
   projectImportError: string | null;
+  aiComposerText: string;
 };
 
 export type DesignState = {
@@ -71,6 +82,7 @@ export type DesignState = {
   packageContentByModuleId: Record<string, ModulePackage>;
   handedOffAtByModuleId: Record<string, string>;
   suggestionsByModuleId: Record<string, SuggestionCard[]>;
+  aiChatHistory: AiChatMessage[];
   ui: DesignUiState;
 };
 

@@ -52,11 +52,11 @@ The engineer can converse with the AI about the selected module.
 
 Main behaviors:
 
-* ask the AI to propose missing fields
-* ask the AI to summarize module purpose or behavior
-* request template suggestions for common module types
+* use a chat-first message list with a single input tied to the selected module
+* ask the AI to propose or apply missing purpose, behavior, ports, or decomposition fields
+* request lightweight structural edits such as create, connect, or decompose from direct intent text
 * request clarification questions when the package remains ambiguous
-* accept, reject, or edit AI suggestions before committing them
+* keep suggestion acceptance transparent, while allowing clear actions to auto-apply when intent is unambiguous
 
 
 ### 1.2.1 Hierarchy View Context
@@ -140,8 +140,8 @@ AI-generated suggestions should not overwrite package content silently.
 The MVP should support a simple suggestion workflow:
 
 * AI proposes content
-* the proposal is shown inline or in a suggestion area
-* the engineer may accept, edit, or reject the proposal
+* the proposal is surfaced inline as concise AI chat messages
+* the engineer may still accept, edit, or reject the proposal, even if the primary UI is chat-first
 * accepted content updates the Module Package
 
 This preserves transparency and engineer trust.

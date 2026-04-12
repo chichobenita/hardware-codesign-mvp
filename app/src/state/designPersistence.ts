@@ -7,8 +7,8 @@ export const LOCAL_STORAGE_KEY = 'hardware-codesign-mvp.design-state.v1';
 export const PERSISTED_DESIGN_SCHEMA_VERSION = 1;
 
 /**
- * Suggestions remain intentionally non-persisted in the MVP.
- * They are derived UI collaboration state and can be regenerated after restore.
+ * Suggestions and chat transcript remain intentionally non-persisted in the MVP.
+ * They are derived collaboration state and can be regenerated after restore.
  */
 export type PersistedDesignSnapshot = {
   schemaVersion: number;

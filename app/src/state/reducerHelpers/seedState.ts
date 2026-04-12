@@ -128,6 +128,7 @@ export const baseSeedState: DesignState = {
   },
   handedOffAtByModuleId: {},
   suggestionsByModuleId: {},
+  aiChatHistory: [],
   ui: {
     workspaceMode: 'design',
     currentHierarchyModuleId: 'root',
@@ -139,6 +140,7 @@ export const baseSeedState: DesignState = {
       namesText: '',
       childKind: 'leaf'
     },
-    projectImportError: null
+    projectImportError: null,
+    aiComposerText: ''
   }
 };

@@ -148,6 +148,29 @@ describe('designReducer', () => {
     expect(state.ui.connectionDraft).toEqual(draft);
   });
 
+  it('updates the AI composer draft and appends chat history through reducer-owned state', () => {
+    let state = designReducer(seedState, {
+      type: 'set_ai_composer_text',
+      payload: { value: 'apply behavior' }
+    });
+
+    expect(state.ui.aiComposerText).toBe('apply behavior');
+
+    state = designReducer(state, {
+      type: 'append_ai_chat_messages',
+      payload: {
+        messages: [
+          { id: 'user-1', role: 'user', text: 'apply behavior', createdAt: '2026-01-01T00:00:00.000Z' },
+          { id: 'assistant-1', role: 'assistant', text: 'Updated behavior for uart_rx.', createdAt: '2026-01-01T00:00:01.000Z', tone: 'status' }
+        ]
+      }
+    });
+
+    expect(state.aiChatHistory).toHaveLength(2);
+    expect(state.aiChatHistory[0]?.role).toBe('user');
+    expect(state.aiChatHistory[1]?.text).toContain('Updated behavior');
+  });
+
   it('refreshes rename draft from the current authoritative module identity when selection changes', () => {
     const selectedRoot = designReducer(seedState, {
       type: 'select_module',

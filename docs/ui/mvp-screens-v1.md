@@ -78,11 +78,11 @@ The conversational workspace tied to the selected module or current design conte
 
 Functions:
 
-* Ask the AI to propose module decomposition
-* Ask the AI to suggest ports, purpose, or behavior
-* Ask clarification questions
-* Show AI suggestions before commit
-* Allow accept, edit, or reject actions
+* Use a chat-first message list with a single prompt input
+* Ask the AI to update purpose, behavior, ports, or decomposition for the current module
+* Trigger lightweight structural edits such as create, connect, or decompose through direct intent text
+* Surface draft suggestions as concise AI messages instead of persistent proposal cards
+* Apply clear actions directly while still preserving transparent suggestion handling inside MVP state
 
 ### Notes
 

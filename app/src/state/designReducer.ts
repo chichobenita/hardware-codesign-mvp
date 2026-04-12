@@ -266,6 +266,10 @@ export function designReducer(state: DesignState, action: DesignAction): DesignS
       };
     case 'set_project_import_error':
       return { ...state, ui: { ...state.ui, projectImportError: action.payload.message } };
+    case 'set_ai_composer_text':
+      return { ...state, ui: { ...state.ui, aiComposerText: action.payload.value } };
+    case 'append_ai_chat_messages':
+      return { ...state, aiChatHistory: [...state.aiChatHistory, ...action.payload.messages] };
     case 'connect_modules': {
       const withConnection = {
         ...state,

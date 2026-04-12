@@ -74,7 +74,8 @@ function normalizeUiState(state: DesignState): DesignState {
         namesText: state.ui.decompositionDraft?.namesText ?? '',
         childKind: state.ui.decompositionDraft?.childKind ?? 'leaf'
       },
-      projectImportError: state.ui.projectImportError
+      projectImportError: state.ui.projectImportError,
+      aiComposerText: state.ui.aiComposerText ?? ''
     }
   };
 }
@@ -117,7 +118,8 @@ export function normalizeDesignState(
     packageContentByModuleId: normalizeDependencies(normalizedPackages, normalizedConnections),
     handedOffAtByModuleId: Object.fromEntries(
       Object.entries(state.handedOffAtByModuleId).filter(([moduleId]) => normalizedPackages[moduleId])
-    )
+    ),
+    aiChatHistory: state.aiChatHistory ?? []
   };
 
   if (options.ensureUi) {
@@ -153,6 +155,7 @@ export function createRestoredDesignState(
       packageContentByModuleId: persistedState.packageContentByModuleId,
       handedOffAtByModuleId: persistedState.handedOffAtByModuleId,
       suggestionsByModuleId: {},
+      aiChatHistory: [],
       ui: {
         workspaceMode: 'design',
         currentHierarchyModuleId: defaultHierarchyId,
@@ -164,7 +167,8 @@ export function createRestoredDesignState(
           namesText: '',
           childKind: 'leaf'
         },
-        projectImportError: null
+        projectImportError: null,
+        aiComposerText: ''
       }
     },
     { fallbackUpdatedBy, ensureUi: true, ensureSuggestions: false }

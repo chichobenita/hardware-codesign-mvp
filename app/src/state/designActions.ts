@@ -1,5 +1,5 @@
 import type { ModulePackage } from '../../../shared/src';
-import type { Connection, DesignState, ModuleNode, SuggestionCard, WorkspaceMode } from '../types';
+import type { AiChatMessage, Connection, DesignState, ModuleNode, SuggestionCard, WorkspaceMode } from '../types';
 
 export type DesignAction =
   | { type: 'create_module'; payload: { name: string; kind: ModuleNode['kind']; parentModuleId?: string; nextId?: string; nowIso?: string } }
@@ -17,6 +17,8 @@ export type DesignAction =
   | { type: 'set_decomposition_names_text'; payload: { value: string } }
   | { type: 'set_decomposition_child_kind'; payload: { value: ModuleNode['kind'] } }
   | { type: 'set_project_import_error'; payload: { message: string | null } }
+  | { type: 'set_ai_composer_text'; payload: { value: string } }
+  | { type: 'append_ai_chat_messages'; payload: { messages: AiChatMessage[] } }
   | { type: 'connect_modules'; payload: { connection: Connection; nowIso?: string } }
   | { type: 'update_selected_module_package'; payload: { updater: (current: ModulePackage) => ModulePackage; nowIso?: string } }
   | { type: 'update_module_package'; payload: { moduleId: string; updater: (current: ModulePackage) => ModulePackage; nowIso?: string } }
